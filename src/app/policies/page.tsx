@@ -1,112 +1,71 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { fetchUserPolicies, type Policy } from '@/lib/api';
-import { getConnectedWallet, connectFreighter } from '@/lib/stellar';
-import { ClaimStatus } from '@/components/ClaimStatus';
+import { useWallet } from '@/hooks/useWallet';
+import { usePolicies } from '@/hooks/usePolicies';
+import { PolicyCard } from '@/components/PolicyCard';
+import { ConnectWalletPrompt } from '@/components/ConnectWalletPrompt';
+import { SkeletonCard } from '@/components/Skeleton';
+import { EmptyState } from '@/components/EmptyState';
+import { Badge } from '@/components/Badge';
+import Link from 'next/link';
+
+type Filter = 'All' | 'Active' | 'Expired' | 'Claimed';
 
 export default function PoliciesPage() {
-  const [wallet, setWallet]   = useState<string | null>(null);
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [loading, setLoading]  = useState(false);
+  const { address, connected } = useWallet();
+  const { policies, loading }  = usePolicies(address);
 
-  useEffect(() => {
-    const w = getConnectedWallet();
-    if (w) { setWallet(w); loadPolicies(w); }
-  }, []);
-
-  async function loadPolicies(w: string) {
-    setLoading(true);
-    try {
-      setPolicies(await fetchUserPolicies(w));
-    } catch { /* API not yet running */ }
-    finally { setLoading(false); }
-  }
-
-  async function handleConnect() {
-    try {
-      const addr = await connectFreighter();
-      setWallet(addr);
-      await loadPolicies(addr);
-    } catch (e) {
-      console.error('Wallet connect failed', e);
-    }
-  }
-
-  if (!wallet) {
+  if (!connected) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
-        <div className="text-center">
-          <h1 className="mb-4 text-2xl font-bold">My Policies</h1>
-          <p className="mb-6 text-gray-400">Connect your Stellar wallet to view your policies.</p>
-          <button
-            onClick={handleConnect}
-            className="rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-black hover:bg-emerald-400 transition-colors"
-          >
-            Connect Wallet
-          </button>
-        </div>
+      <main className="mx-auto max-w-7xl px-6 py-20">
+        <ConnectWalletPrompt message="Connect your wallet to view your policies" />
       </main>
     );
   }
 
+  const statusCounts = policies.reduce<Record<string, number>>((acc, p) => {
+    acc[p.status] = (acc[p.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <main className="min-h-screen bg-gray-950 px-6 py-12 text-white">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="mb-8 text-3xl font-bold">My Policies</h1>
+    <main className="mx-auto max-w-7xl px-6 py-12">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">My Policies</h1>
+          <p className="mt-1 text-sm text-gray-400">{policies.length} total policies</p>
+        </div>
 
-        {loading && (
-          <div className="space-y-4">
-            {[1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />)}
-          </div>
-        )}
-
-        {!loading && policies.length === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center">
-            <p className="text-gray-400">No policies found for this wallet.</p>
-            <a href="/" className="mt-4 inline-block text-sm text-emerald-400 hover:underline">
-              Browse insurance products →
-            </a>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {policies.map((policy) => (
-            <div
-              key={policy.id}
-              className="rounded-2xl border border-white/10 bg-white/5 p-6"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-semibold">Policy #{policy.id}</p>
-                  <p className="text-sm text-gray-400">
-                    Coverage: {policy.coverage} USDC · Premium: {policy.premiumPaid} USDC
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500 font-mono">
-                    Oracle key: {policy.oracleKey}
-                  </p>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    policy.status === 'Active'   ? 'bg-emerald-500/15 text-emerald-400' :
-                    policy.status === 'Claimed'  ? 'bg-blue-500/15 text-blue-400' :
-                    policy.status === 'Expired'  ? 'bg-gray-500/15 text-gray-400' :
-                    'bg-red-500/15 text-red-400'
-                  }`}
-                >
-                  {policy.status}
-                </span>
-              </div>
-
-              {policy.status === 'Active' && (
-                <div className="mt-4 border-t border-white/10 pt-4">
-                  <ClaimStatus policyId={policy.id} />
-                </div>
-              )}
-            </div>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(statusCounts).map(([status, count]) => (
+            <span key={status} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">
+              <Badge label={status} />
+              <span className="text-gray-400">{count}</span>
+            </span>
           ))}
         </div>
       </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : policies.length === 0 ? (
+        <EmptyState
+          icon="📋"
+          title="No policies yet"
+          description="Buy your first parametric insurance policy from the products marketplace."
+          action={
+            <Link href="/" className="rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-400 transition-colors">
+              Browse products
+            </Link>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {policies.map((p) => <PolicyCard key={p.id} policy={p} />)}
+        </div>
+      )}
     </main>
   );
 }

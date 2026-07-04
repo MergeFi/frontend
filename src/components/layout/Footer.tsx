@@ -18,21 +18,13 @@ const columns = [
       { href: "/dashboard/sponsor", label: "Sponsors" },
     ],
   },
-  {
-    title: "Resources",
-    links: [
-      { href: "https://github.com/MergeFi/backend", label: "Backend repo" },
-      { href: "https://github.com/MergeFi/contracts", label: "Contracts repo" },
-      { href: "https://developers.stellar.org", label: "Stellar docs" },
-    ],
-  },
 ];
 
 export function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       <div className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr_1fr]">
+        <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr]">
           <div>
             <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900">

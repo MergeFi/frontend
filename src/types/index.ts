@@ -1,7 +1,9 @@
 export type UserRole = "contributor" | "maintainer" | "sponsor";
 
+// Mirrors mergefi-backend's BountyStatus enum (src/common/enums/index.ts)
 export type BountyStatus =
   | "open"
+  | "funded"
   | "claimed"
   | "in_review"
   | "merged"
@@ -9,7 +11,8 @@ export type BountyStatus =
   | "refunded"
   | "expired";
 
-export type Difficulty = "easy" | "medium" | "hard" | "expert";
+// Mirrors mergefi-backend's BountyDifficulty enum
+export type Difficulty = "beginner" | "intermediate" | "advanced" | "expert";
 
 export interface TeamSplit {
   role: string;
@@ -33,6 +36,7 @@ export interface Bounty {
   claimedBy?: string;
   teamSplits?: TeamSplit[];
   milestoneId?: string;
+  escrowId?: string;
 }
 
 export interface Milestone {
@@ -73,4 +77,13 @@ export interface MaintenancePool {
   monthlyDeposit: number;
   balance: number;
   asset: "USDC" | "XLM";
+}
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  roles: UserRole[];
+  stellarAddress: string | null;
 }

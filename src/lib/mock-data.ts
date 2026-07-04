@@ -17,7 +17,7 @@ export const mockBounties: Bounty[] = [
       "Switching between testnet and mainnet while a Freighter session is active can leave the app in a stale connection state. Needs a fix in the wallet provider's effect cleanup.",
     reward: 150,
     asset: "USDC",
-    difficulty: "medium",
+    difficulty: "intermediate",
     status: "open",
     deadline: new Date(Date.now() + 6 * 86400000).toISOString(),
     labels: ["bug", "wallet", "good-first-issue"],
@@ -32,7 +32,7 @@ export const mockBounties: Bounty[] = [
       "Client-side helper should reject milestone allocations that exceed the remaining pool budget before submitting the transaction.",
     reward: 220,
     asset: "USDC",
-    difficulty: "medium",
+    difficulty: "intermediate",
     status: "claimed",
     deadline: new Date(Date.now() + 3 * 86400000).toISOString(),
     labels: ["sdk", "enhancement"],
@@ -48,7 +48,7 @@ export const mockBounties: Bounty[] = [
       "Write reference docs for fund/release/refund functions including auth requirements and error codes.",
     reward: 60,
     asset: "USDC",
-    difficulty: "easy",
+    difficulty: "beginner",
     status: "open",
     deadline: new Date(Date.now() + 10 * 86400000).toISOString(),
     labels: ["docs", "good-first-issue"],
@@ -63,7 +63,7 @@ export const mockBounties: Bounty[] = [
       "Current batching causes memory spikes on repos with >50k merged PRs. Needs profiling and a streaming rewrite.",
     reward: 480,
     asset: "USDC",
-    difficulty: "hard",
+    difficulty: "advanced",
     status: "in_review",
     deadline: new Date(Date.now() + 1 * 86400000).toISOString(),
     labels: ["performance", "backend"],
@@ -82,7 +82,7 @@ export const mockBounties: Bounty[] = [
     description: "Routine maintenance bounty funded from the recurring pool.",
     reward: 40,
     asset: "USDC",
-    difficulty: "easy",
+    difficulty: "beginner",
     status: "paid",
     deadline: new Date(Date.now() - 2 * 86400000).toISOString(),
     labels: ["maintenance"],
@@ -93,7 +93,7 @@ export const mockBounties: Bounty[] = [
 export const mockMilestones: Milestone[] = [
   {
     id: "m1",
-    name: "v2.0 — Multi-asset escrow",
+    name: "v2.0: Multi-asset escrow",
     repo: "soroban-escrow-sdk",
     budget: 12000,
     distributed: 4300,
@@ -103,7 +103,7 @@ export const mockMilestones: Milestone[] = [
   },
   {
     id: "m2",
-    name: "v1.4 — Indexer performance pass",
+    name: "v1.4: Indexer performance pass",
     repo: "core-indexer",
     budget: 6000,
     distributed: 2100,
@@ -164,3 +164,122 @@ export const platformStats = {
   activeContributors: 341,
   avgPayoutTimeMinutes: 4,
 };
+
+export const trustedOrgs = [
+  "stellar-labs",
+  "mergefi",
+  "openzeppelin",
+  "soroban-foundation",
+  "wallet-kit",
+  "core-indexer",
+];
+
+export interface LeaderboardEntry {
+  handle: string;
+  earnings: number;
+  mergedPRs: number;
+  topLanguage: string;
+}
+
+export const topContributors: LeaderboardEntry[] = [
+  { handle: "priyaeth", earnings: 8420, mergedPRs: 61, topLanguage: "Rust" },
+  { handle: "0xkoda", earnings: 3210, mergedPRs: 27, topLanguage: "Rust" },
+  { handle: "devrel_ana", earnings: 2890, mergedPRs: 24, topLanguage: "TypeScript" },
+  { handle: "qa_marcus", earnings: 2140, mergedPRs: 19, topLanguage: "Go" },
+  { handle: "linh_dev", earnings: 1780, mergedPRs: 15, topLanguage: "TypeScript" },
+];
+
+export interface ActivityEvent {
+  id: string;
+  handle: string;
+  action: string;
+  target: string;
+  amount?: number;
+  asset?: "USDC" | "XLM";
+  minutesAgo: number;
+}
+
+export const recentActivity: ActivityEvent[] = [
+  {
+    id: "a1",
+    handle: "devrel_ana",
+    action: "was paid",
+    target: "core-indexer#288",
+    amount: 40,
+    asset: "USDC",
+    minutesAgo: 6,
+  },
+  {
+    id: "a2",
+    handle: "0xkoda",
+    action: "claimed",
+    target: "soroban-escrow-sdk#17",
+    minutesAgo: 22,
+  },
+  {
+    id: "a3",
+    handle: "linh_dev",
+    action: "opened a pull request for",
+    target: "stellar-wallet-kit#475",
+    minutesAgo: 48,
+  },
+  {
+    id: "a4",
+    handle: "Stellar Development Foundation",
+    action: "funded",
+    target: "v2.0: Multi-asset escrow",
+    amount: 2500,
+    asset: "USDC",
+    minutesAgo: 71,
+  },
+  {
+    id: "a5",
+    handle: "priyaeth",
+    action: "was paid",
+    target: "core-indexer#301",
+    amount: 480,
+    asset: "USDC",
+    minutesAgo: 130,
+  },
+  {
+    id: "a6",
+    handle: "qa_marcus",
+    action: "joined as a",
+    target: "contributor",
+    minutesAgo: 210,
+  },
+];
+
+
+export interface Faq {
+  question: string;
+  answer: string;
+}
+
+export const faqs: Faq[] = [
+  {
+    question: "How does MergeFi decide when to release payment?",
+    answer:
+      "MergeFi listens for GitHub webhooks. When a pull request that references a funded issue is merged, the backend verifies the event and calls the escrow contract's release function automatically. There's no manual approval step once a PR is merged.",
+  },
+  {
+    question: "What happens if an issue never gets resolved?",
+    answer:
+      "Sponsors can refund an unresolved bounty at any time before it's claimed, or after its deadline passes. The escrow contract returns the full amount to the sponsor's wallet.",
+  },
+  {
+    question: "Can a bounty be split between multiple contributors?",
+    answer:
+      "Yes. Maintainers can define a team split by percentage (for example 40% frontend, 40% backend, 20% testing), and the contract distributes the payout accordingly the moment the work is merged.",
+  },
+  {
+    question: "Which assets can I fund a bounty with?",
+    answer:
+      "MergeFi currently supports USDC and XLM. Funds are held in a Soroban smart contract on Stellar until release conditions are met.",
+  },
+  {
+    question: "Do I need a Stellar wallet to participate?",
+    answer:
+      "Contributors need a Stellar wallet (Freighter is supported today) to receive payouts. Sponsors need one to fund escrow. Browsing bounties and building your GitHub reputation doesn't require a wallet.",
+  },
+];

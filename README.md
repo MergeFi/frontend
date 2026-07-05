@@ -32,6 +32,8 @@ Related repositories:
 | **Maintainers** | Create projects, attach rewards to issues, approve completed work, manage permissions. |
 | **Sponsors** | Fund repositories or specific issues/milestones, track spend, measure impact. |
 
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/cb9a65c7-4c09-44a1-8d9b-b912a4ffe179" />
+
 ## Feature map → routes
 
 | Feature | Route |

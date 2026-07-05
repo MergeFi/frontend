@@ -15,6 +15,8 @@ contributors, maintainers, and sponsors.
 Related repositories:
 - [`mergefi/backend`](https://github.com/MergeFi/backend) — NestJS API: GitHub sync, webhooks, bounty/escrow orchestration, reputation, analytics.
 - [`mergefi/contracts`](https://github.com/MergeFi/contracts) — Soroban smart contracts: escrow, milestone funding, maintenance pools, team splits.
+- 
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/c019b457-90a0-4f2e-94d9-ab927de326dd" />
 
 ## Why Stellar and Soroban?
 

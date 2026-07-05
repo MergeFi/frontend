@@ -251,6 +251,27 @@ export const recentActivity: ActivityEvent[] = [
 ];
 
 
+// Weekly earnings/spend series (8 weeks) for dashboard charts.
+export const contributorEarningsHistory = [420, 560, 310, 780, 640, 890, 720, 1050];
+export const sponsorSpendHistory = [1800, 2400, 2100, 3200, 2800, 3600, 3100, 4200];
+
+export const contributorSparkline = [12, 18, 14, 22, 19, 27, 24, 31];
+export const bountiesCompletedSparkline = [40, 44, 42, 51, 55, 58, 60, 64];
+export const escrowLockedSparkline = [8, 12, 10, 15, 13, 18, 16, 14];
+export const budgetSparkline = [30, 28, 32, 27, 24, 26, 22, 20];
+
+export interface RepoSpend {
+  repo: string;
+  amount: number;
+}
+
+export const sponsorSpendByRepo: RepoSpend[] = [
+  { repo: "stellar-wallet-kit", amount: 6200 },
+  { repo: "core-indexer", amount: 4800 },
+  { repo: "soroban-escrow-sdk", amount: 3100 },
+  { repo: "docs-site", amount: 900 },
+];
+
 export interface Faq {
   question: string;
   answer: string;

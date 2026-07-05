@@ -35,13 +35,21 @@ body {
 .bg-hero-gradient {
   background:
     radial-gradient(60% 50% at 15% 0%, rgb(99 102 241 / 0.16), transparent 70%),
-    radial-gradient(50% 40% at 85% 10%, rgb(16 185 129 / 0.14), transparent 70%);
+    radial-gradient(50% 40% at 85% 10%, rgb(16 185 129 / 0.14), transparent 70%),
+    radial-gradient(45% 35% at 50% 100%, rgb(245 158 11 / 0.10), transparent 70%);
 }
 
 .dark .bg-hero-gradient {
   background:
     radial-gradient(60% 50% at 15% 0%, rgb(99 102 241 / 0.22), transparent 70%),
-    radial-gradient(50% 40% at 85% 10%, rgb(16 185 129 / 0.18), transparent 70%);
+    radial-gradient(50% 40% at 85% 10%, rgb(16 185 129 / 0.18), transparent 70%),
+    radial-gradient(45% 35% at 50% 100%, rgb(245 158 11 / 0.14), transparent 70%);
+}
+
+.bg-spice-gradient {
+  background:
+    radial-gradient(70% 60% at 100% 0%, rgb(245 158 11 / 0.16), transparent 65%),
+    linear-gradient(135deg, #0b0b0d 0%, #171310 55%, #1c1206 100%);
 }
 
 .text-gradient {

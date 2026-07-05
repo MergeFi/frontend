@@ -321,7 +321,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 px-8 py-14 text-center dark:border-slate-800">
+        <section className="bg-spice-gradient mt-24 overflow-hidden rounded-2xl border border-slate-200 px-8 py-14 text-center dark:border-slate-800">
           <h2 className="text-3xl font-semibold text-white">
             Why Stellar and Soroban?
           </h2>

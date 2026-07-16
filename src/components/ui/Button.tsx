@@ -1,18 +1,21 @@
-import { ButtonHTMLAttributes, ElementType } from "react";
+import { ButtonHTMLAttributes, ElementType, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 type Variant = "primary" | "secondary" | "ghost" | "outline";
 type Size = "sm" | "md" | "lg";
 
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: Variant;
+  size?: Size;
+  as?: ElementType;
+  isLoading?: boolean; // هادي هي اللي غتفرق لينا بين Loading و Disabled
+}
+
 const variantClasses: Record<Variant, string> = {
-  primary:
-    "bg-slate-900 text-white hover:bg-slate-800 shadow-sm shadow-slate-900/10 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200",
-  secondary:
-    "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20",
-  ghost:
-    "bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
-  outline:
-    "bg-white border border-slate-200 text-slate-800 hover:border-slate-300 hover:bg-slate-50 shadow-sm dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800",
+  primary: "bg-slate-900 text-white hover:bg-slate-800 shadow-sm shadow-slate-900/10 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200",
+  secondary: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20",
+  ghost: "bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+  outline: "bg-white border border-slate-200 text-slate-800 hover:border-slate-300 hover:bg-slate-50 shadow-sm dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800",
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -21,21 +24,21 @@ const sizeClasses: Record<Size, string> = {
   lg: "px-6 py-3 text-base",
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
-  size?: Size;
-  as?: ElementType; // هادي هي اللي غتخلينا نتحكمو في نوع العنصر
-}
-
-export function Button({
+// كنستعملو forwardRef باش نرضيو الـ Acceptance Criteria
+export const Button = forwardRef<any, ButtonProps & { as?: ElementType }>(({
   variant = "primary",
   size = "md",
   className,
-  as: Component = "button", // Default هو button
+  as: Component = "button",
+  isLoading,
+  disabled,
   ...props
-}: ButtonProps) {
+}, ref) => {
   return (
     <Component
+      ref={ref}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading ? "true" : undefined}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         variantClasses[variant],
@@ -45,4 +48,6 @@ export function Button({
       {...props}
     />
   );
-}
+});
+
+Button.displayName = "Button";

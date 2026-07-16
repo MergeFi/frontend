@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes } from "react";
+import { ButtonHTMLAttributes, ElementType } from "react";
 import { cn } from "@/lib/utils";
 
 type Variant = "primary" | "secondary" | "ghost" | "outline";
@@ -24,16 +24,18 @@ const sizeClasses: Record<Size, string> = {
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
+  as?: ElementType; // هادي هي اللي غتخلينا نتحكمو في نوع العنصر
 }
 
 export function Button({
   variant = "primary",
   size = "md",
   className,
+  as: Component = "button", // Default هو button
   ...props
 }: ButtonProps) {
   return (
-    <button
+    <Component
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         variantClasses[variant],

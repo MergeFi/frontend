@@ -55,6 +55,7 @@ export function adaptBounty(raw: RawBounty): Bounty {
     title: raw.issue?.title ?? "Untitled issue",
     description: raw.issue?.body ?? "",
     reward: Number(raw.amount),
+    rewardStr: raw.amount,
     asset: raw.asset,
     difficulty: raw.difficulty,
     status: raw.status,
@@ -90,6 +91,8 @@ export function adaptMilestone(raw: RawMilestone): Milestone {
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "unassigned",
     budget: Number(raw.budget),
     distributed: Number(raw.distributed),
+    budgetStr: raw.budget,
+    distributedStr: raw.distributed,
     asset: raw.asset,
     issueCount: issues.length,
     completedCount: issues.filter((i) => i.state === "closed").length,
@@ -110,6 +113,8 @@ export function adaptMaintenancePool(raw: RawMaintenancePool): MaintenancePool {
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "platform-wide",
     monthlyDeposit: Number(raw.monthlyDeposit),
     balance: Number(raw.balance),
+    monthlyDepositStr: raw.monthlyDeposit,
+    balanceStr: raw.balance,
     asset: raw.asset,
   };
 }

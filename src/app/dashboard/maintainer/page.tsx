@@ -8,7 +8,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, sumCurrency } from "@/lib/utils";
 import type { Bounty, BountyStatus } from "@/types";
 
 const pipelineStages: { status: BountyStatus; label: string }[] = [
@@ -64,9 +64,10 @@ export default async function MaintainerDashboardPage() {
   const needsReview = bounties.filter((b) => b.status === "in_review");
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
   const repoCount = new Set(bounties.map((b) => `${b.org}/${b.repo}`)).size;
-  const totalEscrow = bounties
-    .filter((b) => !["open", "paid", "refunded", "expired"].includes(b.status))
-    .reduce((sum, b) => sum + b.reward, 0);
+  const activeBounties = bounties.filter(
+    (b) => !["open", "paid", "refunded", "expired"].includes(b.status),
+  );
+  const totalEscrow = sumCurrency(activeBounties.map((b) => b.rewardStr));
 
   return (
     <DashboardShell

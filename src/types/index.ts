@@ -28,6 +28,7 @@ export interface Bounty {
   title: string;
   description: string;
   reward: number;
+  rewardStr: string;
   asset: "USDC" | "XLM";
   difficulty: Difficulty;
   status: BountyStatus;
@@ -45,6 +46,8 @@ export interface Milestone {
   repo: string;
   budget: number;
   distributed: number;
+  budgetStr: string;
+  distributedStr: string;
   asset: "USDC" | "XLM";
   issueCount: number;
   completedCount: number;
@@ -76,6 +79,8 @@ export interface MaintenancePool {
   repo: string;
   monthlyDeposit: number;
   balance: number;
+  monthlyDepositStr: string;
+  balanceStr: string;
   asset: "USDC" | "XLM";
 }
 

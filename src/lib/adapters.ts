@@ -6,6 +6,11 @@ import type {
   Difficulty,
   ReputationProfile,
 } from "@/types";
+import {
+  coerceDecimal,
+  coerceNonNegative,
+  coercePercentage,
+} from "./utils";
 
 // Shapes returned by mergefi-backend's TypeORM entities (see
 // mergefi-backend/src/common/entities). These are intentionally loose since
@@ -54,7 +59,7 @@ export function adaptBounty(raw: RawBounty): Bounty {
     issueNumber: raw.issue?.number ?? 0,
     title: raw.issue?.title ?? "Untitled issue",
     description: raw.issue?.body ?? "",
-    reward: Number(raw.amount),
+    reward: coerceNonNegative(raw.amount),
     asset: raw.asset,
     difficulty: raw.difficulty,
     status: raw.status,
@@ -65,7 +70,7 @@ export function adaptBounty(raw: RawBounty): Bounty {
     teamSplits: raw.team?.splits?.map(
       (split): TeamSplit => ({
         role: split.role ?? "Contributor",
-        percentage: Number(split.percentage),
+        percentage: coercePercentage(split.percentage),
         contributor: split.user?.username,
       }),
     ),
@@ -88,8 +93,8 @@ export function adaptMilestone(raw: RawMilestone): Milestone {
     id: raw.id,
     name: raw.title,
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "unassigned",
-    budget: Number(raw.budget),
-    distributed: Number(raw.distributed),
+    budget: coerceNonNegative(raw.budget),
+    distributed: coerceNonNegative(raw.distributed),
     asset: raw.asset,
     issueCount: issues.length,
     completedCount: issues.filter((i) => i.state === "closed").length,
@@ -108,8 +113,8 @@ export function adaptMaintenancePool(raw: RawMaintenancePool): MaintenancePool {
   return {
     id: raw.id,
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "platform-wide",
-    monthlyDeposit: Number(raw.monthlyDeposit),
-    balance: Number(raw.balance),
+    monthlyDeposit: coerceNonNegative(raw.monthlyDeposit),
+    balance: coerceNonNegative(raw.balance),
     asset: raw.asset,
   };
 }
@@ -138,11 +143,11 @@ export function adaptReputation(
     avatarUrl:
       user.avatarUrl ??
       `https://api.dicebear.com/9.x/identicon/svg?seed=${user.username}`,
-    lifetimeEarnings: snapshot ? Number(snapshot.totalEarnings) : 0,
+    lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
-    completionRate: snapshot ? Number(snapshot.completionRate) / 100 : 0,
-    avgReviewTimeHours: snapshot ? Number(snapshot.avgReviewTimeHours) : 0,
-    onTimeDeliveryRate: snapshot ? Number(snapshot.onTimeDeliveryPercentage) / 100 : 0,
+    completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
+    avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
+    onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
     languages: snapshot ? Object.keys(snapshot.languages) : [],
     organizations: snapshot?.orgsContributedTo ?? [],
     topClients: [],

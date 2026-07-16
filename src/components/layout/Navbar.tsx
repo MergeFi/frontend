@@ -84,14 +84,12 @@ export function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/connect">
-                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-                  Sign in
-                </Button>
-              </Link>
-              <Link href="/connect">
-                <Button size="sm">Connect GitHub</Button>
-              </Link>
+              <Button as="a" href="/connect" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                Sign in
+              </Button>
+              <Button as="a" href="/connect" size="sm">
+                Connect GitHub
+              </Button>
             </>
           )}
         </div>

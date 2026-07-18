@@ -17,11 +17,26 @@ import type { NextConfig } from "next";
  *   Referer header sent with any cross-origin request, while still
  *   sending it for same-origin requests, which is the least surprising
  *   choice absent a reason to be stricter.
+ * - Strict-Transport-Security: deliberately conservative to start — a
+ *   short max-age, no `includeSubDomains`, no `preload`. HSTS is
+ *   effectively irreversible once a browser has cached it (and
+ *   preload-list removal is slow), so this is a "start small" rollout:
+ *   once this has run in production for a while with no HTTPS/cert
+ *   issues, raise max-age and add `includeSubDomains`, and only add
+ *   `preload` (and submit to hstspreload.org) once *that* has been stable
+ *   too. The browser ignores this header entirely over plain HTTP, so
+ *   it's harmless to always send.
+ *
+ * Deliberately does NOT set Content-Security-Policy — that's tracked by a
+ * separate issue so it can compose correctly with the theme-init inline
+ * script (`themeInitScript` from ThemeContext, rendered in layout.tsx)
+ * without this change guessing at a nonce/hash strategy it doesn't own.
  */
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Strict-Transport-Security", value: "max-age=86400" },
 ];
 
 const nextConfig: NextConfig = {

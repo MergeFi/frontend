@@ -11,10 +11,17 @@ import type { NextConfig } from "next";
  *   `frame-ancestors` allowlist via CSP instead of removing it outright.
  * - X-Content-Type-Options: nosniff — stops the browser from MIME-sniffing
  *   a response into an executable content type.
+ * - Referrer-Policy: strict-origin-when-cross-origin — the GitHub OAuth
+ *   callback at /auth/callback carries a short-lived token in its query
+ *   string (see CallbackClient.tsx); this keeps the full URL out of the
+ *   Referer header sent with any cross-origin request, while still
+ *   sending it for same-origin requests, which is the least surprising
+ *   choice absent a reason to be stricter.
  */
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 ];
 
 const nextConfig: NextConfig = {

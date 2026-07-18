@@ -8,9 +8,24 @@
 // Usage: npm run build && node scripts/verify-security-headers.mjs
 
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+
+// scripts/verify-security-headers.mjs -> project root is one level up.
+const PROJECT_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+// Resolved directly rather than going through `npx next start`: npx spawns
+// the real `next` binary as a nested child process, and on Linux that
+// grandchild doesn't reliably die when the immediate npx child is killed —
+// the orphaned server keeps stdio pipes open, which keeps this script's
+// Node process alive indefinitely even after the check itself is done.
+// Invoking the binary this project already depends on directly sidesteps
+// that extra process layer entirely.
+const NEXT_BIN = fileURLToPath(
+  new URL("node_modules/.bin/next", `file://${PROJECT_ROOT}`),
+);
 
 const EXPECTED_HEADERS = {
   "x-frame-options": "DENY",
@@ -67,12 +82,25 @@ function waitForServer(url, timeoutMs, server) {
   });
 }
 
+// Kills the whole process group, not just the immediate child. `detached:
+// true` (POSIX) puts the child in its own group; a negative pid signals
+// the entire group, so a server process's own children (if any) die too
+// instead of being orphaned.
+function killServerGroup(server) {
+  if (server.exitCode !== null || server.signalCode !== null) return;
+  try {
+    process.kill(-server.pid, "SIGTERM");
+  } catch {
+    server.kill("SIGTERM");
+  }
+}
+
 async function main() {
-  const server = spawn(
-    "npx",
-    ["next", "start", "-p", String(PORT)],
-    { stdio: ["ignore", "pipe", "pipe"] },
-  );
+  const server = spawn(NEXT_BIN, ["start", "-p", String(PORT)], {
+    cwd: PROJECT_ROOT,
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32",
+  });
 
   let serverOutput = "";
   server.stdout.on("data", (chunk) => (serverOutput += chunk.toString()));
@@ -100,7 +128,7 @@ async function main() {
     console.error(serverOutput);
     throw err;
   } finally {
-    server.kill();
+    killServerGroup(server);
   }
 
   if (failures.length > 0) {
@@ -117,7 +145,15 @@ async function main() {
   );
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+main()
+  .catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    // Belt-and-braces: guarantees this process terminates even if some
+    // handle from the spawned server (or its process group) is still
+    // technically open, which is exactly the failure mode this script
+    // exists to avoid inflicting on CI.
+    process.exit(process.exitCode ?? 0);
+  });

@@ -9,8 +9,13 @@ import type { NextConfig } from "next";
  *   clickjacking a genuine risk. If a legitimate embed need shows up later
  *   (e.g. a GitHub App/marketplace surface), relax this to a scoped
  *   `frame-ancestors` allowlist via CSP instead of removing it outright.
+ * - X-Content-Type-Options: nosniff — stops the browser from MIME-sniffing
+ *   a response into an executable content type.
  */
-const securityHeaders = [{ key: "X-Frame-Options", value: "DENY" }];
+const securityHeaders = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+];
 
 const nextConfig: NextConfig = {
   devIndicators: false,

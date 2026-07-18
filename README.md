@@ -114,6 +114,22 @@ useful for frontend-only development or a quick demo. Point
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint (flat config, `eslint-config-next`) |
+| `npm run verify:headers` | Boots the production build and asserts security headers are present on real responses (run `npm run build` first) |
+
+## Security headers
+
+`next.config.ts` sets these on every route, verified in CI via `npm run verify:headers`:
+
+| Header | Value | Why |
+|---|---|---|
+| `X-Frame-Options` | `DENY` | No legitimate iframe-embedding use case exists in this app, and fund/claim actions are one click away — clickjacking is a real risk here. Relax to a scoped CSP `frame-ancestors` allowlist if a real embed need ever comes up. |
+| `X-Content-Type-Options` | `nosniff` | Stops the browser from MIME-sniffing a response into an executable content type. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | The GitHub OAuth callback (`/auth/callback`) carries a short-lived token in its query string; this keeps the full URL out of the `Referer` header on cross-origin requests. |
+| `Strict-Transport-Security` | `max-age=86400` | Deliberately conservative to start (no `includeSubDomains`, no `preload`) — HSTS is effectively irreversible once cached by a browser. Raise `max-age` and add `includeSubDomains` after a stable production run, and only add `preload` once that's stable too. |
+
+`Content-Security-Policy` is intentionally not set here — it's tracked separately so it can compose correctly with the theme-init inline script in `layout.tsx` rather than this change guessing at a nonce/hash strategy.
+
+None of these headers affect the Freighter wallet bridge or the GitHub OAuth flow: Freighter communicates via an injected browser-extension content script (`@stellar/freighter-api`), which framing/MIME/referrer/transport headers have no bearing on, and the OAuth `fetch` calls to the backend are unaffected since these headers only change what's *disclosed*, not whether a request succeeds.
 
 ## Example user journey
 

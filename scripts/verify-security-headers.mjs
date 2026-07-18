@@ -30,15 +30,33 @@ const ROUTES_TO_CHECK = [
   "/this-route-does-not-exist",
 ];
 
-function waitForServer(url, timeoutMs) {
+// Rejects as soon as the server process exits, rather than only on a
+// timeout — without this, a port conflict or a crash on startup makes the
+// script silently burn the full 30s timeout instead of failing immediately
+// with the actual reason.
+function waitForServer(url, timeoutMs, server) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const onExit = (code) => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(`Server process exited early (code ${code}) before it started responding`));
+    };
+    server.once("exit", onExit);
+
     const attempt = async () => {
+      if (settled) return;
       try {
         await fetch(url);
+        settled = true;
+        server.off("exit", onExit);
         resolve();
       } catch {
+        if (settled) return;
         if (Date.now() > deadline) {
+          settled = true;
+          server.off("exit", onExit);
           reject(new Error(`Server did not start within ${timeoutMs}ms`));
           return;
         }
@@ -63,7 +81,7 @@ async function main() {
   const failures = [];
 
   try {
-    await waitForServer(BASE_URL, 30_000);
+    await waitForServer(BASE_URL, 30_000, server);
 
     for (const route of ROUTES_TO_CHECK) {
       const response = await fetch(`${BASE_URL}${route}`);

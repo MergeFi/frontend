@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Wallet, Receipt, Lock, FolderGit2, Inbox } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
-import { StatCard } from "@/components/ui/StatCard";
+import { StatCard, type StatCardStatus } from "@/components/ui/StatCard";
 import { BarChart } from "@/components/ui/BarChart";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
@@ -41,11 +41,15 @@ export default function SponsorDashboardPage() {
   const { user, loading } = useAuth();
   const [data, setData] = useState<SponsorDashboardData | null>(null);
   const [isLive, setIsLive] = useState(false);
+  // Explicit fetch status so StatCards can show skeletons rather than
+  // hiding the whole page, and errors rather than flashing zeroes.
+  const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
 
   useEffect(() => {
     if (loading) return;
+
     if (!user) {
-      // Demo-mode fallback when signed out; live branch below fetches async.
+      // Demo-mode fallback when signed out.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setData({
         activeBounties: mockBounties.filter((b) =>
@@ -55,9 +59,13 @@ export default function SponsorDashboardPage() {
         budgetLocked: mockSponsorSummary.budgetRemaining,
         repoCount: mockSponsorSummary.repos.length,
       });
+      setFetchStatus("loaded");
       setIsLive(false);
       return;
     }
+
+    setFetchStatus("loading");
+
     apiRequest<{
       activeBounties: RawBounty[];
       totalSpent: number;
@@ -73,24 +81,24 @@ export default function SponsorDashboardPage() {
           budgetLocked: raw.budgetLocked,
           repoCount,
         });
+        setFetchStatus("loaded");
         setIsLive(true);
       })
       .catch(() => {
-        setData({
-          activeBounties: mockBounties.filter((b) =>
-            ["open", "funded", "claimed", "in_review"].includes(b.status),
-          ),
-          totalSpent: mockSponsorSummary.totalFunded - mockSponsorSummary.budgetRemaining,
-          budgetLocked: mockSponsorSummary.budgetRemaining,
-          repoCount: mockSponsorSummary.repos.length,
-        });
+        // On error: keep data null so cards can show their error state.
+        // Do NOT set values to 0 — that would be indistinguishable from a
+        // real zero balance, which is a trust-eroding false signal for a sponsor.
+        setData(null);
+        setFetchStatus("error");
         setIsLive(false);
       });
   }, [user, loading]);
 
-  if (!data) {
-    return <div className="mx-auto max-w-7xl px-6 py-12 text-slate-400 dark:text-slate-500">Loading…</div>;
-  }
+  // Derive per-card values only when data is available.
+  const totalSpent = data?.totalSpent;
+  const activeBountyCount = data?.activeBounties.length;
+  const budgetLocked = data?.budgetLocked;
+  const repoCount = data?.repoCount;
 
   return (
     <DashboardShell
@@ -120,22 +128,44 @@ export default function SponsorDashboardPage() {
         </Link>
       }
     >
+      {/* Stat cards — page structure is always visible; individual cards
+          show skeletons during load and error states on failure, so no part
+          of the UI flashes a 0 that looks like a real zero balance. */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           label="Total paid out"
-          value={formatCurrency(data.totalSpent)}
+          value={totalSpent}
+          format="currency"
+          status={fetchStatus}
           icon={Receipt}
-          trend={18}
-          sparkline={sponsorSpendHistory}
+          trend={fetchStatus === "loaded" ? 18 : undefined}
+          sparkline={fetchStatus === "loaded" ? sponsorSpendHistory : undefined}
         />
-        <StatCard label="Active bounties" value={String(data.activeBounties.length)} icon={Wallet} />
+        <StatCard
+          label="Active bounties"
+          value={activeBountyCount}
+          format="count"
+          status={fetchStatus}
+          icon={Wallet}
+          zeroLabel="No bounties yet"
+        />
         <StatCard
           label="Locked in escrow"
-          value={formatCurrency(data.budgetLocked)}
+          value={budgetLocked}
+          format="currency"
+          status={fetchStatus}
           icon={Lock}
-          sparkline={budgetSparkline}
+          sparkline={fetchStatus === "loaded" ? budgetSparkline : undefined}
+          zeroLabel="Nothing in escrow"
         />
-        <StatCard label="Repositories" value={String(data.repoCount)} icon={FolderGit2} />
+        <StatCard
+          label="Repositories"
+          value={repoCount}
+          format="count"
+          status={fetchStatus}
+          icon={FolderGit2}
+          zeroLabel="No repos funded yet"
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -170,11 +200,11 @@ export default function SponsorDashboardPage() {
 
       <h2 className="mt-10 text-xl font-semibold text-slate-900 dark:text-white">Active bounties</h2>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {data.activeBounties.map((bounty) => (
+        {(data?.activeBounties ?? []).map((bounty) => (
           <BountyCard key={bounty.id} bounty={bounty} />
         ))}
       </div>
-      {data.activeBounties.length === 0 && (
+      {(data?.activeBounties?.length === 0) && (
         <EmptyState
           icon={Inbox}
           title="No active bounties"
@@ -186,6 +216,36 @@ export default function SponsorDashboardPage() {
       <div className="mt-4">
         <ActivityList events={recentActivity.slice(0, 5)} />
       </div>
+
+      {/* Dev-only: visual kitchen sink — renders all four StatCard states
+          side by side so any regression is immediately obvious during development. */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="mt-12 border-t border-dashed border-slate-200 pt-8 dark:border-slate-800">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            StatCard state kitchen sink (dev only)
+          </p>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <StatCard label="Loading state" status="loading" icon={Receipt} />
+            <StatCard label="Error state" status="error" icon={Receipt} />
+            <StatCard
+              label="Zero state"
+              status="loaded"
+              value={0}
+              format="currency"
+              icon={Receipt}
+              zeroLabel="No spend yet"
+            />
+            <StatCard
+              label="Large value"
+              status="loaded"
+              value={1_284_999}
+              format="currency"
+              icon={Receipt}
+              trend={5}
+            />
+          </div>
+        </div>
+      )}
     </DashboardShell>
   );
 }

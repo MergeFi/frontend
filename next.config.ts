@@ -1,4 +1,20 @@
 import type { NextConfig } from "next";
+import { loadValidatedEnv } from "./src/lib/env";
+
+/**
+ * Validated at module-evaluation time — i.e. as soon as `next build`,
+ * `next dev`, or `next start` loads this file, before anything else runs
+ * (verified empirically: a throw here surfaces as "Build error occurred"
+ * and a non-zero exit code, not a runtime failure) — so a missing or
+ * invalid NEXT_PUBLIC_STELLAR_NETWORK/NEXT_PUBLIC_API_URL fails loudly at
+ * build time instead of silently shipping a build signed against the
+ * wrong Stellar network (#26). A relative import is used rather than the
+ * `@/*` path alias other files in this app use: next.config.ts is loaded
+ * outside the normal webpack/Turbopack module graph, so it isn't
+ * guaranteed to resolve tsconfig path aliases the same way application
+ * code does.
+ */
+loadValidatedEnv();
 
 /**
  * Production security headers (#50), applied to every route below.

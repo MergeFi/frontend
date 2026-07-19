@@ -19,6 +19,9 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm run verify:env
       - run: npm run build
+        env:
+          NEXT_PUBLIC_STELLAR_NETWORK: TESTNET
       - run: npm run verify:headers
       - run: npm audit --audit-level=high

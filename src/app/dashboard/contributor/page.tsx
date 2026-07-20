@@ -5,12 +5,12 @@ import Link from "next/link";
 import { DollarSign, GitMerge, TrendingUp, ListChecks, GitPullRequest } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
-import { StatCard } from "@/components/ui/StatCard";
+import { StatCard, type StatCardStatus } from "@/components/ui/StatCard";
 import { BarChart } from "@/components/ui/BarChart";
 import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { apiPost, fetchBounties } from "@/lib/api";
 import {
   mockReputationProfiles,
@@ -46,6 +46,9 @@ export default function ContributorDashboardPage() {
   const [bounties, setBounties] = useState<Bounty[]>(mockBounties);
   const [isLive, setIsLive] = useState(false);
   const [tab, setTab] = useState<"active" | "completed">("active");
+  // Explicit fetch status: starts "loading" so cards shimmer rather than
+  // flashing zeroes while the auth check + API call are in flight.
+  const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
 
   useEffect(() => {
     fetchBounties(mockBounties).then(setBounties);
@@ -53,6 +56,7 @@ export default function ContributorDashboardPage() {
 
   useEffect(() => {
     if (loading) return;
+
     if (!user) {
       const demo = mockReputationProfiles.priyaeth;
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -62,9 +66,13 @@ export default function ContributorDashboardPage() {
         mergedPRs: demo.mergedPRs,
         completionRate: demo.completionRate,
       });
+      setFetchStatus("loaded");
       setIsLive(false);
       return;
     }
+
+    setFetchStatus("loading");
+
     apiPost<ReputationSnapshot>(`/reputation/${user.id}/recompute`)
       .then((snapshot) => {
         setStats({
@@ -73,19 +81,25 @@ export default function ContributorDashboardPage() {
           mergedPRs: snapshot.mergedPrCount,
           completionRate: Number(snapshot.completionRate) / 100,
         });
+        setFetchStatus("loaded");
         setIsLive(true);
       })
       .catch(() => {
-        setStats({ handle: user.username, lifetimeEarnings: 0, mergedPRs: 0, completionRate: 0 });
+        // BUG FIX: the previous implementation set all stat values to 0 on
+        // fetch failure. A contributor seeing "$0 lifetime earnings" due to a
+        // network error is indistinguishable from a real zero — a demoralising
+        // and misleading false signal. We now leave stats null and set the
+        // status to "error" so each StatCard renders its error state instead.
+        setStats(null);
+        setFetchStatus("error");
         setIsLive(true);
       });
   }, [user, loading]);
 
-  if (!stats) {
-    return <div className="mx-auto max-w-7xl px-6 py-12 text-slate-400 dark:text-slate-500">Loading…</div>;
-  }
+  // Derive display handle: show username if live, else demo handle.
+  const handle = stats?.handle ?? (user?.username ?? "you");
 
-  const mine = bounties.filter((b) => b.claimedBy === stats.handle);
+  const mine = bounties.filter((b) => b.claimedBy === handle);
   const activeClaims = mine.filter((b) => !["paid", "refunded", "expired"].includes(b.status));
   const completedClaims = mine.filter((b) => b.status === "paid");
   const available = bounties.filter((b) => b.status === "open");
@@ -94,7 +108,7 @@ export default function ContributorDashboardPage() {
   return (
     <DashboardShell
       role="contributor"
-      title={`Welcome back, @${stats.handle}`}
+      title={`Welcome back, @${handle}`}
       subtitle={isLive ? undefined : "Sign in with GitHub to see your own earnings and claims."}
       badge={
         <span
@@ -115,27 +129,49 @@ export default function ContributorDashboardPage() {
         </Link>
       }
     >
+      {/* StatCards show skeletons on initial load, errors on fetch failure —
+          never a misleading "0 USDC" or "0 PRs" during loading/error states. */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           label="Lifetime earnings"
-          value={formatCurrency(stats.lifetimeEarnings)}
+          value={stats?.lifetimeEarnings}
+          format="currency"
+          status={fetchStatus}
           icon={DollarSign}
-          trend={12}
-          sparkline={contributorEarningsHistory}
+          trend={fetchStatus === "loaded" ? 12 : undefined}
+          sparkline={fetchStatus === "loaded" ? contributorEarningsHistory : undefined}
+          zeroLabel="No earnings yet"
         />
         <StatCard
           label="Merged PRs"
-          value={String(stats.mergedPRs)}
+          value={stats?.mergedPRs}
+          format="count"
+          status={fetchStatus}
           icon={GitMerge}
-          trend={8}
-          sparkline={contributorSparkline}
+          trend={fetchStatus === "loaded" ? 8 : undefined}
+          sparkline={fetchStatus === "loaded" ? contributorSparkline : undefined}
+          zeroLabel="No merged PRs yet"
         />
         <StatCard
           label="Completion rate"
-          value={formatPercent(stats.completionRate)}
+          // Completion rate is a fraction (0–1); format="percent" multiplies by 100
+          value={stats?.completionRate}
+          format="percent"
+          status={fetchStatus}
           icon={TrendingUp}
+          zeroLabel="No completions yet"
         />
-        <StatCard label="Active claims" value={String(activeClaims.length)} icon={ListChecks} />
+        <StatCard
+          label="Active claims"
+          // Only derive activeClaims.length when stats is resolved — avoids
+          // passing length=0 (via an empty filter on handle="you") while
+          // the fetch is still in-flight or has errored.
+          value={stats !== null ? activeClaims.length : undefined}
+          format="count"
+          status={fetchStatus}
+          icon={ListChecks}
+          zeroLabel="No active claims"
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">

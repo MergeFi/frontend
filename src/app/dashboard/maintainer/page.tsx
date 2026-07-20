@@ -60,7 +60,19 @@ export const metadata = {
 };
 
 export default async function MaintainerDashboardPage() {
-  const bounties = await fetchBounties(mockBounties);
+  // Maintainer dashboard is a Server Component (no client-side loading state).
+  // We wrap fetchBounties in a try/catch so that if the fetch fails, the cards
+  // explicitly show "Error loading data" rather than rendering stale zeros or
+  // crashing the page render.
+  let bounties: Bounty[] = [];
+  let statStatus: "loaded" | "error" = "loaded";
+
+  try {
+    bounties = await fetchBounties(mockBounties);
+  } catch {
+    statStatus = "error";
+  }
+
   const needsReview = bounties.filter((b) => b.status === "in_review");
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
   const repoCount = new Set(bounties.map((b) => `${b.org}/${b.repo}`)).size;
@@ -79,20 +91,42 @@ export default async function MaintainerDashboardPage() {
         </span>
       }
     >
+      {/* Pass statStatus so that a fetchBounties failure renders error states
+          on all four cards instead of silently showing zeros. */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Open bounties" value={String(open.length)} icon={Layers} />
+        <StatCard
+          label="Open bounties"
+          value={open.length}
+          format="count"
+          status={statStatus}
+          icon={Layers}
+          zeroLabel="No open bounties"
+        />
         <StatCard
           label="Awaiting review"
-          value={String(needsReview.length)}
+          value={needsReview.length}
+          format="count"
+          status={statStatus}
           icon={Clock}
+          zeroLabel="All caught up"
         />
         <StatCard
           label="Value locked in escrow"
-          value={formatCurrency(totalEscrow)}
+          value={totalEscrow}
+          format="currency"
+          status={statStatus}
           icon={Coins}
-          sparkline={bountiesCompletedSparkline}
+          sparkline={statStatus === "loaded" ? bountiesCompletedSparkline : undefined}
+          zeroLabel="Nothing in escrow yet"
         />
-        <StatCard label="Repositories synced" value={String(repoCount)} icon={FolderGit2} />
+        <StatCard
+          label="Repositories synced"
+          value={repoCount}
+          format="count"
+          status={statStatus}
+          icon={FolderGit2}
+          zeroLabel="No repositories yet"
+        />
       </div>
 
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">

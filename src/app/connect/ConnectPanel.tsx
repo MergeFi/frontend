@@ -43,9 +43,13 @@ export function ConnectPanel() {
             Signed in as @{user.username}
           </div>
         ) : (
-          <a href={GITHUB_OAUTH_URL} className="mt-4 block">
-            <Button className="w-full">Continue with GitHub</Button>
-          </a>
+          <Button
+            as="a"
+            href={GITHUB_OAUTH_URL}
+            className="mt-4 w-full"
+          >
+            Continue with GitHub
+          </Button>
         )}
       </div>
 

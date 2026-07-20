@@ -79,4 +79,26 @@ export function sumCurrency(amounts: string[]): number {
  */
 export function parseDecimal(value: string): number {
   return parseFloat(value);
+export function validateTeamSplits(splits: { percentage: number }[]): { valid: boolean; sum: number; message?: string } {
+  if (!splits || splits.length === 0) return { valid: true, sum: 0 };
+  const sum = splits.reduce((acc, s) => acc + (s.percentage ?? 0), 0);
+  const tolerance = 0.01; // 0.01% tolerance for floating point
+  const valid = Math.abs(sum - 100) <= tolerance;
+  return { valid, sum, message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)` };
+}
+
+export function validateTeamSplits(
+  splits: Array<{ percentage: string | number }>,
+  tolerance = 0.01
+): { valid: boolean; sum: number; message?: string } {
+  const percentages = splits.map((s) =>
+    typeof s.percentage === "string" ? Number(s.percentage) : s.percentage
+  );
+  const sum = percentages.reduce((a, b) => a + b, 0);
+  const valid = Math.abs(sum - 100) <= tolerance;
+  return {
+    valid,
+    sum,
+    message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
+  };
 }

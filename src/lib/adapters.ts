@@ -10,6 +10,7 @@ import {
   coerceDecimal,
   coerceNonNegative,
   coercePercentage,
+  validateTeamSplits,
 } from "./utils";
 
 // Shapes returned by mergefi-backend's TypeORM entities (see
@@ -51,7 +52,15 @@ export interface RawBounty {
   team?: { splits?: RawTeamSplit[] } | null;
 }
 
-export function adaptBounty(raw: RawBounty): Bounty {
+export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { valid: boolean; sum: number; message?: string } } {
+  const splits = raw.team?.splits?.map(
+    (split): TeamSplit => ({
+      role: split.role ?? "Contributor",
+      percentage: coercePercentage(split.percentage),
+      contributor: split.user?.username,
+    }),
+  );
+
   return {
     id: raw.id,
     repo: raw.issue?.repository?.name ?? "unknown-repo",
@@ -69,13 +78,8 @@ export function adaptBounty(raw: RawBounty): Bounty {
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
     escrowId: raw.escrowId ?? undefined,
-    teamSplits: raw.team?.splits?.map(
-      (split): TeamSplit => ({
-        role: split.role ?? "Contributor",
-        percentage: coercePercentage(split.percentage),
-        contributor: split.user?.username,
-      }),
-    ),
+    teamSplits: splits,
+    teamSplitsValid: splits ? validateTeamSplits(splits) : undefined,
   };
 }
 

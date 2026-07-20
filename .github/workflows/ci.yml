@@ -9,6 +9,16 @@ on:
 jobs:
   build-and-lint:
     runs-on: ubuntu-latest
+    # next.config.ts validates NEXT_PUBLIC_STELLAR_NETWORK on every Next.js
+    # command (build, dev, start) — not just `build` — so `verify:headers`'s
+    # own `next start` needs this too, not only the `build` step. Set once
+    # at the job level rather than repeating it per-step, so a future step
+    # that also invokes `next` doesn't quietly reintroduce this gap.
+    # verify:env intentionally strips this back out before each of its own
+    # test builds (see scripts/verify-env-validation.mjs), so it isn't
+    # affected by the default set here.
+    env:
+      NEXT_PUBLIC_STELLAR_NETWORK: TESTNET
     steps:
       - uses: actions/checkout@v4
 
@@ -19,5 +29,7 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm run verify:env
       - run: npm run build
+      - run: npm run verify:headers
       - run: npm audit --audit-level=high

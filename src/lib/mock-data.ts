@@ -16,6 +16,7 @@ export const mockBounties: Bounty[] = [
     description:
       "Switching between testnet and mainnet while a Freighter session is active can leave the app in a stale connection state. Needs a fix in the wallet provider's effect cleanup.",
     reward: 150,
+    rewardStr: "150",
     asset: "USDC",
     difficulty: "intermediate",
     status: "open",
@@ -31,6 +32,7 @@ export const mockBounties: Bounty[] = [
     description:
       "Client-side helper should reject milestone allocations that exceed the remaining pool budget before submitting the transaction.",
     reward: 220,
+    rewardStr: "220",
     asset: "USDC",
     difficulty: "intermediate",
     status: "claimed",
@@ -47,6 +49,7 @@ export const mockBounties: Bounty[] = [
     description:
       "Write reference docs for fund/release/refund functions including auth requirements and error codes.",
     reward: 60,
+    rewardStr: "60",
     asset: "USDC",
     difficulty: "beginner",
     status: "open",
@@ -62,6 +65,7 @@ export const mockBounties: Bounty[] = [
     description:
       "Current batching causes memory spikes on repos with >50k merged PRs. Needs profiling and a streaming rewrite.",
     reward: 480,
+    rewardStr: "480",
     asset: "USDC",
     difficulty: "advanced",
     status: "in_review",
@@ -81,6 +85,7 @@ export const mockBounties: Bounty[] = [
     title: "Upgrade dependency set for Node 22 compatibility",
     description: "Routine maintenance bounty funded from the recurring pool.",
     reward: 40,
+    rewardStr: "40",
     asset: "USDC",
     difficulty: "beginner",
     status: "paid",
@@ -95,6 +100,8 @@ export const mockMilestones: Milestone[] = [
     id: "m1",
     name: "v2.0: Multi-asset escrow",
     repo: "soroban-escrow-sdk",
+    budgetStr: "12000",
+    distributedStr: "4300",
     budget: 12000,
     distributed: 4300,
     asset: "USDC",
@@ -105,6 +112,8 @@ export const mockMilestones: Milestone[] = [
     id: "m2",
     name: "v1.4: Indexer performance pass",
     repo: "core-indexer",
+    budgetStr: "6000",
+    distributedStr: "2100",
     budget: 6000,
     distributed: 2100,
     asset: "USDC",
@@ -117,6 +126,8 @@ export const mockMaintenancePools: MaintenancePool[] = [
   {
     id: "p1",
     repo: "core-indexer",
+    monthlyDepositStr: "500",
+    balanceStr: "1240",
     monthlyDeposit: 500,
     balance: 1240,
     asset: "USDC",

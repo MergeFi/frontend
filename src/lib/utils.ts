@@ -32,10 +32,9 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
 }
 
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
-  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 7 })} ${asset}`;
   if (!Number.isFinite(amount)) return `0 ${asset}`;
   const abs = Math.abs(amount);
-  return `${abs.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+  return `${abs.toLocaleString("en-US", { maximumFractionDigits: 7 })} ${asset}`;
 }
 
 export function formatPercent(value: number) {
@@ -79,12 +78,6 @@ export function sumCurrency(amounts: string[]): number {
  */
 export function parseDecimal(value: string): number {
   return parseFloat(value);
-export function validateTeamSplits(splits: { percentage: number }[]): { valid: boolean; sum: number; message?: string } {
-  if (!splits || splits.length === 0) return { valid: true, sum: 0 };
-  const sum = splits.reduce((acc, s) => acc + (s.percentage ?? 0), 0);
-  const tolerance = 0.01; // 0.01% tolerance for floating point
-  const valid = Math.abs(sum - 100) <= tolerance;
-  return { valid, sum, message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)` };
 }
 
 export function validateTeamSplits(

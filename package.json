@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "verify:headers": "node scripts/verify-security-headers.mjs"
+    "verify:headers": "node scripts/verify-security-headers.mjs",
+    "verify:env": "node scripts/verify-env-validation.mjs"
   },
   "dependencies": {
     "@stellar/freighter-api": "^6.0.1",

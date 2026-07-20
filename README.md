@@ -101,10 +101,12 @@ useful for frontend-only development or a quick demo. Point
 
 ### Environment variables
 
+Both variables are validated at build time (`next.config.ts` / `src/lib/env.ts`, #26) — an unset or invalid value fails `next build`/`next dev`/`next start` immediately with a clear error, rather than silently falling back and only surfacing as a confusing on-chain failure later. `.env.example` sets both explicitly, so the quickstart above needs no manual edits.
+
 | Variable | Purpose | Default |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | Base URL of the `mergefi-backend` API | `http://localhost:4000` |
-| `NEXT_PUBLIC_STELLAR_NETWORK` | `TESTNET` or `PUBLIC`, used for Freighter network passphrase selection | `TESTNET` |
+| `NEXT_PUBLIC_API_URL` | Base URL of the `mergefi-backend` API. Must be a well-formed URL. | `http://localhost:4000/api` |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | Must be exactly `TESTNET` or `PUBLIC` (case-sensitive) — selects the Freighter network passphrase used to sign transactions. | **None.** Network selection is too consequential to guess a default for — the wrong value signs transactions with the wrong passphrase. Set it explicitly (`.env.example` does this for local dev). |
 
 ### Scripts
 

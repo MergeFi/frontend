@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MergeFi clickjacking check (#50)</title>
+  </head>
+  <body>
+    <h1>MergeFi clickjacking / anti-embedding check</h1>
+    <p>
+      This page plays the role of a third-party site trying to iframe
+      MergeFi. With <code>X-Frame-Options: DENY</code> in place, the browser
+      must refuse to render the frame below — check the devtools console for
+      a "Refused to display '...' in a frame because it set
+      'X-Frame-Options' to 'deny'" message, and the frame area should stay
+      blank instead of showing the app.
+    </p>
+    <p>
+      Usage: <code>npm run build &amp;&amp; npm start</code> in one terminal,
+      then open this file directly in a browser (<code>file://</code> is
+      fine — X-Frame-Options applies regardless of the parent's origin) and
+      edit the <code>src</code> below to match the port <code>npm start</code>
+      printed.
+    </p>
+    <iframe
+      src="http://localhost:3000/"
+      width="800"
+      height="500"
+      title="MergeFi (should be blocked)"
+    ></iframe>
+  </body>
+</html>

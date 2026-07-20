@@ -5,6 +5,7 @@ import { GitMerge, ChevronDown, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { NetworkBadge } from "@/components/ui/NetworkBadge";
 import { useAuth } from "@/context/AuthContext";
 
 const links = [
@@ -64,6 +65,7 @@ export function Navbar() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
+          <NetworkBadge />
           <ThemeToggle />
           {loading ? null : user ? (
             <div className="flex items-center gap-3">

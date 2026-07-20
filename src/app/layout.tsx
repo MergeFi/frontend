@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   title: "MergeFi | Merge code. Earn instantly.",
   description:
     "MergeFi is the financial infrastructure for open source: fund GitHub issues, escrow payment with Soroban smart contracts on Stellar, and pay contributors automatically when work is merged.",
+};
+
+export const viewport: Viewport = {
+  colorScheme: "dark light",
 };
 
 export default function RootLayout({

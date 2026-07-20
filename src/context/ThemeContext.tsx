@@ -22,6 +22,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Reflects the class the no-flash init script already applied to <html>.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+
+    // Listen for system color scheme changes when no explicit preference is set.
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      // Only respond to system preference change if user hasn't explicitly set a theme.
+      try {
+        const stored = window.localStorage.getItem(THEME_KEY);
+        if (!stored) {
+          const newTheme = e.matches ? "dark" : "light";
+          setTheme(newTheme);
+          document.documentElement.classList.toggle("dark", e.matches);
+        }
+      } catch {
+        // Ignore errors reading localStorage.
+      }
+    };
+
+    // Use addEventListener for broader browser compatibility.
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
   }, []);
 
   function toggle() {

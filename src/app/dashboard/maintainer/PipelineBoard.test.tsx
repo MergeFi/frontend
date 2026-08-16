@@ -63,4 +63,10 @@ describe("PipelineBoard — merged column (#88)", () => {
     }
   });
 
+  it("shows an empty-state placeholder for a stage with no matching bounties", () => {
+    render(<PipelineBoard bounties={[]} />);
+    // 5 stages -> 5 "Nothing here" placeholders.
+    expect(screen.getAllByText("Nothing here")).toHaveLength(pipelineStages.length);
+  });
+
 });

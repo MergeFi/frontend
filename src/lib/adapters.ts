@@ -8,6 +8,7 @@ import type {
 } from "@/types";
 import {
   coerceDecimal,
+  coerceFraction,
   coerceNonNegative,
   coercePercentage,
   validateTeamSplits,
@@ -47,6 +48,8 @@ export interface RawBounty {
   status: Bounty["status"];
   deadline: string | null;
   escrowId: string | null;
+  milestoneId?: string | null;
+  milestone?: { id: string } | null;
   issue?: RawIssue;
   claimedBy?: RawUser | null;
   team?: { splits?: RawTeamSplit[] } | null;
@@ -76,6 +79,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
     escrowId: raw.escrowId ?? undefined,
+    milestoneId: raw.milestoneId ?? raw.milestone?.id ?? undefined,
     teamSplits: splits,
     teamSplitsValid: splits ? validateTeamSplits(splits) : undefined,
   };
@@ -149,9 +153,9 @@ export function adaptReputation(
       `https://api.dicebear.com/9.x/identicon/svg?seed=${user.username}`,
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
-    completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
+    completionRate: snapshot ? coerceFraction(String(coerceDecimal(snapshot.completionRate) / 100)) : 0,
     avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
-    onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
+    onTimeDeliveryRate: snapshot ? coerceFraction(String(coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100)) : 0,
     languages: snapshot ? Object.keys(snapshot.languages) : [],
     organizations: snapshot?.orgsContributedTo ?? [],
     topClients: [],

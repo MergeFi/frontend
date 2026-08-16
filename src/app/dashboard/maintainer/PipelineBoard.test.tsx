@@ -69,4 +69,11 @@ describe("PipelineBoard — merged column (#88)", () => {
     expect(screen.getAllByText("Nothing here")).toHaveLength(pipelineStages.length);
   });
 
+  it("does not place a 'paid' bounty in any pipeline column", () => {
+    const paid = makeBounty({ id: "paid-1", title: "Already paid out", status: "paid" });
+    render(<PipelineBoard bounties={[paid]} />);
+
+    // Deliberate: "paid" is a terminal state, intentionally not a column.
+    expect(screen.queryByText("Already paid out")).not.toBeInTheDocument();
+  });
 });

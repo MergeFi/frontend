@@ -5,6 +5,7 @@ import { mockBounties } from "@/lib/mock-data";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { formatCurrency, daysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
+import { MarkdownContent } from "@/components/bounty/MarkdownContent";
 
 export default async function IssueDetailPage({
   params,
@@ -40,7 +41,9 @@ export default async function IssueDetailPage({
         ))}
       </div>
 
-      <p className="mt-6 leading-relaxed text-slate-600 dark:text-slate-300">{bounty.description}</p>
+      <div className="mt-6 text-slate-600 dark:text-slate-300">
+        <MarkdownContent value={bounty.description} />
+      </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

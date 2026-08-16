@@ -4,6 +4,7 @@ import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency, daysUntil } from "@/lib/utils";
 import type { Bounty } from "@/types";
+import { MarkdownContent } from "./MarkdownContent";
 
 const accentByDifficulty: Record<Bounty["difficulty"], string> = {
   beginner: "before:bg-emerald-400",
@@ -35,9 +36,9 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
           </p>
         </div>
       </div>
-      <p className="mt-3 line-clamp-2 pl-2 text-sm text-slate-500 dark:text-slate-400">
-        {bounty.description}
-      </p>
+      <div className="mt-3 pl-2">
+        <MarkdownContent value={bounty.description} preview />
+      </div>
       <div className="mt-4 flex flex-wrap items-center gap-2 pl-2">
         <StatusBadge status={bounty.status} />
         <DifficultyBadge difficulty={bounty.difficulty} />

@@ -11,14 +11,15 @@ import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency } from "@/lib/utils";
 import type { Bounty, BountyStatus } from "@/types";
 
-const pipelineStages: { status: BountyStatus; label: string }[] = [
+export const pipelineStages: { status: BountyStatus; label: string }[] = [
   { status: "open", label: "Open" },
   { status: "funded", label: "Funded" },
   { status: "claimed", label: "Claimed" },
   { status: "in_review", label: "In review" },
+  { status: "merged", label: "Merged" },
 ];
 
-function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[] }) {
+export function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[] }) {
   return (
     <div className="min-w-0 flex-1">
       <div className="flex items-center justify-between px-1">

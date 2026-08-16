@@ -33,8 +33,7 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
 
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  const abs = Math.abs(amount);
-  return `${abs.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
 }
 
 export function formatPercent(value: number) {

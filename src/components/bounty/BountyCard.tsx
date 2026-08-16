@@ -3,6 +3,7 @@ import { Clock, GitPullRequest } from "lucide-react";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency, daysUntil } from "@/lib/utils";
+import { stripMarkdownToPlainText } from "@/lib/markdown";
 import type { Bounty } from "@/types";
 
 const accentByDifficulty: Record<Bounty["difficulty"], string> = {
@@ -36,7 +37,7 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
         </div>
       </div>
       <p className="mt-3 line-clamp-2 pl-2 text-sm text-slate-500 dark:text-slate-400">
-        {bounty.description}
+        {stripMarkdownToPlainText(bounty.description)}
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2 pl-2">
         <StatusBadge status={bounty.status} />

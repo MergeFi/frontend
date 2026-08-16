@@ -10,6 +10,7 @@ import { BarChart } from "@/components/ui/BarChart";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { formatCurrency } from "@/lib/utils";
+import { computeTrend } from "@/lib/trend";
 import { apiRequest } from "@/lib/api";
 import { adaptBounty, type RawBounty, type RawMilestone } from "@/lib/adapters";
 import {
@@ -132,13 +133,15 @@ export default function SponsorDashboardPage() {
           show skeletons during load and error states on failure, so no part
           of the UI flashes a 0 that looks like a real zero balance. */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {/* Trend is computed week-over-week from the same spend history
+            rendered as the sparkline — never a hardcoded literal. */}
         <StatCard
           label="Total paid out"
           value={totalSpent}
           format="currency"
           status={fetchStatus}
           icon={Receipt}
-          trend={fetchStatus === "loaded" ? 18 : undefined}
+          trend={fetchStatus === "loaded" ? computeTrend(sponsorSpendHistory) : undefined}
           sparkline={fetchStatus === "loaded" ? sponsorSpendHistory : undefined}
         />
         <StatCard

@@ -135,6 +135,68 @@ describe("StatCard — typical loaded value", () => {
   });
 });
 
+// ─── 5b. Negative & zero trend rendering ─────────────────────────────────────
+
+describe("StatCard — negative and zero trend rendering", () => {
+  it("renders a negative trend with the down arrow and rose styling", () => {
+    // Issue #92: a genuinely negative computed trend must render the
+    // down/rose code path — previously never exercised because every caller
+    // passed a positive literal.
+    render(
+      <StatCard
+        label="Lifetime earnings"
+        status="loaded"
+        value={420}
+        format="currency"
+        trend={-42}
+      />,
+    );
+    const trendEl = screen.getByText(/42% vs last period/i);
+    expect(trendEl).toBeInTheDocument();
+    // Rose/down-trend styling
+    expect(trendEl).toHaveClass("text-rose-600");
+    // Down arrow present (ArrowDownRight has no "up" marker, verify via SVG)
+    const arrow = trendEl.querySelector("svg");
+    expect(arrow).not.toBeNull();
+    expect(trendEl).not.toHaveClass("text-emerald-600");
+  });
+
+  it("renders a positive trend with the up arrow and emerald styling", () => {
+    render(
+      <StatCard
+        label="Merged PRs"
+        status="loaded"
+        value={31}
+        format="count"
+        trend={29}
+      />,
+    );
+    const trendEl = screen.getByText(/29% vs last period/i);
+    expect(trendEl).toHaveClass("text-emerald-600");
+    expect(trendEl.querySelector("svg")).not.toBeNull();
+    expect(trendEl).not.toHaveClass("text-rose-600");
+  });
+
+  it("treats a genuine 0% trend as an up-trend (pre-existing StatCard ambiguity)", () => {
+    // A computed trend can now legitimately land on exactly zero. StatCard's
+    // `trendUp = typeof trend === "number" && trend >= 0` renders it with the
+    // green up arrow — acknowledged in issue #92 as pre-existing behavior,
+    // not introduced by the computed-trend fix.
+    render(
+      <StatCard
+        label="Completion rate"
+        status="loaded"
+        value={84}
+        format="percent"
+        trend={0}
+      />,
+    );
+    const trendEl = screen.getByText(/0% vs last period/i);
+    expect(trendEl).toHaveClass("text-emerald-600");
+    expect(trendEl).not.toHaveClass("text-rose-600");
+  });
+});
+
 // ─── 6. Large financial value ─────────────────────────────────────────────────
 
 describe("StatCard — large number handling", () => {

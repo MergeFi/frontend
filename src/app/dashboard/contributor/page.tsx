@@ -11,6 +11,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { formatCurrency } from "@/lib/utils";
+import { computeTrend } from "@/lib/trend";
 import { apiPost, fetchBounties } from "@/lib/api";
 import {
   mockReputationProfiles,
@@ -132,23 +133,27 @@ export default function ContributorDashboardPage() {
       {/* StatCards show skeletons on initial load, errors on fetch failure —
           never a misleading "0 USDC" or "0 PRs" during loading/error states. */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {/* Trend is computed week-over-week from the same earnings history
+            rendered as the sparkline — never a hardcoded literal. */}
         <StatCard
           label="Lifetime earnings"
           value={stats?.lifetimeEarnings}
           format="currency"
           status={fetchStatus}
           icon={DollarSign}
-          trend={fetchStatus === "loaded" ? 12 : undefined}
+          trend={fetchStatus === "loaded" ? computeTrend(contributorEarningsHistory) : undefined}
           sparkline={fetchStatus === "loaded" ? contributorEarningsHistory : undefined}
           zeroLabel="No earnings yet"
         />
+        {/* Trend is computed week-over-week from the same merged-PR history
+            rendered as the sparkline — never a hardcoded literal. */}
         <StatCard
           label="Merged PRs"
           value={stats?.mergedPRs}
           format="count"
           status={fetchStatus}
           icon={GitMerge}
-          trend={fetchStatus === "loaded" ? 8 : undefined}
+          trend={fetchStatus === "loaded" ? computeTrend(contributorSparkline) : undefined}
           sparkline={fetchStatus === "loaded" ? contributorSparkline : undefined}
           zeroLabel="No merged PRs yet"
         />

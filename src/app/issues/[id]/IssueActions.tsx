@@ -85,7 +85,13 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
           </Button>
         )}
         {bounty.status === "funded" && (
-          <Button size="lg" onClick={handleClaim} disabled={pending}>
+          <Button 
+            size="lg" 
+            onClick={user ? handleClaim : undefined}
+            as={!user ? "a" : "button"}
+            href={!user ? "/connect" : undefined}
+            disabled={pending}
+          >
             {pending ? "Claiming..." : "Claim this issue"}
           </Button>
         )}

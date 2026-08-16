@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency } from "@/lib/utils";
-import { PipelineBoard } from "./PipelineBoard";
+import { PipelineBoard, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
 import type { Bounty } from "@/types";
 
 export const metadata = {
@@ -33,7 +33,7 @@ export default async function MaintainerDashboardPage() {
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
   const repoCount = new Set(bounties.map((b) => `${b.org}/${b.repo}`)).size;
   const totalEscrow = bounties
-    .filter((b) => !["open", "paid", "refunded", "expired"].includes(b.status))
+    .filter((b) => !ESCROW_LOCKED_EXCLUDED_STATUSES.includes(b.status))
     .reduce((sum, b) => sum + b.reward, 0);
 
   return (

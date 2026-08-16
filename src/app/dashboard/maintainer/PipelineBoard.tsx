@@ -3,11 +3,42 @@ import { formatCurrency } from "@/lib/utils";
 import type { Bounty, BountyStatus } from "@/types";
 
 // Statuses shown as a pipeline column, in left-to-right order.
+//
+// "paid"/"refunded"/"expired" are deliberately NOT columns here: once a
+// bounty leaves escrow (paid out, refunded, or expired unclaimed) it's a
+// terminal state, no longer "in the pipeline" in the sense this board
+// tracks. "merged" IS a column: it's still escrow-locked (see
+// ESCROW_LOCKED_EXCLUDED_STATUSES in page.tsx) and, per #88, the single
+// most important state for a maintainer to watch closely -- it's the last
+// step before the automatic payout webhook fires, and the one place a
+// stuck/delayed webhook would be most consequential to notice quickly.
+//
+// Every status this board omits a column for should also be excluded from
+// "Value locked in escrow" on the page above (and vice versa) -- kept
+// consistent deliberately; see the pipeline/escrow consistency test in
+// PipelineBoard.test.tsx.
 export const pipelineStages: { status: BountyStatus; label: string }[] = [
   { status: "open", label: "Open" },
   { status: "funded", label: "Funded" },
   { status: "claimed", label: "Claimed" },
   { status: "in_review", label: "In review" },
+  { status: "merged", label: "Awaiting payout" },
+];
+
+// Statuses excluded from "Value locked in escrow" on the page above: "open"
+// hasn't been funded yet (nothing in escrow to lock), and
+// "paid"/"refunded"/"expired" have already left escrow. Every other status
+// -- "funded", "claimed", "in_review", "merged" -- is still escrow-locked
+// and must have a corresponding entry in pipelineStages above. Kept in the
+// same file as pipelineStages specifically so the two can't silently drift
+// apart the way they did before #88 (the stat counted "merged" as
+// escrow-locked while the board had no column for it) -- see the
+// consistency test in PipelineBoard.test.tsx.
+export const ESCROW_LOCKED_EXCLUDED_STATUSES: BountyStatus[] = [
+  "open",
+  "paid",
+  "refunded",
+  "expired",
 ];
 
 function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[] }) {

@@ -3,6 +3,7 @@ import { ShieldCheck, Clock, GitBranch } from "lucide-react";
 import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
+import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { formatCurrency, daysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
 
@@ -40,7 +41,7 @@ export default async function IssueDetailPage({
         ))}
       </div>
 
-      <p className="mt-6 leading-relaxed text-slate-600 dark:text-slate-300">{bounty.description}</p>
+      <BountyDescription description={bounty.description} />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

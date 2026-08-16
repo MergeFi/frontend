@@ -9,8 +9,8 @@
  */
 
 import { render, screen } from "@testing-library/react";
-import { PipelineBoard, pipelineStages } from "./PipelineBoard";
-import type { Bounty } from "@/types";
+import { PipelineBoard, pipelineStages, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
+import type { Bounty, BountyStatus } from "@/types";
 
 function makeBounty(overrides: Partial<Bounty> = {}): Bounty {
   return {
@@ -75,5 +75,36 @@ describe("PipelineBoard — merged column (#88)", () => {
 
     // Deliberate: "paid" is a terminal state, intentionally not a column.
     expect(screen.queryByText("Already paid out")).not.toBeInTheDocument();
+  });
+});
+
+describe("PipelineBoard / escrow-stat consistency (#88)", () => {
+  it("gives every escrow-locked status a corresponding pipeline column", () => {
+    const allStatuses: BountyStatus[] = [
+      "open",
+      "funded",
+      "claimed",
+      "in_review",
+      "merged",
+      "paid",
+      "refunded",
+      "expired",
+    ];
+    const escrowLockedStatuses = allStatuses.filter(
+      (status) => !ESCROW_LOCKED_EXCLUDED_STATUSES.includes(status),
+    );
+    const columnStatuses = new Set(pipelineStages.map((s) => s.status));
+
+    for (const status of escrowLockedStatuses) {
+      expect(columnStatuses.has(status)).toBe(true);
+    }
+  });
+
+  it("intentionally leaves terminal statuses (paid, refunded, expired) without a pipeline column", () => {
+    const columnStatuses = new Set(pipelineStages.map((s) => s.status));
+    for (const status of ["paid", "refunded", "expired"] as const) {
+      expect(ESCROW_LOCKED_EXCLUDED_STATUSES).toContain(status);
+      expect(columnStatuses.has(status)).toBe(false);
+    }
   });
 });

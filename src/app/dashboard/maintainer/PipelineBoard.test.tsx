@@ -44,4 +44,23 @@ describe("PipelineBoard — merged column (#88)", () => {
     expect(pipelineStages.some((s) => s.status === "merged")).toBe(true);
   });
 
+  it("does not regress the existing four columns' rendering or counts", () => {
+    const bounties: Bounty[] = [
+      makeBounty({ id: "1", title: "Open one", status: "open" }),
+      makeBounty({ id: "2", title: "Funded one", status: "funded" }),
+      makeBounty({ id: "3", title: "Claimed one", status: "claimed" }),
+      makeBounty({ id: "4", title: "In review one", status: "in_review" }),
+    ];
+    render(<PipelineBoard bounties={bounties} />);
+
+    expect(screen.getByText("Open one")).toBeInTheDocument();
+    expect(screen.getByText("Funded one")).toBeInTheDocument();
+    expect(screen.getByText("Claimed one")).toBeInTheDocument();
+    expect(screen.getByText("In review one")).toBeInTheDocument();
+
+    for (const label of ["Open", "Funded", "Claimed", "In review"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+
 });

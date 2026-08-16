@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ShieldCheck, Clock, GitBranch } from "lucide-react";
+import { ShieldCheck, Clock, GitBranch, AlertTriangle } from "lucide-react";
 import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
@@ -72,9 +72,25 @@ export default async function IssueDetailPage({
         </div>
       </div>
 
-      {bounty.teamSplits && (
-        <div className="mt-8">
-          <h2 className="font-medium text-slate-900 dark:text-white">Team payout split</h2>
+      {bounty.teamSplits && bounty.teamSplits.length > 0 && (
+        <div className="mt-8" data-testid="team-splits-section">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-medium text-slate-900 dark:text-white">Team payout split</h2>
+          </div>
+
+          {bounty.teamSplitsValid && !bounty.teamSplitsValid.valid && bounty.teamSplitsValid.message && (
+            <div
+              data-testid="team-splits-warning"
+              className="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+              role="alert"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="flex-1 font-medium">
+                {bounty.teamSplitsValid.message}
+              </div>
+            </div>
+          )}
+
           <div className="mt-3 space-y-2">
             {bounty.teamSplits.map((split) => (
               <div

@@ -67,14 +67,14 @@ export function daysUntil(dateIso: string) {
 }
 
 export function validateTeamSplits(
-  splits: Array<{ percentage: string | number }>,
+  splits?: Array<{ percentage: string | number }> | null,
   tolerance = 0.01
 ): { valid: boolean; sum: number; message?: string } {
   if (!splits || splits.length === 0) return { valid: true, sum: 0 };
   const percentages = splits.map((s) =>
     typeof s.percentage === "string" ? Number(s.percentage) : s.percentage
   );
-  const sum = percentages.reduce((a, b) => a + b, 0);
+  const sum = percentages.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
   const valid = Math.abs(sum - 100) <= tolerance;
   return {
     valid,

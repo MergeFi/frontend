@@ -70,7 +70,7 @@ export function validateTeamSplits(
   splits: Array<{ percentage: string | number }>,
   tolerance = 0.01
 ): { valid: boolean; sum: number; message?: string } {
-  if (!splits || splits.length === 0) return { valid: false, sum: 0, message: "Team splits cannot be empty" };
+  if (!splits || splits.length === 0) return { valid: true, sum: 0 };
   const percentages = splits.map((s) =>
     typeof s.percentage === "string" ? Number(s.percentage) : s.percentage
   );

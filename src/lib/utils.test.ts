@@ -284,10 +284,35 @@ describe("validateTeamSplits", () => {
     expect(result.sum).toBe(100);
   });
 
-  it("handles an empty array", () => {
+  it("treats an empty array as valid with a zero sum", () => {
     const result = validateTeamSplits([]);
-    // Empty splits don't sum to 100, so valid=false is correct behavior
+    expect(result.valid).toBe(true);
     expect(result.sum).toBe(0);
+    expect(result.message).toBeUndefined();
+  });
+
+  it("handles mixed string and number percentages in one array", () => {
+    const result = validateTeamSplits([
+      { percentage: "45.5" },
+      { percentage: 30 },
+      { percentage: "24.5" },
+    ]);
+    expect(result.valid).toBe(true);
+    expect(result.sum).toBe(100);
+  });
+
+  it("honors a custom tolerance", () => {
+    const wide = [{ percentage: 60 }, { percentage: 43 }];
+    expect(validateTeamSplits(wide).valid).toBe(false);
+    expect(validateTeamSplits(wide, 5).valid).toBe(true);
+  });
+
+  it("returns a non-finite-safe result for unparseable strings", () => {
+    const result = validateTeamSplits([
+      { percentage: "abc" },
+      { percentage: 100 },
+    ]);
+    expect(result.valid).toBe(false);
   });
 
   it("degrades a non-numeric percentage string to 0 instead of producing NaN (#198)", () => {

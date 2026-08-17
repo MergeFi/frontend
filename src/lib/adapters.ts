@@ -80,6 +80,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     deadline: raw.deadline ?? new Date().toISOString(),
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
+    milestoneId: raw.issue?.milestoneId ?? undefined,
     escrowId: raw.escrowId ?? undefined,
     teamSplits: splits,
     teamSplitsValid: splits ? validateTeamSplits(splits) : undefined,

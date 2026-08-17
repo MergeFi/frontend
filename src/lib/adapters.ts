@@ -37,6 +37,11 @@ interface RawIssue {
   body: string | null;
   labels: string[];
   repository?: RawRepository;
+  // Nested here, not on RawBounty: mergefi-backend's Bounty entity has no
+  // milestoneId column at all — the milestone association lives on Issue
+  // (Issue.milestoneId / Issue.milestone), which Bounty only reaches via
+  // its one-to-one `issue` relation. See adaptBounty's doc comment (#86).
+  milestoneId?: string | null;
 }
 
 export interface RawBounty {
@@ -52,6 +57,37 @@ export interface RawBounty {
   team?: { splits?: RawTeamSplit[] } | null;
 }
 
+/**
+ * Investigation notes for #86 (bounty-to-milestone cross-linking):
+ *
+ * - milestoneId was declared on the Bounty type but never set here — every
+ *   Bounty this app constructed from live data had it permanently
+ *   undefined. Fixed above by reading it from raw.issue.milestoneId, the
+ *   shape confirmed against mergefi-backend's actual entities (there is no
+ *   milestoneId on Bounty itself).
+ * - Full field-by-field audit of Bounty vs. this function's return object
+ *   (see adapters.test.ts's "field coverage" test) found milestoneId was
+ *   the *only* field with this silent-drop bug; every other field,
+ *   including the structurally-similar escrowId, was already mapped.
+ * - Separately discovered while tracing this: mergefi-backend's
+ *   `BountiesService.list()`/`findOne()` load bounties with no `relations`
+ *   option at all, so `raw.issue`/`raw.claimedBy`/`raw.team` — and now
+ *   `raw.issue.milestoneId` — are likely `undefined` on every live
+ *   response today regardless of this fix, until that's corrected on the
+ *   backend. Out of scope here (a different repo, and a much larger
+ *   pre-existing gap than this issue's), but worth flagging since it
+ *   affects whether this fix does anything observable yet in production.
+ * - UI usage recommendation (#86 asks this be investigated, not
+ *   necessarily implemented): IssueDetailPage gets a small "Part of a
+ *   milestone" indicator below, since it already has the single Bounty
+ *   object this field now lives on — no new fetch needed. MilestonesPage
+ *   cross-linking to member bounties is recommended *against* for this
+ *   PR: Milestone only carries aggregate issueCount/completedCount
+ *   numbers today, and listing member bounties would need either a new
+ *   backend endpoint (bounties filtered by milestoneId) or fetching every
+ *   bounty on a funding-overview page just to filter client-side —
+ *   real new scope, not a natural extension of restoring this mapping.
+ */
 export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { valid: boolean; sum: number; message?: string } } {
   const splits = raw.team?.splits?.map(
     (split): TeamSplit => ({
@@ -75,6 +111,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     deadline: raw.deadline ?? new Date().toISOString(),
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
+    milestoneId: raw.issue?.milestoneId ?? undefined,
     escrowId: raw.escrowId ?? undefined,
     teamSplits: splits,
     teamSplitsValid: splits ? validateTeamSplits(splits) : undefined,

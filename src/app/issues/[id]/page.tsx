@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ShieldCheck, Clock, GitBranch } from "lucide-react";
+import { ShieldCheck, Clock, GitBranch, Milestone as MilestoneIcon } from "lucide-react";
 import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
@@ -71,6 +71,17 @@ export default async function IssueDetailPage({
             {bounty.claimedBy ?? "Unclaimed"}
           </p>
         </div>
+        {bounty.milestoneId && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <MilestoneIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-sm">Milestone</span>
+            </div>
+            <p className="mt-2 font-medium text-slate-900 dark:text-white">
+              Part of a funded milestone
+            </p>
+          </div>
+        )}
       </div>
 
       {bounty.teamSplits && (

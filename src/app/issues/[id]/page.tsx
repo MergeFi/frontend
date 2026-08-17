@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ShieldCheck, Clock, GitBranch } from "lucide-react";
 import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
@@ -6,6 +7,25 @@ import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { formatCurrency, daysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const bounty = await fetchBounty(
+    id,
+    mockBounties.find((b) => b.id === id),
+  );
+
+  return {
+    title: bounty ? `${bounty.title} | MergeFi` : `Bounty ${id} | MergeFi`,
+    description: bounty
+      ? `${bounty.org}/${bounty.repo} bounty #${bounty.issueNumber} on MergeFi.`
+      : "GitHub bounty on MergeFi.",
+  };
+}
 
 export default async function IssueDetailPage({
   params,

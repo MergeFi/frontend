@@ -1,10 +1,23 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { fetchReputationByUsername } from "@/lib/api";
 import { mockReputationProfiles } from "@/lib/mock-data";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency, formatPercent } from "@/lib/utils";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}): Promise<Metadata> {
+  const { handle } = await params;
+  return {
+    title: `@${handle} Reputation | MergeFi`,
+    description: `Open-source contribution reputation profile for @${handle} on MergeFi.`,
+  };
+}
 
 export default async function ReputationPage({
   params,

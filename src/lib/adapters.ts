@@ -37,6 +37,8 @@ interface RawIssue {
   body: string | null;
   labels: string[];
   repository?: RawRepository;
+  milestoneId?: string | null;
+  milestone?: { id: string } | null;
 }
 
 export interface RawBounty {
@@ -47,6 +49,8 @@ export interface RawBounty {
   status: Bounty["status"];
   deadline: string | null;
   escrowId: string | null;
+  milestoneId?: string | null;
+  milestone?: { id: string } | null;
   issue?: RawIssue;
   claimedBy?: RawUser | null;
   team?: { splits?: RawTeamSplit[] } | null;
@@ -60,6 +64,13 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
       contributor: split.user?.username,
     }),
   );
+
+  const resolvedMilestoneId =
+    raw.milestoneId ??
+    raw.milestone?.id ??
+    raw.issue?.milestoneId ??
+    raw.issue?.milestone?.id ??
+    undefined;
 
   return {
     id: raw.id,
@@ -75,6 +86,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     deadline: raw.deadline ?? new Date().toISOString(),
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
+    milestoneId: resolvedMilestoneId,
     escrowId: raw.escrowId ?? undefined,
     teamSplits: splits,
     teamSplitsValid: splits ? validateTeamSplits(splits) : undefined,

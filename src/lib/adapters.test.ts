@@ -73,3 +73,50 @@ describe("adaptBounty — milestoneId mapping (#86)", () => {
     expect(adaptBounty(raw).milestoneId).toBeUndefined();
   });
 });
+
+describe("adaptBounty — field coverage audit (#86)", () => {
+  // Every key the Bounty interface declares (src/types/index.ts). Kept as
+  // an explicit list, checked against adaptBounty's actual output below,
+  // so a future field added to Bounty but never mapped here — exactly
+  // milestoneId's bug — fails this test instead of silently shipping.
+  const EXPECTED_BOUNTY_FIELDS = [
+    "id",
+    "repo",
+    "org",
+    "issueNumber",
+    "title",
+    "description",
+    "reward",
+    "asset",
+    "difficulty",
+    "status",
+    "deadline",
+    "labels",
+    "claimedBy",
+    "teamSplits",
+    "milestoneId",
+    "escrowId",
+  ] as const;
+
+  it("sets every Bounty field to a defined value given a fully-populated raw bounty", () => {
+    const raw = rawBounty({
+      escrowId: "escrow-1",
+      claimedBy: { username: "alice" },
+      team: { splits: [{ role: "Lead", percentage: "100", user: { username: "alice" } }] },
+      issue: {
+        number: 42,
+        title: "Fix the thing",
+        body: "Description",
+        labels: ["bug"],
+        repository: { owner: "acme", name: "widgets" },
+        milestoneId: "milestone-7",
+      },
+    });
+
+    const bounty = adaptBounty(raw);
+
+    for (const field of EXPECTED_BOUNTY_FIELDS) {
+      expect(bounty[field]).not.toBeUndefined();
+    }
+  });
+});

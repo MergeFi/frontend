@@ -31,10 +31,29 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
   return n;
 }
 
+/**
+ * Format a numeric amount as a currency string with the specified asset label.
+ *
+ * @param amount - The numeric value to format. Negative values are preserved
+ *                 and rendered with a leading minus sign (e.g., -50 → "-50 USDC").
+ * @param asset - The asset label to append ("USDC" or "XLM"). Defaults to "USDC".
+ * @returns Locale-formatted currency string (e.g., "1,234.56 USDC", "-50 XLM").
+ *
+ * @remarks
+ * This function deliberately preserves the sign of negative amounts rather than
+ * silently discarding it via Math.abs(). Financial systems may legitimately
+ * display negative figures for:
+ * - Net-negative sponsor balances (refunds exceeding deposits)
+ * - Accounting corrections or adjustments
+ * - Deltas or changes (e.g., budget remaining after overspending)
+ *
+ * This behavior matches StatCard's internal currency formatter, ensuring
+ * consistency across the app. The same negative input will now render
+ * identically whether formatted by formatCurrency() or StatCard.
+ */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  const abs = Math.abs(amount);
-  return `${abs.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
 }
 
 export function formatPercent(value: number) {

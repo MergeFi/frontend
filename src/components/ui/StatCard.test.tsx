@@ -4,7 +4,7 @@
  * Covers all four explicit states (loading, error, zero, loaded) plus
  * large-number scaling and pre-formatted string pass-through.
  *
- * Seven test cases in total, matching the acceptance criteria in the issue:
+ * Test cases:
  *  1. Loading state — skeleton visible, no value text
  *  2. Error state — em-dash + "Error loading data", ARIA label
  *  3. Zero state (numeric 0) — "0" rendered, zeroLabel shown, trend hidden
@@ -12,11 +12,13 @@
  *  5. Typical loaded value — renders correctly, trend shown
  *  6. Large financial value — shorter font class applied, title tooltip present
  *  7. Pre-formatted string — passed through unchanged
+ *  8. Negative currency values — sign preserved, consistent with formatCurrency
  */
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { StatCard } from "./StatCard";
+import { formatCurrency } from "@/lib/utils";
 
 // ─── 1. Loading state ────────────────────────────────────────────────────────
 
@@ -181,5 +183,99 @@ describe("StatCard — pre-formatted string value", () => {
     expect(valueEl).toHaveTextContent("94%");
     // No extra USDC suffix should be appended
     expect(valueEl).not.toHaveTextContent("USDC");
+  });
+});
+
+// ─── 8. Negative currency values ─────────────────────────────────────────────
+
+describe("StatCard — negative currency values (issue #90)", () => {
+  it("renders negative currency values with a minus sign", () => {
+    render(
+      <StatCard
+        label="Net balance"
+        status="loaded"
+        value={-50}
+        format="currency"
+      />,
+    );
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toBeInTheDocument();
+    // Must contain a minus sign
+    expect(valueEl).toHaveTextContent("-50 USDC");
+  });
+
+  it("distinguishes negative from positive for the same absolute value", () => {
+    const { rerender } = render(
+      <StatCard
+        label="Balance"
+        status="loaded"
+        value={-50}
+        format="currency"
+      />,
+    );
+    const negativeText = screen.getByTestId("statcard-value").textContent;
+
+    rerender(
+      <StatCard
+        label="Balance"
+        status="loaded"
+        value={50}
+        format="currency"
+      />,
+    );
+    const positiveText = screen.getByTestId("statcard-value").textContent;
+
+    expect(negativeText).not.toBe(positiveText);
+    expect(negativeText).toContain("-");
+    expect(positiveText).not.toContain("-");
+  });
+
+  it("agrees with formatCurrency for negative values", () => {
+    // This test ensures StatCard's internal currency formatter and
+    // the standalone formatCurrency function produce identical output
+    // for negative amounts, resolving the inconsistency in issue #90.
+    render(
+      <StatCard
+        label="Net balance"
+        status="loaded"
+        value={-50}
+        format="currency"
+        asset="USDC"
+      />,
+    );
+    const statCardOutput = screen.getByTestId("statcard-value").textContent;
+    const formatCurrencyOutput = formatCurrency(-50, "USDC");
+
+    expect(statCardOutput).toBe(formatCurrencyOutput);
+  });
+
+  it("renders negative XLM amounts correctly", () => {
+    render(
+      <StatCard
+        label="XLM balance"
+        status="loaded"
+        value={-123.45}
+        format="currency"
+        asset="XLM"
+      />,
+    );
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("-123.45 XLM");
+  });
+
+  it("renders negative trend values with correct styling", () => {
+    render(
+      <StatCard
+        label="Budget remaining"
+        status="loaded"
+        value={-200}
+        format="currency"
+        trend={-15}
+      />,
+    );
+    // Value should show as negative
+    expect(screen.getByTestId("statcard-value")).toHaveTextContent("-200 USDC");
+    // Trend should show as negative with appropriate styling
+    expect(screen.getByText(/15% vs last period/i)).toBeInTheDocument();
   });
 });

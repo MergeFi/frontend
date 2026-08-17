@@ -22,7 +22,7 @@ export function Avatar({
       alt={seed}
       width={size}
       height={size}
-      unoptimized
+      unoptimized={!src || src.startsWith("https://api.dicebear.com")}
       className={cn(
         "rounded-full border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800",
         className,

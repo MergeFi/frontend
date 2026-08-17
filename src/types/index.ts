@@ -20,6 +20,12 @@ export interface TeamSplit {
   contributor?: string;
 }
 
+export interface TeamSplitsValidation {
+  valid: boolean;
+  sum: number;
+  message?: string;
+}
+
 export interface Bounty {
   id: string;
   repo: string;
@@ -35,6 +41,7 @@ export interface Bounty {
   labels: string[];
   claimedBy?: string;
   teamSplits?: TeamSplit[];
+  teamSplitsValid?: TeamSplitsValidation;
   milestoneId?: string;
   escrowId?: string;
 }

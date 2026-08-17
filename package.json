@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest",
+    "test": "NODE_ENV=development jest",
     "test:watch": "jest --watch",
     "verify:headers": "node scripts/verify-security-headers.mjs",
     "verify:env": "node scripts/verify-env-validation.mjs"

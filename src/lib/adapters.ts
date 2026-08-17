@@ -52,7 +52,7 @@ export interface RawBounty {
   team?: { splits?: RawTeamSplit[] } | null;
 }
 
-export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { valid: boolean; sum: number; message?: string } } {
+export function adaptBounty(raw: RawBounty): Bounty {
   const splits = raw.team?.splits?.map(
     (split): TeamSplit => ({
       role: split.role ?? "Contributor",

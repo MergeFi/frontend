@@ -8,8 +8,7 @@ import {
   type RawBounty,
   type RawMilestone,
   type RawMaintenancePool,
-  type RawReputationSnapshot,
-  type RawUserProfile,
+  type RawReputationByUsername,
 } from "./adapters";
 import type { Bounty, Milestone, MaintenancePool, ReputationProfile } from "@/types";
 
@@ -137,16 +136,39 @@ export async function fetchMaintenancePools(
   }
 }
 
+/**
+ * Resolves a public contributor profile from its GitHub handle.
+ *
+ * This used to fetch the *entire* `/users` collection and `.find()` the
+ * handle client-side purely to learn the user's id, then fetch that id's
+ * snapshot — so every view of `/reputation/[handle]`, including the ones
+ * that end in a 404, downloaded the whole user table and got steadily
+ * slower as the platform grew. It now issues one request scoped to the
+ * single handle, and the backend returns the snapshot along with it.
+ *
+ * Every unsuccessful outcome resolves to `fallback`, which is exactly what
+ * the old implementation did — a `.find()` miss and a failed fetch were
+ * both `return fallback`. That keeps the caller's contract intact: the
+ * `/reputation/[handle]` page still turns a null fallback into `notFound()`,
+ * so an unknown handle 404s as before, just without the full-table fetch.
+ * It also means this is safe to deploy ahead of the backend endpoint (see
+ * PR notes) — an unrecognised route 404s and falls back to mock data,
+ * which is the behaviour the JWT-guarded `/users` call already produced
+ * from this unauthenticated server-side caller.
+ *
+ * Matching stays exact and case-sensitive: `users.username` is a plain
+ * unique varchar, so the backend's lookup has the same semantics the old
+ * `u.username === username` comparison did. `encodeURIComponent` keeps a
+ * handle containing `/`, `?` or `..` confined to one path segment rather
+ * than letting it reshape the request URL.
+ */
 export async function fetchReputationByUsername(
   username: string,
   fallback: ReputationProfile | null,
 ): Promise<ReputationProfile | null> {
   try {
-    const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    const user = users.find((u) => u.username === username);
-    if (!user) return fallback;
-    const snapshot = await request<RawReputationSnapshot | null>(
-      `/reputation/${user.id}`,
+    const { user, snapshot } = await request<RawReputationByUsername>(
+      `/reputation/by-username/${encodeURIComponent(username)}`,
     );
     return adaptReputation(user, snapshot);
   } catch {

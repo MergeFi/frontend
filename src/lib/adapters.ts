@@ -138,6 +138,20 @@ export interface RawUserProfile {
   avatarUrl: string | null;
 }
 
+/**
+ * Payload of `GET /reputation/by-username/:username`, the scoped lookup that
+ * replaced "download all of `/users`, `.find()` the handle, then fetch
+ * `/reputation/:id`". It bundles the user and the snapshot so resolving a
+ * public profile costs one round-trip instead of two sequential ones.
+ *
+ * `snapshot` is null for a real user who has no reputation snapshot yet —
+ * distinct from a 404, which means no such username exists at all.
+ */
+export interface RawReputationByUsername {
+  user: RawUserProfile;
+  snapshot: RawReputationSnapshot | null;
+}
+
 export function adaptReputation(
   user: RawUserProfile,
   snapshot: RawReputationSnapshot | null,

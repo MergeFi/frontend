@@ -37,6 +37,11 @@ interface RawIssue {
   body: string | null;
   labels: string[];
   repository?: RawRepository;
+  // Nested here, not on RawBounty: mergefi-backend's Bounty entity has no
+  // milestoneId column at all — the milestone association lives on Issue
+  // (Issue.milestoneId / Issue.milestone), which Bounty only reaches via
+  // its one-to-one `issue` relation. See adaptBounty's doc comment (#86).
+  milestoneId?: string | null;
 }
 
 export interface RawBounty {

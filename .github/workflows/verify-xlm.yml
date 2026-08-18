@@ -18,6 +18,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Supply missing Jest config loader for this isolated run
+        run: npm install --no-save ts-node
       - run: npm test -- --runInBand src/lib/utils.test.ts src/components/ui/StatCard.test.tsx
       - run: npm run lint
       - run: npm run build

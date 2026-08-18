@@ -1,5 +1,10 @@
+
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+
+export type CurrencyAsset = "USDC" | "XLM";
+
+const XLM_STROOP = 0.0000001;
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,28 +37,44 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
 }
 
 /**
- * Format a numeric amount as a currency string with the specified asset label.
+ * Format a numeric amount for both visible display and an exact-value tooltip.
  *
- * @param amount - The numeric value to format. Negative values are preserved
- *                 and rendered with a leading minus sign (e.g., -50 → "-50 USDC").
- * @param asset - The asset label to append ("USDC" or "XLM"). Defaults to "USDC".
- * @returns Locale-formatted currency string (e.g., "1,234.56 USDC", "-50 XLM").
- *
- * @remarks
- * This function deliberately preserves the sign of negative amounts rather than
- * silently discarding it via Math.abs(). Financial systems may legitimately
- * display negative figures for:
- * - Net-negative sponsor balances (refunds exceeding deposits)
- * - Accounting corrections or adjustments
- * - Deltas or changes (e.g., budget remaining after overspending)
- *
- * This behavior matches StatCard's internal currency formatter, ensuring
- * consistency across the app. The same negative input will now render
- * identically whether formatted by formatCurrency() or StatCard.
+ * USDC keeps the existing two-decimal visible policy. XLM is displayed with up
+ * to seven decimal places, matching Stellar's stroop precision. A finite,
+ * non-zero XLM value smaller than one stroop is shown as a bounded value rather
+ * than the misleading literal "0 XLM".
  */
-export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
-  if (!Number.isFinite(amount)) return `0 ${asset}`;
-  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+export function formatCurrencyParts(
+  amount: number,
+  asset: CurrencyAsset = "USDC",
+): { display: string; exact: string } {
+  if (!Number.isFinite(amount)) {
+    const zero = `0 ${asset}`;
+    return { display: zero, exact: zero };
+  }
+
+  if (asset === "XLM" && amount !== 0 && Math.abs(amount) < XLM_STROOP) {
+    const bounded = amount < 0 ? `>-0.0000001 ${asset}` : `<0.0000001 ${asset}`;
+    return { display: bounded, exact: bounded };
+  }
+
+  const displayDigits = asset === "XLM" ? 7 : 2;
+  const exactDigits = asset === "XLM" ? 7 : 6;
+  const display = `${amount.toLocaleString("en-US", {
+    maximumFractionDigits: displayDigits,
+  })} ${asset}`;
+  const exact = `${amount.toLocaleString("en-US", {
+    maximumFractionDigits: exactDigits,
+  })} ${asset}`;
+  return { display, exact };
+}
+
+/**
+ * Format a numeric amount as a currency string with the specified asset label.
+ * Negative values are preserved rather than silently converted to positives.
+ */
+export function formatCurrency(amount: number, asset: CurrencyAsset = "USDC") {
+  return formatCurrencyParts(amount, asset).display;
 }
 
 export function formatPercent(value: number) {

@@ -265,6 +265,12 @@ export default function HomePage() {
               Live on the platform
             </h2>
           </div>
+          {/* Temporary: rendered alongside the existing inline copy below to
+              verify ActivityList is a drop-in replacement before the old
+              markup is removed in the next commit. */}
+          <div className="mt-6">
+            <ActivityList events={recentActivity} />
+          </div>
           <div className="mt-6 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
             {recentActivity.map((event) => (
               <div key={event.id} className="flex items-center justify-between gap-4 px-5 py-4">

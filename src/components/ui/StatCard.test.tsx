@@ -1,18 +1,9 @@
+
 /**
  * StatCard.test.tsx
  *
- * Covers all four explicit states (loading, error, zero, loaded) plus
- * large-number scaling and pre-formatted string pass-through.
- *
- * Test cases:
- *  1. Loading state — skeleton visible, no value text
- *  2. Error state — em-dash + "Error loading data", ARIA label
- *  3. Zero state (numeric 0) — "0" rendered, zeroLabel shown, trend hidden
- *  4. Zero-as-string — must NOT trigger zero-state treatment
- *  5. Typical loaded value — renders correctly, trend shown
- *  6. Large financial value — shorter font class applied, title tooltip present
- *  7. Pre-formatted string — passed through unchanged
- *  8. Negative currency values — sign preserved, consistent with formatCurrency
+ * Covers explicit loading/error/zero/loaded states, large-number handling,
+ * asset-aware currency precision, and sign preservation.
  */
 
 import React from "react";
@@ -26,11 +17,9 @@ describe("StatCard — loading state", () => {
   it("renders a skeleton and hides the value", () => {
     const { container } = render(<StatCard label="Lifetime earnings" status="loading" />);
     expect(screen.getByTestId("statcard-skeleton")).toBeInTheDocument();
-    // No numeric/text value should be visible while loading
     expect(screen.queryByTestId("statcard-value")).not.toBeInTheDocument();
     expect(screen.queryByTestId("statcard-error")).not.toBeInTheDocument();
     expect(screen.queryByTestId("statcard-zero")).not.toBeInTheDocument();
-    // Skeleton carries the pulse animation class
     expect(container.querySelector("[data-testid='statcard-skeleton']")).toHaveClass(
       "animate-pulse",
     );
@@ -44,14 +33,9 @@ describe("StatCard — error state", () => {
     render(<StatCard label="Locked in escrow" status="error" />);
     const errorEl = screen.getByTestId("statcard-error");
     expect(errorEl).toBeInTheDocument();
-    // Em-dash must be visible — not a zero or blank
     expect(errorEl).toHaveTextContent("—");
-    // Sub-label wording
     expect(errorEl).toHaveTextContent("Error loading data");
-    // Wrapper region is labelled for screen readers — prevents SR from
-    // announcing the card as just "Locked in escrow" with no context
-    const region = screen.getByRole("region", { name: /Error loading data/i });
-    expect(region).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Error loading data/i })).toBeInTheDocument();
   });
 
   it("never renders a zero value that could be mistaken for a real figure", () => {
@@ -62,7 +46,7 @@ describe("StatCard — error state", () => {
   });
 });
 
-// ─── 3. Zero state — numeric 0 ───────────────────────────────────────────────
+// ─── 3. Zero state ───────────────────────────────────────────────────────────
 
 describe("StatCard — zero state (numeric 0)", () => {
   it("renders a deliberate zero with the default zeroLabel", () => {
@@ -71,11 +55,8 @@ describe("StatCard — zero state (numeric 0)", () => {
     );
     const zeroEl = screen.getByTestId("statcard-zero");
     expect(zeroEl).toBeInTheDocument();
-    // The value "0 USDC" must be present and readable
     expect(zeroEl).toHaveTextContent("0");
-    // Default sub-label
     expect(zeroEl).toHaveTextContent("No activity yet");
-    // Trend must NOT appear on a zero value (no misleading "0% vs last period")
     expect(screen.queryByText(/vs last period/i)).not.toBeInTheDocument();
   });
 
@@ -93,24 +74,18 @@ describe("StatCard — zero state (numeric 0)", () => {
   });
 });
 
-// ─── 4. Zero-as-string — must NOT trigger zero-state ─────────────────────────
+// ─── 4. Zero-as-string pass-through ─────────────────────────────────────────
 
 describe("StatCard — zero-as-string pass-through", () => {
   it('renders "0" string as a normal loaded value, not the zero-state', () => {
-    // "0" as a string means the caller has pre-formatted the value.
-    // We must not second-guess it and show the zero-state — that would
-    // incorrectly suppress the value for things like "0%" completion rate
-    // that the caller explicitly formatted.
     render(<StatCard label="Completion rate" status="loaded" value="0%" />);
-    // Normal value node should appear
     expect(screen.getByTestId("statcard-value")).toBeInTheDocument();
     expect(screen.getByTestId("statcard-value")).toHaveTextContent("0%");
-    // Zero-state node must NOT appear
     expect(screen.queryByTestId("statcard-zero")).not.toBeInTheDocument();
   });
 });
 
-// ─── 5. Typical loaded value ──────────────────────────────────────────────────
+// ─── 5. Typical loaded value ─────────────────────────────────────────────────
 
 describe("StatCard — typical loaded value", () => {
   it("renders value and trend correctly", () => {
@@ -125,9 +100,7 @@ describe("StatCard — typical loaded value", () => {
     );
     const valueEl = screen.getByTestId("statcard-value");
     expect(valueEl).toBeInTheDocument();
-    // Locale-formatted + asset suffix
     expect(valueEl).toHaveTextContent("8,420 USDC");
-    // Trend rendered
     expect(screen.getByText(/12% vs last period/i)).toBeInTheDocument();
   });
 
@@ -137,7 +110,7 @@ describe("StatCard — typical loaded value", () => {
   });
 });
 
-// ─── 6. Large financial value ─────────────────────────────────────────────────
+// ─── 6. Large financial value ────────────────────────────────────────────────
 
 describe("StatCard — large number handling", () => {
   it("applies a smaller font class for a long value string", () => {
@@ -150,9 +123,7 @@ describe("StatCard — large number handling", () => {
       />,
     );
     const valueEl = screen.getByTestId("statcard-value");
-    // "1,284,999 USDC" is 14 chars → should get text-xl (not text-2xl)
     expect(valueEl.className).toMatch(/text-xl/);
-    // Must NOT have the default large class
     expect(valueEl.className).not.toMatch(/text-2xl/);
   });
 
@@ -166,11 +137,8 @@ describe("StatCard — large number handling", () => {
       />,
     );
     const valueEl = screen.getByTestId("statcard-value");
-    // Title attribute must be present with the unabbreviated figure
     expect(valueEl).toHaveAttribute("title");
-    const title = valueEl.getAttribute("title") ?? "";
-    // Must contain the full number — no "1.3M" abbreviation
-    expect(title).toContain("1,284,999");
+    expect(valueEl.getAttribute("title") ?? "").toContain("1,284,999");
   });
 });
 
@@ -181,12 +149,76 @@ describe("StatCard — pre-formatted string value", () => {
     render(<StatCard label="Completion rate" status="loaded" value="94%" />);
     const valueEl = screen.getByTestId("statcard-value");
     expect(valueEl).toHaveTextContent("94%");
-    // No extra USDC suffix should be appended
     expect(valueEl).not.toHaveTextContent("USDC");
   });
 });
 
-// ─── 8. Negative currency values ─────────────────────────────────────────────
+// ─── 8. Asset-aware currency precision ──────────────────────────────────────
+
+describe("StatCard — asset-aware currency precision (issue #76)", () => {
+  it("renders XLM using all seven supported decimal places", () => {
+    render(
+      <StatCard
+        label="XLM balance"
+        status="loaded"
+        value={12.3456789}
+        format="currency"
+        asset="XLM"
+      />,
+    );
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("12.3456789 XLM");
+    expect(valueEl).toHaveAttribute("title", "12.3456789 XLM");
+  });
+
+  it("keeps a small non-zero XLM amount visibly non-zero", () => {
+    render(
+      <StatCard
+        label="XLM balance"
+        status="loaded"
+        value={0.0000005}
+        format="currency"
+        asset="XLM"
+      />,
+    );
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("0.0000005 XLM");
+    expect(valueEl).toHaveAttribute("title", "0.0000005 XLM");
+    expect(screen.queryByTestId("statcard-zero")).not.toBeInTheDocument();
+  });
+
+  it("uses a non-zero bound for values below one stroop", () => {
+    render(
+      <StatCard
+        label="XLM balance"
+        status="loaded"
+        value={0.00000001}
+        format="currency"
+        asset="XLM"
+      />,
+    );
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("<0.0000001 XLM");
+    expect(valueEl).toHaveAttribute("title", "<0.0000001 XLM");
+  });
+
+  it("keeps USDC visible formatting at two decimal places", () => {
+    render(
+      <StatCard
+        label="USDC balance"
+        status="loaded"
+        value={12.3456789}
+        format="currency"
+        asset="USDC"
+      />,
+    );
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("12.35 USDC");
+    expect(valueEl).toHaveAttribute("title", "12.345679 USDC");
+  });
+});
+
+// ─── 9. Negative currency values ─────────────────────────────────────────────
 
 describe("StatCard — negative currency values (issue #90)", () => {
   it("renders negative currency values with a minus sign", () => {
@@ -200,29 +232,16 @@ describe("StatCard — negative currency values (issue #90)", () => {
     );
     const valueEl = screen.getByTestId("statcard-value");
     expect(valueEl).toBeInTheDocument();
-    // Must contain a minus sign
     expect(valueEl).toHaveTextContent("-50 USDC");
   });
 
   it("distinguishes negative from positive for the same absolute value", () => {
     const { rerender } = render(
-      <StatCard
-        label="Balance"
-        status="loaded"
-        value={-50}
-        format="currency"
-      />,
+      <StatCard label="Balance" status="loaded" value={-50} format="currency" />,
     );
     const negativeText = screen.getByTestId("statcard-value").textContent;
 
-    rerender(
-      <StatCard
-        label="Balance"
-        status="loaded"
-        value={50}
-        format="currency"
-      />,
-    );
+    rerender(<StatCard label="Balance" status="loaded" value={50} format="currency" />);
     const positiveText = screen.getByTestId("statcard-value").textContent;
 
     expect(negativeText).not.toBe(positiveText);
@@ -231,9 +250,6 @@ describe("StatCard — negative currency values (issue #90)", () => {
   });
 
   it("agrees with formatCurrency for negative values", () => {
-    // This test ensures StatCard's internal currency formatter and
-    // the standalone formatCurrency function produce identical output
-    // for negative amounts, resolving the inconsistency in issue #90.
     render(
       <StatCard
         label="Net balance"
@@ -244,9 +260,7 @@ describe("StatCard — negative currency values (issue #90)", () => {
       />,
     );
     const statCardOutput = screen.getByTestId("statcard-value").textContent;
-    const formatCurrencyOutput = formatCurrency(-50, "USDC");
-
-    expect(statCardOutput).toBe(formatCurrencyOutput);
+    expect(statCardOutput).toBe(formatCurrency(-50, "USDC"));
   });
 
   it("renders negative XLM amounts correctly", () => {
@@ -254,13 +268,13 @@ describe("StatCard — negative currency values (issue #90)", () => {
       <StatCard
         label="XLM balance"
         status="loaded"
-        value={-123.45}
+        value={-123.456789}
         format="currency"
         asset="XLM"
       />,
     );
     const valueEl = screen.getByTestId("statcard-value");
-    expect(valueEl).toHaveTextContent("-123.45 XLM");
+    expect(valueEl).toHaveTextContent("-123.456789 XLM");
   });
 
   it("renders negative trend values with correct styling", () => {
@@ -273,9 +287,7 @@ describe("StatCard — negative currency values (issue #90)", () => {
         trend={-15}
       />,
     );
-    // Value should show as negative
     expect(screen.getByTestId("statcard-value")).toHaveTextContent("-200 USDC");
-    // Trend should show as negative with appropriate styling
     expect(screen.getByText(/15% vs last period/i)).toBeInTheDocument();
   });
 });

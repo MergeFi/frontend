@@ -23,7 +23,7 @@ export function ActivityList({ events }: { events: ActivityEvent[] }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
-            {event.amount && (
+            {typeof event.amount === "number" && (
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(event.amount, event.asset)}
               </span>

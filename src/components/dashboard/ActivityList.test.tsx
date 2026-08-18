@@ -42,4 +42,12 @@ describe("ActivityList — amount rendering", () => {
     expect(screen.queryByText(/USDC|XLM/)).not.toBeInTheDocument();
     expect(screen.queryByText("0", { exact: true })).not.toBeInTheDocument();
   });
+
+  it("renders a genuine positive amount exactly as before", () => {
+    render(
+      <ActivityList events={[makeEvent({ amount: 480, asset: "USDC" })]} />,
+    );
+
+    expect(screen.getByText("480 USDC")).toBeInTheDocument();
+  });
 });

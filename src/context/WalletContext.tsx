@@ -10,6 +10,7 @@ import {
 import { connectWallet as freighterConnect } from "@/lib/wallet";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 
 const WALLET_KEY = "mergefi_wallet_address";
 
@@ -38,6 +39,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored) setAddress(stored);
   }, []);
+
+  const handleWalletKeyChangedElsewhere = useCallback((newValue: string | null) => {
+    setAddress(newValue);
+    if (newValue === null) {
+      // Disconnected in another tab — no address means no network either.
+      setNetwork(null);
+    }
+  }, []);
+  useCrossTabStorage(WALLET_KEY, handleWalletKeyChangedElsewhere);
 
   const connect = useCallback(async () => {
     setError(null);

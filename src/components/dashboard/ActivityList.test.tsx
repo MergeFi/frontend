@@ -35,4 +35,11 @@ describe("ActivityList — amount rendering", () => {
     // stray, unstyled "0" sitting next to it outside that formatted string.
     expect(screen.queryByText("0", { exact: true })).not.toBeInTheDocument();
   });
+
+  it("renders no amount text when amount is undefined (the non-monetary event case)", () => {
+    render(<ActivityList events={[makeEvent({ action: "claimed" })]} />);
+
+    expect(screen.queryByText(/USDC|XLM/)).not.toBeInTheDocument();
+    expect(screen.queryByText("0", { exact: true })).not.toBeInTheDocument();
+  });
 });

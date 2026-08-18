@@ -265,37 +265,8 @@ export default function HomePage() {
               Live on the platform
             </h2>
           </div>
-          {/* Temporary: rendered alongside the existing inline copy below to
-              verify ActivityList is a drop-in replacement before the old
-              markup is removed in the next commit. */}
           <div className="mt-6">
             <ActivityList events={recentActivity} />
-          </div>
-          <div className="mt-6 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
-            {recentActivity.map((event) => (
-              <div key={event.id} className="flex items-center justify-between gap-4 px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <Avatar seed={event.handle} size={32} />
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    <span className="font-medium text-slate-900 dark:text-white">
-                      {event.handle}
-                    </span>{" "}
-                    {event.action}{" "}
-                    <span className="font-medium text-slate-900 dark:text-white">
-                      {event.target}
-                    </span>
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
-                  {event.amount && (
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(event.amount, event.asset)}
-                    </span>
-                  )}
-                  {timeAgo(event.minutesAgo)}
-                </div>
-              </div>
-            ))}
           </div>
         </section>
 

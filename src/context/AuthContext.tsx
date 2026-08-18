@@ -7,8 +7,9 @@ import {
   useEffect,
   useState,
 } from "react";
-import { getToken, setToken as persistToken, clearToken } from "@/lib/auth";
+import { getToken, setToken as persistToken, clearToken, TOKEN_KEY } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
+import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 import type { AuthUser } from "@/types";
 
 interface AuthContextValue {
@@ -52,6 +53,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
+
+  const handleTokenChangedElsewhere = useCallback(
+    (newValue: string | null) => {
+      if (newValue === null) {
+        // Token cleared in another tab (logout there) — sign out here too.
+        setUser(null);
+        setLoading(false);
+      } else {
+        // Token set/changed in another tab (login, or a different account)
+        // — re-resolve whose session this now is.
+        void refresh();
+      }
+    },
+    [refresh],
+  );
+  useCrossTabStorage(TOKEN_KEY, handleTokenChangedElsewhere);
 
   const login = useCallback(
     async (token: string) => {

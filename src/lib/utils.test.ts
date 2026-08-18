@@ -164,7 +164,7 @@ describe("coerceNonNegative", () => {
 // ─── coerceFraction ──────────────────────────────────────────────────────────
 
 describe("coerceFraction", () => {
-  it("accepts values in [0, 1]", () => {
+  it("accepts values in [0, 1] with default divisor", () => {
     expect(coerceFraction("0")).toBe(0);
     expect(coerceFraction("0.5")).toBe(0.5);
     expect(coerceFraction("1")).toBe(1);
@@ -172,11 +172,27 @@ describe("coerceFraction", () => {
 
   it("clamps values below 0 to 0", () => {
     expect(coerceFraction("-0.5")).toBe(0);
+    expect(coerceFraction("-20", 100)).toBe(0);
   });
 
   it("clamps values above 1 to 1", () => {
     expect(coerceFraction("1.5")).toBe(1);
     expect(coerceFraction("100")).toBe(1);
+    expect(coerceFraction("150", 100)).toBe(1);
+  });
+
+  it("correctly scales percentage strings with divisor=100", () => {
+    expect(coerceFraction("94", 100)).toBe(0.94);
+    expect(coerceFraction("100", 100)).toBe(1);
+    expect(coerceFraction("0", 100)).toBe(0);
+    expect(coerceFraction("50.5", 100)).toBe(0.505);
+  });
+
+  it("handles null, undefined, non-numeric strings safely with fallback", () => {
+    expect(coerceFraction(null)).toBe(0);
+    expect(coerceFraction(undefined)).toBe(0);
+    expect(coerceFraction("invalid", 100)).toBe(0);
+    expect(coerceFraction(null, 100, 0.5)).toBe(0.5);
   });
 });
 

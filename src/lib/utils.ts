@@ -17,11 +17,18 @@ export function coerceNonNegative(value: string | null | undefined, fallback = 0
   return n < 0 ? fallback : n;
 }
 
-export function coerceFraction(value: string | null | undefined, fallback = 0): number {
-  const n = coerceDecimal(value, fallback);
-  if (n < 0) return 0;
-  if (n > 1) return 1;
-  return n;
+export function coerceFraction(
+  value: string | null | undefined,
+  divisor = 1,
+  fallback = 0
+): number {
+  if (value == null) return fallback;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  const normalized = divisor !== 0 ? parsed / divisor : fallback;
+  if (normalized < 0) return 0;
+  if (normalized > 1) return 1;
+  return normalized;
 }
 
 export function coercePercentage(value: string | null | undefined, fallback = 0): number {

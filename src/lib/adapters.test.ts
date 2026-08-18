@@ -5,7 +5,7 @@
  * Bounty type but never actually set by adaptBounty prior to this fix.
  */
 
-import { adaptBounty, type RawBounty } from "./adapters";
+import { adaptBounty, adaptReputation, type RawBounty } from "./adapters";
 
 function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
   return {
@@ -118,5 +118,76 @@ describe("adaptBounty — field coverage audit (#86)", () => {
     for (const field of EXPECTED_BOUNTY_FIELDS) {
       expect(bounty[field]).not.toBeUndefined();
     }
+  });
+});
+
+describe("adaptReputation — rate clamping and fraction coercion (#91)", () => {
+  const user = { username: "alice", avatarUrl: null };
+
+  it("scales normal in-range percentages into 0-1 fractions", () => {
+    const profile = adaptReputation(user, {
+      totalEarnings: "1000",
+      mergedPrCount: 5,
+      completionRate: "94",
+      avgReviewTimeHours: "4.5",
+      onTimeDeliveryPercentage: "88",
+      languages: { TypeScript: 10 },
+      orgsContributedTo: ["MergeFi"],
+    });
+
+    expect(profile.completionRate).toBe(0.94);
+    expect(profile.onTimeDeliveryRate).toBe(0.88);
+  });
+
+  it("clamps corrupted out-of-range rates (> 100%) to exactly 1", () => {
+    const profile = adaptReputation(user, {
+      totalEarnings: "1000",
+      mergedPrCount: 5,
+      completionRate: "150",
+      avgReviewTimeHours: "4.5",
+      onTimeDeliveryPercentage: "200",
+      languages: {},
+      orgsContributedTo: [],
+    });
+
+    expect(profile.completionRate).toBe(1);
+    expect(profile.onTimeDeliveryRate).toBe(1);
+  });
+
+  it("clamps negative rates (< 0%) to exactly 0", () => {
+    const profile = adaptReputation(user, {
+      totalEarnings: "1000",
+      mergedPrCount: 5,
+      completionRate: "-25",
+      avgReviewTimeHours: "4.5",
+      onTimeDeliveryPercentage: "-10",
+      languages: {},
+      orgsContributedTo: [],
+    });
+
+    expect(profile.completionRate).toBe(0);
+    expect(profile.onTimeDeliveryRate).toBe(0);
+  });
+
+  it("handles null snapshot gracefully by returning 0 for rates", () => {
+    const profile = adaptReputation(user, null);
+
+    expect(profile.completionRate).toBe(0);
+    expect(profile.onTimeDeliveryRate).toBe(0);
+  });
+
+  it("handles invalid or non-numeric rate strings gracefully", () => {
+    const profile = adaptReputation(user, {
+      totalEarnings: "1000",
+      mergedPrCount: 5,
+      completionRate: "NaN",
+      avgReviewTimeHours: "4.5",
+      onTimeDeliveryPercentage: "invalid",
+      languages: {},
+      orgsContributedTo: [],
+    });
+
+    expect(profile.completionRate).toBe(0);
+    expect(profile.onTimeDeliveryRate).toBe(0);
   });
 });

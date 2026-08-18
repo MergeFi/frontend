@@ -23,7 +23,13 @@ export function ActivityList({ events }: { events: ActivityEvent[] }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
-            {event.amount && (
+            {/* `event.amount && (...)` would render a bare "0" text node for
+                a genuine amount: 0 event, since `0 && x` evaluates to `0`
+                itself, not `false` — React renders that. Guard on presence/
+                type instead, matching StatCard's trend rendering (#87). A
+                codebase-wide grep for the same bare-truthiness-on-a-number
+                pattern found no other occurrences. */}
+            {typeof event.amount === "number" && (
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(event.amount, event.asset)}
               </span>

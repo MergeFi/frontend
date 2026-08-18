@@ -1,0 +1,23 @@
+name: Verify XLM precision branch
+
+on:
+  push:
+    branches:
+      - fix/xlm-display-precision-76
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_STELLAR_NETWORK: TESTNET
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --runInBand src/lib/utils.test.ts src/components/ui/StatCard.test.tsx
+      - run: npm run lint
+      - run: npm run build

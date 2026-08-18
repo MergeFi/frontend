@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
 import { Avatar, AvatarStack } from "@/components/ui/Avatar";
+import { ActivityList } from "@/components/dashboard/ActivityList";
 import {
   platformStats,
   trustedOrgs,

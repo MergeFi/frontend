@@ -33,12 +33,6 @@ const integrations = [
   { icon: Coins, label: "USDC / XLM" },
 ];
 
-function timeAgo(minutes: number) {
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
-
 const journey = [
   "Maintainer connects a GitHub repository.",
   "Issue #42 is marked with a 100 USDC reward.",

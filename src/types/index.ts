@@ -34,6 +34,7 @@ export interface Bounty {
   deadline: string;
   labels: string[];
   claimedBy?: string;
+  funderId?: string;
   teamSplits?: TeamSplit[];
   milestoneId?: string;
   escrowId?: string;

@@ -78,12 +78,27 @@ function formatValue(
 ): { display: string; exact: string } {
   switch (format) {
     case "currency": {
-      const formatted = value.toLocaleString("en-US", {
-        maximumFractionDigits: 2,
-      });
-      const display = `${formatted} ${asset}`;
-      // Exact value for tooltip always shows full precision
-      const exact = `${value.toLocaleString("en-US", { maximumFractionDigits: 6 })} ${asset}`;
+      let displayOptions: Intl.NumberFormatOptions = {};
+      let exactOptions: Intl.NumberFormatOptions = {};
+      
+      if (asset === "XLM") {
+        displayOptions = { maximumFractionDigits: 7, minimumFractionDigits: 0 };
+        exactOptions = { maximumFractionDigits: 7, minimumFractionDigits: 0 };
+      } else {
+        displayOptions = { maximumFractionDigits: 2, minimumFractionDigits: 2 };
+        exactOptions = { maximumFractionDigits: 2, minimumFractionDigits: 2 };
+      }
+      
+      let displayFormatted = value.toLocaleString("en-US", displayOptions);
+      let exactFormatted = value.toLocaleString("en-US", exactOptions);
+      
+      if (asset === "XLM" && value !== 0 && Math.abs(value) < 0.0000001) {
+        displayFormatted = value > 0 ? "<0.0000001" : ">-0.0000001";
+        exactFormatted = displayFormatted;
+      }
+      
+      const display = `${displayFormatted} ${asset}`;
+      const exact = `${exactFormatted} ${asset}`;
       return { display, exact };
     }
     case "percent": {

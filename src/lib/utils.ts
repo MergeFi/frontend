@@ -17,8 +17,24 @@ export function coerceNonNegative(value: string | null | undefined, fallback = 0
   return n < 0 ? fallback : n;
 }
 
-export function coerceFraction(value: string | null | undefined, fallback = 0): number {
-  const n = coerceDecimal(value, fallback);
+/**
+ * Coerces an input string to a clamped fraction in the range [0, 1].
+ *
+ * @param value - The input string representing a fraction or percentage value.
+ * @param fallback - The fallback value if input is null, undefined, or non-numeric (default 0).
+ * @param divisor - Optional divisor to scale inputs (e.g. 100 for percentage strings like "94" -> 0.94). Defaults to 1.
+ * @returns A number strictly clamped to [0, 1].
+ */
+export function coerceFraction(
+  value: string | null | undefined,
+  fallback = 0,
+  divisor = 1,
+): number {
+  if (value == null) {
+    return Math.min(1, Math.max(0, fallback));
+  }
+  const raw = coerceDecimal(value, fallback);
+  const n = divisor !== 0 ? raw / divisor : raw;
   if (n < 0) return 0;
   if (n > 1) return 1;
   return n;

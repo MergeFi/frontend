@@ -5,7 +5,7 @@
  * Bounty type but never actually set by adaptBounty prior to this fix.
  */
 
-import { adaptBounty, type RawBounty } from "./adapters";
+import { adaptBounty, adaptReputation, type RawBounty } from "./adapters";
 
 function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
   return {
@@ -118,5 +118,73 @@ describe("adaptBounty — field coverage audit (#86)", () => {
     for (const field of EXPECTED_BOUNTY_FIELDS) {
       expect(bounty[field]).not.toBeUndefined();
     }
+  });
+});
+
+describe("adaptReputation — completionRate and onTimeDeliveryRate clamping (#91)", () => {
+  const user = { username: "bob", avatarUrl: null };
+
+  function rawSnapshot(
+    overrides: Partial<import("./adapters").RawReputationSnapshot> = {},
+  ): import("./adapters").RawReputationSnapshot {
+    return {
+      totalEarnings: "1000",
+      mergedPrCount: 10,
+      completionRate: "94",
+      avgReviewTimeHours: "4",
+      onTimeDeliveryPercentage: "88",
+      languages: { TypeScript: 50, Rust: 50 },
+      orgsContributedTo: ["MergeFi"],
+      ...overrides,
+    };
+  }
+
+  it("converts in-range percentages into exact fractions", () => {
+    const rep = adaptReputation(user, rawSnapshot({ completionRate: "94", onTimeDeliveryPercentage: "88" }));
+    expect(rep.completionRate).toBe(0.94);
+    expect(rep.onTimeDeliveryRate).toBe(0.88);
+  });
+
+  it("handles boundary values 0 and 100", () => {
+    const repZero = adaptReputation(user, rawSnapshot({ completionRate: "0", onTimeDeliveryPercentage: "0" }));
+    expect(repZero.completionRate).toBe(0);
+    expect(repZero.onTimeDeliveryRate).toBe(0);
+
+    const repHundred = adaptReputation(user, rawSnapshot({ completionRate: "100", onTimeDeliveryPercentage: "100" }));
+    expect(repHundred.completionRate).toBe(1);
+    expect(repHundred.onTimeDeliveryRate).toBe(1);
+  });
+
+  it("clamps out-of-range values above 100% to exactly 1.0", () => {
+    const rep = adaptReputation(user, rawSnapshot({ completionRate: "150", onTimeDeliveryPercentage: "200" }));
+    expect(rep.completionRate).toBe(1);
+    expect(rep.onTimeDeliveryRate).toBe(1);
+  });
+
+  it("clamps negative values below 0% to exactly 0.0", () => {
+    const rep = adaptReputation(user, rawSnapshot({ completionRate: "-20", onTimeDeliveryPercentage: "-50" }));
+    expect(rep.completionRate).toBe(0);
+    expect(rep.onTimeDeliveryRate).toBe(0);
+  });
+
+  it("handles null, undefined, and non-numeric snapshot values gracefully", () => {
+    const rep = adaptReputation(
+      user,
+      rawSnapshot({
+        completionRate: "corrupted_value",
+        onTimeDeliveryPercentage: "invalid",
+      }),
+    );
+    expect(rep.completionRate).toBe(0);
+    expect(rep.onTimeDeliveryRate).toBe(0);
+  });
+
+  it("returns default zero rates when snapshot is null", () => {
+    const rep = adaptReputation(user, null);
+    expect(rep.completionRate).toBe(0);
+    expect(rep.onTimeDeliveryRate).toBe(0);
+    expect(rep.handle).toBe("bob");
+    expect(rep.lifetimeEarnings).toBe(0);
+    expect(rep.mergedPRs).toBe(0);
   });
 });

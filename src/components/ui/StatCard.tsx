@@ -1,3 +1,4 @@
+
 /**
  * StatCard — headline-figure card used on all three dashboards.
  *
@@ -22,7 +23,7 @@
  * always available via the title attribute (keyboard-navigable, hover tooltip).
  */
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrencyParts } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sparkline } from "./Sparkline";
@@ -77,15 +78,8 @@ function formatValue(
   asset: "USDC" | "XLM",
 ): { display: string; exact: string } {
   switch (format) {
-    case "currency": {
-      const formatted = value.toLocaleString("en-US", {
-        maximumFractionDigits: 2,
-      });
-      const display = `${formatted} ${asset}`;
-      // Exact value for tooltip always shows full precision
-      const exact = `${value.toLocaleString("en-US", { maximumFractionDigits: 6 })} ${asset}`;
-      return { display, exact };
-    }
+    case "currency":
+      return formatCurrencyParts(value, asset);
     case "percent": {
       const pct = `${Math.round(value * 100)}%`;
       return { display: pct, exact: pct };

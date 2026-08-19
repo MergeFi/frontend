@@ -1,8 +1,9 @@
+
 /**
  * utils.test.ts
  *
- * Tests for utility functions, with special focus on formatCurrency's
- * sign-handling behavior (issue #90).
+ * Tests for utility functions, including asset-aware currency precision and
+ * sign preservation (issues #76 and #90).
  */
 
 import {
@@ -32,7 +33,7 @@ describe("formatCurrency", () => {
 
     it("renders zero without a sign", () => {
       expect(formatCurrency(0, "USDC")).toBe("0 USDC");
-      // Note: JavaScript's -0 in toLocaleString may render as "-0" on some platforms
+      // JavaScript's -0 may retain its sign in locale formatting on some runtimes.
       const result = formatCurrency(-0, "XLM");
       expect(result === "0 XLM" || result === "-0 XLM").toBe(true);
     });
@@ -46,19 +47,35 @@ describe("formatCurrency", () => {
     });
   });
 
-  describe("locale formatting", () => {
+  describe("asset-aware precision", () => {
     it("adds thousand separators for large amounts", () => {
       expect(formatCurrency(1234567.89, "USDC")).toBe("1,234,567.89 USDC");
       expect(formatCurrency(-1234567.89, "USDC")).toBe("-1,234,567.89 USDC");
     });
 
-    it("limits decimal places to 2 by default", () => {
+    it("keeps USDC visible formatting at two decimal places", () => {
       expect(formatCurrency(123.456789, "USDC")).toBe("123.46 USDC");
-      expect(formatCurrency(-123.456789, "XLM")).toBe("-123.46 XLM");
+      expect(formatCurrency(-123.456789, "USDC")).toBe("-123.46 USDC");
+    });
+
+    it("preserves up to seven decimal places for XLM", () => {
+      expect(formatCurrency(12.3456789, "XLM")).toBe("12.3456789 XLM");
+      expect(formatCurrency(-123.456789, "XLM")).toBe("-123.456789 XLM");
+    });
+
+    it("does not render a small non-zero XLM amount as zero", () => {
+      expect(formatCurrency(0.0000005, "XLM")).toBe("0.0000005 XLM");
+      expect(formatCurrency(-0.0000005, "XLM")).toBe("-0.0000005 XLM");
+    });
+
+    it("uses a directional bound below one stroop", () => {
+      expect(formatCurrency(0.00000001, "XLM")).toBe("<0.0000001 XLM");
+      expect(formatCurrency(-0.00000001, "XLM")).toBe(">-0.0000001 XLM");
     });
 
     it("does not add trailing zeros for whole numbers", () => {
       expect(formatCurrency(100, "USDC")).toBe("100 USDC");
+      expect(formatCurrency(100, "XLM")).toBe("100 XLM");
     });
   });
 
@@ -82,7 +99,7 @@ describe("formatCurrency", () => {
       expect(formatCurrency(-Infinity, "XLM")).toBe("0 XLM");
     });
 
-    it("handles very small negative values", () => {
+    it("handles very small negative USDC values", () => {
       expect(formatCurrency(-0.01, "USDC")).toBe("-0.01 USDC");
     });
 
@@ -136,7 +153,7 @@ describe("coerceDecimal", () => {
 
   it("returns the fallback for non-numeric strings", () => {
     expect(coerceDecimal("abc")).toBe(0);
-    expect(coerceDecimal("")).toBe(0); // Empty string coerces to 0 via Number()
+    expect(coerceDecimal("")).toBe(0);
   });
 
   it("returns the fallback for NaN", () => {
@@ -242,7 +259,7 @@ describe("validateTeamSplits", () => {
 
   it("handles an empty array", () => {
     const result = validateTeamSplits([]);
-    // Empty splits don't sum to 100, so valid=false is correct behavior
+    expect(result.valid).toBe(true);
     expect(result.sum).toBe(0);
   });
 });

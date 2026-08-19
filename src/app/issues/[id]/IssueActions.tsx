@@ -89,7 +89,7 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
             {pending ? "Claiming..." : "Claim this issue"}
           </Button>
         )}
-        {(bounty.status === "funded" || bounty.status === "claimed") && (
+        {(bounty.status === "funded" || bounty.status === "claimed") && user?.id === bounty.funderId && (
           <Button size="lg" variant="outline" onClick={handleRefund} disabled={pending}>
             Refund sponsor
           </Button>

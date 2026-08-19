@@ -27,7 +27,9 @@ export default async function MilestonesPage() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {milestones.map((m) => {
-          const pct = m.distributed / m.budget;
+          const hasBudget = m.budget > 0;
+          const rawPct = hasBudget ? m.distributed / m.budget : 0;
+          const isOverDistributed = hasBudget && m.distributed > m.budget;
           return (
             <div
               key={m.id}
@@ -37,8 +39,8 @@ export default async function MilestonesPage() {
               <h3 className="mt-1 font-medium text-slate-900 dark:text-white">{m.name}</h3>
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
-                  className="h-full bg-indigo-600"
-                  style={{ width: `${Math.min(pct * 100, 100)}%` }}
+                  className={`h-full ${isOverDistributed ? 'bg-amber-500' : 'bg-indigo-600'}`}
+                  style={{ width: `${Math.min(rawPct * 100, 100)}%` }}
                 />
               </div>
               <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
@@ -46,7 +48,9 @@ export default async function MilestonesPage() {
                   {formatCurrency(m.distributed, m.asset)} of{" "}
                   {formatCurrency(m.budget, m.asset)}
                 </span>
-                <span>{formatPercent(pct)}</span>
+                <span className={isOverDistributed ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}>
+                  {hasBudget ? formatPercent(rawPct) : 'Unfunded'}
+                </span>
               </div>
               <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                 {m.completedCount} of {m.issueCount} issues complete

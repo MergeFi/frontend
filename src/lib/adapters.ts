@@ -8,6 +8,7 @@ import type {
 } from "@/types";
 import {
   coerceDecimal,
+  coerceFraction,
   coerceNonNegative,
   coercePercentage,
   coerceStatus,
@@ -196,9 +197,15 @@ export function adaptReputation(
       `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username)}`,
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
-    completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
-    avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
-    onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
+    completionRate: snapshot
+      ? coerceFraction(snapshot.completionRate, 0, 100)
+      : 0,
+    avgReviewTimeHours: snapshot
+      ? coerceNonNegative(snapshot.avgReviewTimeHours)
+      : 0,
+    onTimeDeliveryRate: snapshot
+      ? coerceFraction(snapshot.onTimeDeliveryPercentage, 0, 100)
+      : 0,
     // Object.keys() alone discards the usage weight and returns keys in
     // insertion order, not "most used first" — sort by value descending so
     // the rendered badge order actually means something (#196).

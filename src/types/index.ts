@@ -35,6 +35,7 @@ export interface Bounty {
   labels: string[];
   claimedBy?: string;
   teamSplits?: TeamSplit[];
+  teamSplitsValid?: { valid: boolean; sum: number; message?: string };
   milestoneId?: string;
   escrowId?: string;
 }

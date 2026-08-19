@@ -120,3 +120,63 @@ describe("adaptBounty — field coverage audit (#86)", () => {
     }
   });
 });
+
+import { adaptReputation, type RawUserProfile, type RawReputationSnapshot } from "./adapters";
+
+describe("adaptReputation — percentage clamping (#91)", () => {
+  const user: RawUserProfile = { username: "testuser", avatarUrl: null };
+
+  it("clamps completionRate to 1 when backend sends > 100", () => {
+    const snapshot: RawReputationSnapshot = {
+      totalEarnings: "1000",
+      mergedPrCount: 10,
+      completionRate: "150",
+      avgReviewTimeHours: "5",
+      onTimeDeliveryPercentage: "90",
+      languages: { TypeScript: 10 },
+      orgsContributedTo: ["acme"],
+    };
+    expect(adaptReputation(user, snapshot).completionRate).toBe(1);
+  });
+
+  it("clamps completionRate to 0 when backend sends negative", () => {
+    const snapshot: RawReputationSnapshot = {
+      totalEarnings: "1000",
+      mergedPrCount: 10,
+      completionRate: "-20",
+      avgReviewTimeHours: "5",
+      onTimeDeliveryPercentage: "90",
+      languages: { TypeScript: 10 },
+      orgsContributedTo: ["acme"],
+    };
+    expect(adaptReputation(user, snapshot).completionRate).toBe(0);
+  });
+
+  it("clamps onTimeDeliveryRate to 1 when backend sends > 100", () => {
+    const snapshot: RawReputationSnapshot = {
+      totalEarnings: "1000",
+      mergedPrCount: 10,
+      completionRate: "90",
+      avgReviewTimeHours: "5",
+      onTimeDeliveryPercentage: "120",
+      languages: { TypeScript: 10 },
+      orgsContributedTo: ["acme"],
+    };
+    expect(adaptReputation(user, snapshot).onTimeDeliveryRate).toBe(1);
+  });
+
+  it("preserves normal in-range values without regression", () => {
+    const snapshot: RawReputationSnapshot = {
+      totalEarnings: "1000",
+      mergedPrCount: 10,
+      completionRate: "94",
+      avgReviewTimeHours: "5",
+      onTimeDeliveryPercentage: "85",
+      languages: { TypeScript: 10 },
+      orgsContributedTo: ["acme"],
+    };
+    const profile = adaptReputation(user, snapshot);
+    expect(profile.completionRate).toBe(0.94);
+    expect(profile.onTimeDeliveryRate).toBe(0.85);
+  });
+});

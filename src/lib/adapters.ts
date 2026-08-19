@@ -186,9 +186,11 @@ export function adaptReputation(
       `https://api.dicebear.com/9.x/identicon/svg?seed=${user.username}`,
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
-    completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
+    // Clamp to [0, 1] to prevent corrupted backend percentages (e.g. "150") 
+    // from rendering as impossible fractions like 1.5 on the public profile (#91)
+    completionRate: snapshot ? Math.max(0, Math.min(1, coerceDecimal(snapshot.completionRate) / 100)) : 0,
     avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
-    onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
+    onTimeDeliveryRate: snapshot ? Math.max(0, Math.min(1, coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100)) : 0,
     languages: snapshot ? Object.keys(snapshot.languages) : [],
     organizations: snapshot?.orgsContributedTo ?? [],
     topClients: [],

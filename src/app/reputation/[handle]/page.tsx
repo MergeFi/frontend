@@ -6,6 +6,25 @@ import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
+  const { handle } = await params;
+  const profile = await fetchReputationByUsername(
+    handle,
+    mockReputationProfiles[handle] ?? null,
+  );
+  if (!profile) {
+    return { title: "Profile Not Found | MergeFi" };
+  }
+  return {
+    title: `@${profile.handle} | MergeFi`,
+    description: `View ${profile.handle}'s reputation, earnings, and merged PRs on MergeFi.`,
+    openGraph: {
+      title: `@${profile.handle} | MergeFi`,
+      description: `View ${profile.handle}'s reputation, earnings, and merged PRs on MergeFi.`,
+    },
+  };
+}
+
 export default async function ReputationPage({
   params,
 }: {

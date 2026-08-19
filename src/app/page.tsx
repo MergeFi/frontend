@@ -154,22 +154,10 @@ export default function HomePage() {
 
       <div className="mx-auto max-w-6xl px-6 py-16">
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard
-            label="Total paid out"
-            value={formatCurrency(platformStats.totalPaidOut)}
-          />
-          <StatCard
-            label="Bounties completed"
-            value={platformStats.bountiesCompleted.toLocaleString()}
-          />
-          <StatCard
-            label="Active contributors"
-            value={platformStats.activeContributors.toLocaleString()}
-          />
-          <StatCard
-            label="Avg. payout time"
-            value={`${platformStats.avgPayoutTimeMinutes} min`}
-          />
+          <StatCard label="Total paid out" value={platformStats.totalPaidOut} format="currency" />
+          <StatCard label="Bounties completed" value={platformStats.bountiesCompleted} format="count" />
+          <StatCard label="Active contributors" value={platformStats.activeContributors} format="count" />
+          <StatCard label="Avg. payout time" value={`${platformStats.avgPayoutTimeMinutes} min`} format="raw" />
         </section>
 
         <section className="mt-24">

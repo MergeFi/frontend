@@ -41,19 +41,10 @@ export default async function ReputationPage({
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard
-          label="Lifetime earnings"
-          value={formatCurrency(profile.lifetimeEarnings)}
-        />
-        <StatCard label="Merged PRs" value={String(profile.mergedPRs)} />
-        <StatCard
-          label="Completion rate"
-          value={formatPercent(profile.completionRate)}
-        />
-        <StatCard
-          label="On-time delivery"
-          value={formatPercent(profile.onTimeDeliveryRate)}
-        />
+        <StatCard label="Lifetime earnings" value={profile.lifetimeEarnings} format="currency" />
+        <StatCard label="Merged PRs" value={profile.mergedPRs} format="count" />
+        <StatCard label="Completion rate" value={profile.completionRate} format="percent" />
+        <StatCard label="On-time delivery" value={profile.onTimeDeliveryRate} format="percent" />
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">

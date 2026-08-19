@@ -51,9 +51,23 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
  * consistency across the app. The same negative input will now render
  * identically whether formatted by formatCurrency() or StatCard.
  */
+/**
+ * Format a numeric amount as a currency string with the specified asset label.
+ * Branches precision based on asset: XLM uses up to 7 decimal places (native stroop precision),
+ * while USDC uses exactly 2. For XLM, amounts smaller than 0.0000001 are rendered with a
+ * floor indicator (e.g. "<0.0000001 XLM") to avoid displaying genuinely nonzero balances as zero.
+ */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+  
+  if (asset === "XLM") {
+    if (amount !== 0 && Math.abs(amount) < 0.0000001) {
+      return amount > 0 ? `<0.0000001 ${asset}` : `>-0.0000001 ${asset}`;
+    }
+    return `${amount.toLocaleString("en-US", { maximumFractionDigits: 7, minimumFractionDigits: 0 })} ${asset}`;
+  }
+  
+  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 })} ${asset}`;
 }
 
 export function formatPercent(value: number) {

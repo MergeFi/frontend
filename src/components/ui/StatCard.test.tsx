@@ -279,3 +279,33 @@ describe("StatCard — negative currency values (issue #90)", () => {
     expect(screen.getByText(/15% vs last period/i)).toBeInTheDocument();
   });
 });
+
+// ─── 9. Asset-aware precision (XLM vs USDC) ───────────────────────────────
+
+describe("StatCard — asset-aware precision", () => {
+  it("renders XLM with up to 7 decimal places in display and exact tooltip", () => {
+    render(<StatCard label="XLM Balance" status="loaded" value={12.3456789} format="currency" asset="XLM" />);
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("12.3456789 XLM");
+    expect(valueEl).toHaveAttribute("title", "12.3456789 XLM");
+  });
+
+  it("renders USDC with exactly 2 decimal places", () => {
+    render(<StatCard label="USDC Balance" status="loaded" value={12.3456789} format="currency" asset="USDC" />);
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("12.35 USDC");
+    expect(valueEl).toHaveAttribute("title", "12.35 USDC");
+  });
+
+  it("renders small nonzero XLM amounts correctly without rounding to zero", () => {
+    render(<StatCard label="Dust XLM" status="loaded" value={0.0000005} format="currency" asset="XLM" />);
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("0.0000005 XLM");
+  });
+
+  it("renders sub-stroop XLM amounts with a floor indicator", () => {
+    render(<StatCard label="Sub-stroop XLM" status="loaded" value={0.00000005} format="currency" asset="XLM" />);
+    const valueEl = screen.getByTestId("statcard-value");
+    expect(valueEl).toHaveTextContent("<0.0000001 XLM");
+  });
+});

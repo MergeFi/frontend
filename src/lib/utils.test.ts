@@ -246,3 +246,24 @@ describe("validateTeamSplits", () => {
     expect(result.sum).toBe(0);
   });
 });
+
+// ─── asset-aware precision (XLM vs USDC) ─────────────────────────────────────
+
+describe("formatCurrency — asset-aware precision", () => {
+  it("renders XLM with up to 7 decimal places", () => {
+    expect(formatCurrency(12.3456789, "XLM")).toBe("12.3456789 XLM");
+  });
+
+  it("renders USDC with exactly 2 decimal places", () => {
+    expect(formatCurrency(12.3456789, "USDC")).toBe("12.35 USDC");
+  });
+
+  it("does not render small nonzero XLM amounts as zero", () => {
+    expect(formatCurrency(0.0000005, "XLM")).toBe("0.0000005 XLM");
+  });
+
+  it("renders sub-stroop XLM amounts with a floor indicator", () => {
+    expect(formatCurrency(0.00000005, "XLM")).toBe("<0.0000001 XLM");
+    expect(formatCurrency(-0.00000005, "XLM")).toBe(">-0.0000001 XLM");
+  });
+});

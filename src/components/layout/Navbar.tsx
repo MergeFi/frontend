@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { GitMerge, ChevronDown, LogOut } from "lucide-react";
+import { GitMerge, ChevronDown, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -21,6 +22,7 @@ const dashboardLinks = [
 
 export function Navbar() {
   const { user, loading, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
@@ -67,8 +69,17 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <NetworkBadge />
           <ThemeToggle />
+          <button
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav"
+            aria-label="Toggle mobile menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
           {loading ? null : user ? (
-            <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-3 md:flex">
               <Link
                 href={`/reputation/${user.username}`}
                 className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -86,18 +97,50 @@ export function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/connect">
+              <Link href="/connect" className="hidden sm:inline-flex md:inline-flex">
                 <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
                   Sign in
                 </Button>
               </Link>
-              <Link href="/connect">
+              <Link href="/connect" className="hidden md:inline-flex">
                 <Button size="sm">Connect GitHub</Button>
               </Link>
             </>
           )}
         </div>
       </div>
+      {mobileMenuOpen && (
+        <div id="mobile-nav" className="fixed inset-x-0 top-[60px] bottom-0 z-50 overflow-y-auto border-t border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950 md:hidden">
+          <nav className="flex flex-col gap-4 text-base font-medium text-slate-700 dark:text-slate-200">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-900 dark:hover:text-white">
+                {link.label}
+              </Link>
+            ))}
+            <p className="pt-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Dashboards</p>
+            {dashboardLinks.map((link) => (
+              <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className="py-2 pl-4 hover:text-slate-900 dark:hover:text-white">
+                {link.label}
+              </Link>
+            ))}
+            {user && (
+              <>
+                <Link href={`/reputation/${user.username}`} onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-900 dark:hover:text-white">
+                  Reputation
+                </Link>
+                <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <LogOut className="h-4 w-4" /> Sign out
+                </button>
+              </>
+            )}
+            {!user && !loading && (
+              <Link href="/connect" onClick={() => setMobileMenuOpen(false)} className="mt-4 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                Connect GitHub
+              </Link>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

@@ -7,6 +7,40 @@ import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { formatCurrency, daysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
 
+
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const bounty = await fetchBounty(
+    id,
+    mockBounties.find((b) => b.id === id),
+  );
+
+  if (!bounty) {
+    return {
+      title: "Bounty Not Found | MergeFi",
+      description: "The requested bounty could not be found.",
+    };
+  }
+
+  const title = `${bounty.title} — ${formatCurrency(bounty.reward, bounty.asset)} | MergeFi`;
+  const description = bounty.description || `Bounty for ${bounty.org}/${bounty.repo} #${bounty.issueNumber}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+    },
+  };
+}
+
 export default async function IssueDetailPage({
   params,
 }: {

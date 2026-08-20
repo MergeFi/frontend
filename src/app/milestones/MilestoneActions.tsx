@@ -9,11 +9,25 @@ import { apiPost, ApiRequestError } from "@/lib/api";
 export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
   const router = useRouter();
   const { address, connect, connecting } = useWallet();
+  const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleFund() {
     setError(null);
+
+    // Validate amount before proceeding — mirrors PoolDepositButton validation
+    const parsed = Number(amount);
+    if (!amount || !Number.isFinite(parsed) || parsed <= 0) {
+      setError("Enter a valid positive amount.");
+      return;
+    }
+    // Prevent over-precision (Stellar assets support up to 7 decimals)
+    if (amount.includes(".") && amount.split(".")[1].length > 7) {
+      setError("Amount cannot have more than 7 decimal places.");
+      return;
+    }
+
     setPending(true);
     try {
       const walletAddress = address ?? (await connect());
@@ -22,6 +36,7 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
         return;
       }
       await apiPost(`/milestones/${milestoneId}/fund`, {
+        amount,
         funderAddress: walletAddress,
       });
       router.refresh();
@@ -33,11 +48,19 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
   }
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 flex items-center gap-2">
+      <input
+        type="number"
+        min="1"
+        step="any"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+      />
       <Button size="sm" variant="outline" onClick={handleFund} disabled={pending || connecting}>
-        {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
+        {pending || connecting ? "Confirming..." : "Fund milestone"}
       </Button>
-      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+      {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
   );
 }

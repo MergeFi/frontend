@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { GitMerge, ChevronDown, LogOut } from "lucide-react";
+import { GitMerge, ChevronDown, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -22,6 +23,7 @@ const dashboardLinks: { href: string; label: string; role: UserRole }[] = [
 
 export function Navbar() {
   const { user, loading, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Filter dashboard links to only those matching the user's assigned roles.
   // Supports multi-role users: if roles contains both "maintainer" and "sponsor",
@@ -76,7 +78,18 @@ export function Navbar() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <NetworkBadge />
+          {!loading && (
+              <button
+                className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 md:hidden"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-nav"
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            )}
+            <NetworkBadge />
           <ThemeToggle />
           {loading ? (
             /* Loading skeleton: stable placeholder matching the logged-in layout dimensions
@@ -116,6 +129,83 @@ export function Navbar() {
           )}
         </div>
       </div>
+    
+      {/* Mobile navigation drawer (#78) */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <nav
+            id="mobile-nav"
+            role="dialog"
+            aria-label="Mobile navigation"
+            className="fixed right-0 top-0 bottom-0 w-72 overflow-y-auto bg-white p-6 shadow-xl dark:bg-slate-950"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-900 dark:text-white">Menu</span>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-6 space-y-1">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {visibleDashboardLinks.length > 0 && (
+                <>
+                  <p className="mt-4 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Dashboards
+                  </p>
+                  {visibleDashboardLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </>
+              )}
+              {user && (
+                <Link
+                  href={`/reputation/${user.username}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Reputation
+                </Link>
+              )}
+            </div>
+            {user && (
+              <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <button
+                  onClick={() => { logout(); setMobileMenuOpen(false); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </div>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

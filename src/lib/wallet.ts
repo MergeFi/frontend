@@ -4,6 +4,7 @@ import {
   setAllowed,
   getAddress,
   signTransaction as freighterSignTransaction,
+  signMessage as freighterSignMessage,
 } from "@stellar/freighter-api";
 import { STELLAR_NETWORK } from "./config";
 
@@ -40,4 +41,23 @@ export async function signTransaction(xdr: string, address: string) {
         ? "Public Global Stellar Network ; September 2015"
         : "Test SDF Network ; September 2015",
   });
+}
+
+/**
+ * Sign an arbitrary message for proof-of-ownership (Issue #32).
+ * The message MUST include a nonce and domain binding to prevent replay attacks.
+ * Returns the base64-encoded signature.
+ */
+export async function signMessage(message: string, address: string): Promise<string> {
+  const result = await freighterSignMessage(message, {
+    address,
+    networkPassphrase:
+      STELLAR_NETWORK === "PUBLIC"
+        ? "Public Global Stellar Network ; September 2015"
+        : "Test SDF Network ; September 2015",
+  });
+  if (result.error || !result.signedMessage) {
+    throw new Error(result.error?.message ?? "Message signing was rejected.");
+  }
+  return typeof result.signedMessage === "string" ? result.signedMessage : String(result.signedMessage);
 }

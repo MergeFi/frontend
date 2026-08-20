@@ -61,6 +61,12 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
  */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
+  const abs = Math.abs(amount);
+  // XLM has 7 decimal places; USDC uses 2 (#76).
+  // For very small nonzero XLM amounts, show "<0.0000001 XLM" instead of "0 XLM".
+  if (asset === "XLM" && abs > 0 && abs < 0.0000001) {
+    return `<0.0000001 ${asset}`;
+  }
   const maxDigits = asset === "XLM" ? 7 : 2;
   const formatted = amount.toLocaleString(undefined, {
     minimumFractionDigits: 0,

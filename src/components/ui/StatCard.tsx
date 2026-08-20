@@ -83,7 +83,10 @@ function formatValue(
         minimumFractionDigits: 0,
         maximumFractionDigits: maxDigits,
       });
-      const display = `${formatted} ${asset}`;
+      // Small nonzero XLM amounts must not display as "0 XLM" (#76).
+      const display = asset === "XLM" && value > 0 && value < 0.0000001
+        ? `<0.0000001 ${asset}`
+        : `${formatted} ${asset}`;
       // Exact value for tooltip always shows full precision (up to 7 for XLM)
       const exactMaxDigits = asset === "XLM" ? 7 : 6;
       const exact = `${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: exactMaxDigits })} ${asset}`;

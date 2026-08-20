@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { connectWallet as freighterConnect } from "@/lib/wallet";
+import { connectWallet as freighterConnect, getActiveFreighterAddress } from "@/lib/wallet";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
@@ -19,6 +19,8 @@ interface WalletContextValue {
   network: string | null;
   connecting: boolean;
   error: string | null;
+  mismatch: boolean;
+  verifiedAddress: string | null;
   connect: () => Promise<string | null>;
   disconnect: () => void;
 }
@@ -31,6 +33,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [network, setNetwork] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verifiedAddress, setVerifiedAddress] = useState<string | null>(null);
+  const mismatch = !!address && !!verifiedAddress && address !== verifiedAddress;
 
   useEffect(() => {
     // localStorage is unavailable during SSR, so this can't be a lazy
@@ -38,6 +42,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const stored = window.localStorage.getItem(WALLET_KEY);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored) setAddress(stored);
+    
+    // Reconcile cached address with Freighter's actual active account
+    getActiveFreighterAddress().then(setVerifiedAddress);
   }, []);
 
   const handleWalletKeyChangedElsewhere = useCallback((newValue: string | null) => {
@@ -55,6 +62,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     try {
       const connection = await freighterConnect();
       setAddress(connection.address);
+      setVerifiedAddress(connection.address);
       setNetwork(connection.network);
       window.localStorage.setItem(WALLET_KEY, connection.address);
 
@@ -91,7 +99,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ address, network, connecting, error, connect, disconnect }}
+      value={{ address, network, connecting, error, mismatch, verifiedAddress, connect, disconnect }}
     >
       {children}
     </WalletContext.Provider>

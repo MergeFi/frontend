@@ -49,6 +49,10 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
       router.push("/connect");
       return;
     }
+    if (!user.stellarAddress) {
+      setError("Link a Stellar wallet in your profile to receive payouts before claiming this issue.");
+      return;
+    }
     setPending(true);
     try {
       await apiPost(`/bounties/${bounty.id}/claim`, { contributorId: user.id });
@@ -85,8 +89,8 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
           </Button>
         )}
         {bounty.status === "funded" && (
-          <Button size="lg" onClick={handleClaim} disabled={pending}>
-            {pending ? "Claiming..." : "Claim this issue"}
+          <Button size="lg" onClick={handleClaim} disabled={pending || (user !== null && !user.stellarAddress)}>
+            {pending ? "Claiming..." : user && !user.stellarAddress ? "Link wallet to claim" : "Claim this issue"}
           </Button>
         )}
         {(bounty.status === "funded" || bounty.status === "claimed") && (

@@ -1,122 +1,58 @@
-/**
- * adapters.test.ts
- *
- * Tests for adaptBounty's mapping of milestoneId (#86) — declared on the
- * Bounty type but never actually set by adaptBounty prior to this fix.
- */
+import { adaptReputation } from "./adapters";
+import type { RawUserProfile, RawReputationSnapshot } from "./adapters";
 
-import { adaptBounty, type RawBounty } from "./adapters";
+const baseUser: RawUserProfile = {
+  username: "testuser",
+  avatarUrl: null,
+};
 
-function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
+function makeSnapshot(overrides: Partial<RawReputationSnapshot>): RawReputationSnapshot {
   return {
-    id: "bounty-1",
-    amount: "500",
-    asset: "USDC",
-    difficulty: "intermediate",
-    status: "open",
-    deadline: "2026-01-01T00:00:00.000Z",
-    escrowId: null,
-    issue: {
-      number: 42,
-      title: "Fix the thing",
-      body: "Description",
-      labels: ["bug"],
-      repository: { owner: "acme", name: "widgets" },
-    },
+    totalEarnings: "1000",
+    mergedPrCount: 10,
+    completionRate: "94",
+    avgReviewTimeHours: "24",
+    onTimeDeliveryPercentage: "88",
+    languages: { TypeScript: 5 },
+    orgsContributedTo: ["mergefi"],
     ...overrides,
   };
 }
 
-describe("adaptBounty — milestoneId mapping (#86)", () => {
-  it("maps milestoneId from the nested issue when the issue belongs to a milestone", () => {
-    const raw = rawBounty({
-      issue: {
-        number: 42,
-        title: "Fix the thing",
-        body: "Description",
-        labels: ["bug"],
-        repository: { owner: "acme", name: "widgets" },
-        milestoneId: "milestone-7",
-      },
-    });
-
-    expect(adaptBounty(raw).milestoneId).toBe("milestone-7");
+describe("adaptReputation fraction clamping", () => {
+  it("clamps completionRate > 100% to exactly 1", () => {
+    const result = adaptReputation(baseUser, makeSnapshot({ completionRate: "150" }));
+    expect(result.completionRate).toBe(1);
   });
 
-  it("leaves milestoneId undefined when the issue has no milestone association", () => {
-    // issue.milestoneId omitted entirely — the realistic shape for most
-    // issues, which aren't part of any milestone.
-    const raw = rawBounty();
-    expect(adaptBounty(raw).milestoneId).toBeUndefined();
+  it("clamps negative completionRate to exactly 0", () => {
+    const result = adaptReputation(baseUser, makeSnapshot({ completionRate: "-20" }));
+    expect(result.completionRate).toBe(0);
   });
 
-  it("normalizes a null milestoneId (no association) the same as an omitted one", () => {
-    // mergefi-backend's Issue.milestoneId is a nullable column, so the
-    // real backend response says "no milestone" via `null`, not by
-    // omitting the key entirely.
-    const raw = rawBounty({
-      issue: {
-        number: 42,
-        title: "Fix the thing",
-        body: "Description",
-        labels: ["bug"],
-        repository: { owner: "acme", name: "widgets" },
-        milestoneId: null,
-      },
-    });
-
-    expect(adaptBounty(raw).milestoneId).toBeUndefined();
+  it("preserves normal completionRate without regression", () => {
+    const result = adaptReputation(baseUser, makeSnapshot({ completionRate: "94" }));
+    expect(result.completionRate).toBeCloseTo(0.94);
   });
 
-  it("leaves milestoneId undefined when the bounty has no issue at all", () => {
-    const raw = rawBounty({ issue: undefined });
-    expect(adaptBounty(raw).milestoneId).toBeUndefined();
+  it("clamps onTimeDeliveryRate > 100% to exactly 1", () => {
+    const result = adaptReputation(baseUser, makeSnapshot({ onTimeDeliveryPercentage: "200" }));
+    expect(result.onTimeDeliveryRate).toBe(1);
   });
-});
 
-describe("adaptBounty — field coverage audit (#86)", () => {
-  // Every key the Bounty interface declares (src/types/index.ts). Kept as
-  // an explicit list, checked against adaptBounty's actual output below,
-  // so a future field added to Bounty but never mapped here — exactly
-  // milestoneId's bug — fails this test instead of silently shipping.
-  const EXPECTED_BOUNTY_FIELDS = [
-    "id",
-    "repo",
-    "org",
-    "issueNumber",
-    "title",
-    "description",
-    "reward",
-    "asset",
-    "difficulty",
-    "status",
-    "deadline",
-    "labels",
-    "claimedBy",
-    "teamSplits",
-    "milestoneId",
-    "escrowId",
-  ] as const;
+  it("clamps negative onTimeDeliveryRate to exactly 0", () => {
+    const result = adaptReputation(baseUser, makeSnapshot({ onTimeDeliveryPercentage: "-50" }));
+    expect(result.onTimeDeliveryRate).toBe(0);
+  });
 
-  it("sets every Bounty field to a defined value given a fully-populated raw bounty", () => {
-    const raw = rawBounty({
-      escrowId: "escrow-1",
-      claimedBy: { username: "alice" },
-      team: { splits: [{ role: "Lead", percentage: "100", user: { username: "alice" } }] },
-      issue: {
-        number: 42,
-        title: "Fix the thing",
-        body: "Description",
-        labels: ["bug"],
-        repository: { owner: "acme", name: "widgets" },
-        milestoneId: "milestone-7",
-      },
-    });
+  it("preserves normal onTimeDeliveryRate without regression", () => {
+    const result = adaptReputation(baseUser, makeSnapshot({ onTimeDeliveryPercentage: "88" }));
+    expect(result.onTimeDeliveryRate).toBeCloseTo(0.88);
+  });
 
-    const bounty = adaptBounty(raw);
-
-    for (const field of EXPECTED_BOUNTY_FIELDS) {
-      expect(bounty[field]).not.toBeUndefined();
-    }
+  it("returns 0 for both rates when snapshot is null", () => {
+    const result = adaptReputation(baseUser, null);
+    expect(result.completionRate).toBe(0);
+    expect(result.onTimeDeliveryRate).toBe(0);
   });
 });

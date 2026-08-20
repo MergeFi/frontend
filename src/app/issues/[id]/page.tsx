@@ -7,6 +7,37 @@ import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { formatCurrency, daysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
 
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const bounty = await fetchBounty(
+    id,
+    mockBounties.find((b) => b.id === id),
+  );
+
+  if (!bounty) {
+    return {
+      title: "Issue Not Found | MergeFi",
+      description: "The requested bounty could not be found.",
+    };
+  }
+
+  const title = `${bounty.title} — ${formatCurrency(bounty.reward, bounty.asset)} | MergeFi`;
+  const description =
+    bounty.description?.slice(0, 160) ??
+    `Funded ${bounty.difficulty} bounty on ${bounty.org}/${bounty.repo}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/issues/${bounty.id}`,
+    },
+  };
+}
+
 export default async function IssueDetailPage({
   params,
 }: {

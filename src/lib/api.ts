@@ -19,9 +19,30 @@ export class ApiRequestError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** Retry-After header value in seconds, if present on a 429 response */
+    public retryAfter?: number,
   ) {
     super(message);
   }
+}
+
+/**
+ * In-flight request deduplication (Issue #44):
+ * Tracks pending POST/PUT/DELETE requests by a signature derived from
+ * (method, path, body). If an identical request is already in flight,
+ * subsequent calls coalesce onto the same promise instead of firing a
+ * duplicate network request. GET requests are not deduplicated (they're
+ * idempotent and may legitimately be called concurrently for different UIs).
+ */
+const inflightMutations = new Map<string, Promise<unknown>>();
+
+function mutationKey(path: string, init?: RequestInit): string {
+  const method = (init?.method ?? "GET").toUpperCase();
+  // Only deduplicate mutating methods
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return "";
+  // Include body hash to distinguish e.g. fund vs claim on same bounty
+  const bodyStr = typeof init?.body === "string" ? init.body : "";
+  return `${method}:${path}:${bodyStr}`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -56,32 +77,67 @@ export async function fetchWithFallback<T>(
  * surfaces backend error bodies instead of silently falling back — used for
  * actions the user explicitly triggers (claim, fund, deposit, ...), where
  * hiding a failure behind mock data would be misleading.
+ *
+ * Deduplication: identical concurrent mutation requests are coalesced.
+ * Rate-limit awareness: 429 responses surface Retry-After and a distinct message.
  */
 export async function apiRequest<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const token = getToken();
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    let message = body;
-    try {
-      message = JSON.parse(body).message ?? body;
-    } catch {
-      // plain-text error body, use as-is
-    }
-    throw new ApiRequestError(message || `Request failed (${res.status})`, res.status);
+  const key = mutationKey(path, init);
+
+  // If an identical mutation is already in flight, coalesce onto it
+  if (key && inflightMutations.has(key)) {
+    return inflightMutations.get(key) as Promise<T>;
   }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+
+  const execute = async (): Promise<T> => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      let message = body;
+      try {
+        message = JSON.parse(body).message ?? body;
+      } catch {
+        // plain-text error body, use as-is
+      }
+
+      // Rate-limit-aware error handling (Issue #44)
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("Retry-After");
+        const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : undefined;
+        const rlMessage = retryAfter
+          ? `Rate limited. Please wait ${retryAfter} second${retryAfter !== 1 ? "s" : ""} before trying again.`
+          : "Too many requests. Please slow down and try again shortly.";
+        throw new ApiRequestError(rlMessage, 429, retryAfter);
+      }
+
+      throw new ApiRequestError(message || `Request failed (${res.status})`, res.status);
+    }
+
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
+  };
+
+  if (key) {
+    const promise = execute().finally(() => {
+      inflightMutations.delete(key);
+    });
+    inflightMutations.set(key, promise);
+    return promise;
+  }
+
+  return execute();
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {

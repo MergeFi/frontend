@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DollarSign, GitMerge, TrendingUp, ListChecks, GitPullRequest } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -49,9 +49,27 @@ export default function ContributorDashboardPage() {
   // Explicit fetch status: starts "loading" so cards shimmer rather than
   // flashing zeroes while the auth check + API call are in flight.
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
+  const [bountiesFetchStatus, setBountiesFetchStatus] = useState<StatCardStatus>("loading");
+  const statsGenRef = useRef(0);
+  const bountiesGenRef = useRef(0);
 
   useEffect(() => {
-    fetchBounties(mockBounties).then(setBounties);
+    const gen = ++bountiesGenRef.current;
+    setBountiesFetchStatus("loading");
+    fetchBounties(mockBounties)
+      .then((data) => {
+        if (gen === bountiesGenRef.current) {
+          setBounties(data);
+          // fetchBounties falls back to mock internally on error, so we can't
+          // distinguish live vs fallback here — but we can at least mark loaded.
+          setBountiesFetchStatus("loaded");
+        }
+      })
+      .catch(() => {
+        if (gen === bountiesGenRef.current) {
+          setBountiesFetchStatus("error");
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -71,10 +89,12 @@ export default function ContributorDashboardPage() {
       return;
     }
 
+    const gen = ++statsGenRef.current;
     setFetchStatus("loading");
 
     apiPost<ReputationSnapshot>(`/reputation/${user.id}/recompute`)
       .then((snapshot) => {
+        if (gen !== statsGenRef.current) return;
         setStats({
           handle: user.username,
           lifetimeEarnings: Number(snapshot.totalEarnings),
@@ -85,14 +105,10 @@ export default function ContributorDashboardPage() {
         setIsLive(true);
       })
       .catch(() => {
-        // BUG FIX: the previous implementation set all stat values to 0 on
-        // fetch failure. A contributor seeing "$0 lifetime earnings" due to a
-        // network error is indistinguishable from a real zero — a demoralising
-        // and misleading false signal. We now leave stats null and set the
-        // status to "error" so each StatCard renders its error state instead.
+        if (gen !== statsGenRef.current) return;
         setStats(null);
         setFetchStatus("error");
-        setIsLive(true);
+        setIsLive(false);
       });
   }, [user, loading]);
 
@@ -111,15 +127,24 @@ export default function ContributorDashboardPage() {
       title={`Welcome back, @${handle}`}
       subtitle={isLive ? undefined : "Sign in with GitHub to see your own earnings and claims."}
       badge={
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
-            isLive
-              ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30"
-              : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30"
-          }`}
-        >
-          {isLive ? "Live data" : "Demo data"}
-        </span>
+        (() => {
+          const allLive = isLive && fetchStatus === "loaded" && bountiesFetchStatus === "loaded";
+          const anyError = fetchStatus === "error" || bountiesFetchStatus === "error";
+          let label = "Demo data";
+          let colorClass = "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30";
+          if (allLive) {
+            label = "Live data";
+            colorClass = "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30";
+          } else if (anyError) {
+            label = "Partial data";
+            colorClass = "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:ring-orange-500/30";
+          }
+          return (
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${colorClass}`}>
+              {label}
+            </span>
+          );
+        })()
       }
       action={
         <Link href="/issues">

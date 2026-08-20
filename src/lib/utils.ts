@@ -82,3 +82,20 @@ export function validateTeamSplits(
     message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
   };
 }
+
+/**
+ * Compute a week-over-week trend percentage from a history array.
+ * Compares the last value against the prior value. Returns undefined
+ * if there are fewer than 2 data points (not enough to compute a trend).
+ *
+ * @param history - Array of numeric values ordered oldest→newest.
+ * @returns Percentage change (e.g. 12.5 for +12.5%, -8.3 for -8.3%),
+ *          or undefined when trend cannot be meaningfully computed.
+ */
+export function computeTrend(history: number[]): number | undefined {
+  if (!history || history.length < 2) return undefined;
+  const current = history[history.length - 1];
+  const previous = history[history.length - 2];
+  if (previous === 0) return undefined; // Avoid division by zero
+  return Math.round(((current - previous) / Math.abs(previous)) * 100);
+}

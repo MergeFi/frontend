@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DollarSign, GitMerge, TrendingUp, ListChecks, GitPullRequest } from "lucide-react";
+import { DollarSign, GitMerge, TrendingUp, ListChecks, GitPullRequest, CheckCircle2 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
 import { StatCard, type StatCardStatus } from "@/components/ui/StatCard";

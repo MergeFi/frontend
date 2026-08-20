@@ -27,7 +27,8 @@ export default async function MilestonesPage() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {milestones.map((m) => {
-          const pct = m.distributed / m.budget;
+          const pct = m.budget > 0 ? m.distributed / m.budget : 0;
+          const clampedPct = Math.min(pct, 1);
           return (
             <div
               key={m.id}
@@ -38,7 +39,7 @@ export default async function MilestonesPage() {
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
                   className="h-full bg-indigo-600"
-                  style={{ width: `${Math.min(pct * 100, 100)}%` }}
+                  style={{ width: `${clampedPct * 100}%` }}
                 />
               </div>
               <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
@@ -46,7 +47,7 @@ export default async function MilestonesPage() {
                   {formatCurrency(m.distributed, m.asset)} of{" "}
                   {formatCurrency(m.budget, m.asset)}
                 </span>
-                <span>{formatPercent(pct)}</span>
+                <span>{m.budget === 0 ? "Not yet funded" : formatPercent(clampedPct)}</span>
               </div>
               <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                 {m.completedCount} of {m.issueCount} issues complete

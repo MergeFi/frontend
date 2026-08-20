@@ -82,3 +82,16 @@ export function validateTeamSplits(
     message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
   };
 }
+
+/**
+ * Compute trend percentage from a historical array of values.
+ * Compares the last value to the second-to-last value.
+ * Returns undefined if there are fewer than 2 data points.
+ */
+export function computeTrend(history: number[]): number | undefined {
+  if (!history || history.length < 2) return undefined;
+  const current = history[history.length - 1];
+  const previous = history[history.length - 2];
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Number((((current - previous) / previous) * 100).toFixed(1));
+}

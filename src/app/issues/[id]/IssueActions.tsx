@@ -90,9 +90,13 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
           </Button>
         )}
         {(bounty.status === "funded" || bounty.status === "claimed") && (
-          <Button size="lg" variant="outline" onClick={handleRefund} disabled={pending}>
-            Refund sponsor
-          </Button>
+          // Fund is intentionally open to any sponsor (crowdfunding model);
+          // refund is restricted to the original funder only (#82).
+          user && address && bounty.funderAddress && address === bounty.funderAddress ? (
+            <Button size="lg" variant="outline" onClick={handleRefund} disabled={pending}>
+              Refund sponsor
+            </Button>
+          ) : null
         )}
         {["in_review", "merged", "paid", "refunded", "expired"].includes(
           bounty.status,

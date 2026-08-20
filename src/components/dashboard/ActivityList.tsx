@@ -2,11 +2,25 @@ import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency } from "@/lib/utils";
 import type { ActivityEvent } from "@/lib/mock-data";
 
+/**
+ * Locale-aware relative time formatter using Intl.RelativeTimeFormat.
+ * Falls back to English shorthand if the API is unavailable.
+ */
 function timeAgo(minutes: number) {
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  try {
+    const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+    if (minutes < 60) return rtf.format(-minutes, "minute");
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return rtf.format(-hours, "hour");
+    const days = Math.floor(hours / 24);
+    return rtf.format(-days, "day");
+  } catch {
+    // Fallback for environments without Intl.RelativeTimeFormat
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
 }
 
 export function ActivityList({ events }: { events: ActivityEvent[] }) {

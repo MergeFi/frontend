@@ -78,20 +78,27 @@ function formatValue(
 ): { display: string; exact: string } {
   switch (format) {
     case "currency": {
-      const formatted = value.toLocaleString("en-US", {
-        maximumFractionDigits: 2,
+      const maxDigits = asset === "XLM" ? 7 : 2;
+      const formatted = value.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDigits,
       });
       const display = `${formatted} ${asset}`;
-      // Exact value for tooltip always shows full precision
-      const exact = `${value.toLocaleString("en-US", { maximumFractionDigits: 6 })} ${asset}`;
+      // Exact value for tooltip always shows full precision (up to 7 for XLM)
+      const exactMaxDigits = asset === "XLM" ? 7 : 6;
+      const exact = `${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: exactMaxDigits })} ${asset}`;
       return { display, exact };
     }
     case "percent": {
-      const pct = `${Math.round(value * 100)}%`;
+      const pct = value.toLocaleString(undefined, {
+        style: "percent",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 1,
+      });
       return { display: pct, exact: pct };
     }
     case "count": {
-      const s = value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+      const s = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
       return { display: s, exact: s };
     }
     case "raw":

@@ -8,7 +8,7 @@ import { apiPost, ApiRequestError } from "@/lib/api";
 
 export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
   const router = useRouter();
-  const { address, connect, connecting } = useWallet();
+  const { address, connect, connecting, mismatch } = useWallet();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +44,7 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
 
 export function PoolDepositButton({ poolId }: { poolId: string }) {
   const router = useRouter();
-  const { address, connect, connecting } = useWallet();
+  const { address, connect, connecting, mismatch } = useWallet();
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -142,14 +142,21 @@ export async function fetchReputationByUsername(
   fallback: ReputationProfile | null,
 ): Promise<ReputationProfile | null> {
   try {
-    const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    const user = users.find((u) => u.username === username);
+    // Scoped lookup: avoids downloading the entire /users table just to
+    // resolve a single username to an ID. Relies on mergefi-backend
+    // exposing /users/by-username/:username (or equivalent).
+    const user = await request<RawUserProfile & { id: string }>(
+      `/users/by-username/${encodeURIComponent(username)}`,
+    );
     if (!user) return fallback;
     const snapshot = await request<RawReputationSnapshot | null>(
       `/reputation/${user.id}`,
     );
     return adaptReputation(user, snapshot);
   } catch {
+    // Catches both network failures (backend unreachable -> fallback to mock)
+    // and 404s from the scoped endpoint (user doesn't exist -> fallback, which
+    // is typically null for unknown handles, triggering notFound() in the page).
     return fallback;
   }
 }

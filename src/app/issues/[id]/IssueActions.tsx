@@ -11,7 +11,7 @@ import type { Bounty } from "@/types";
 export function IssueActions({ bounty }: { bounty: Bounty }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { address, connect, connecting } = useWallet();
+  const { address, connect, connecting, mismatch } = useWallet();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -21,6 +21,14 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     setNotice(null);
     setPending(true);
     try {
+      // Block signing if Freighter's live account diverges from cached address.
+      // Without this, the UI shows one address but Freighter signs with another.
+      if (mismatch) {
+        setError(
+          "Your Freighter wallet is now on a different account. Disconnect and reconnect to continue.",
+        );
+        return;
+      }
       const walletAddress = address ?? (await connect());
       if (!walletAddress) {
         setError("Connect a Stellar wallet to continue.");

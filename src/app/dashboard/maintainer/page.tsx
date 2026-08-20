@@ -125,6 +125,7 @@ export default async function MaintainerDashboardPage() {
                 icon={CheckCircle2}
                 title="All caught up"
                 description="No pull requests are waiting on your review right now."
+                variant="success"
               />
             )}
           </div>

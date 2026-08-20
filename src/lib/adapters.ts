@@ -55,6 +55,7 @@ export interface RawBounty {
   issue?: RawIssue;
   claimedBy?: RawUser | null;
   team?: { splits?: RawTeamSplit[] } | null;
+  funderAddress?: string | null;
 }
 
 /**
@@ -113,6 +114,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     claimedBy: raw.claimedBy?.username,
     milestoneId: raw.issue?.milestoneId ?? undefined,
     escrowId: raw.escrowId ?? undefined,
+    funderAddress: raw.funderAddress ?? undefined,
     teamSplits: splits,
     teamSplitsValid: splits ? validateTeamSplits(splits) : undefined,
   };

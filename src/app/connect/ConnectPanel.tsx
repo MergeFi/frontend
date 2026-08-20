@@ -61,21 +61,46 @@ export function ConnectPanel() {
             </p>
           </div>
         </div>
-        {address ? (
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">
-            <CheckCircle2 className="h-4 w-4" />
-            Connected: {address.slice(0, 4)}...{address.slice(-4)} ({network})
-          </div>
-        ) : (
-          <Button
-            className="mt-4 w-full"
-            variant="outline"
-            onClick={connect}
-            disabled={connecting}
-          >
-            {connecting ? "Connecting..." : "Connect Freighter"}
-          </Button>
-        )}
+        
+        <div className="mt-4 space-y-2">
+          {address ? (
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30">
+              <CheckCircle2 className="h-4 w-4" />
+              Connected: {address.slice(0, 4)}...{address.slice(-4)} ({network})
+            </div>
+          ) : (
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={connect}
+              disabled={connecting}
+            >
+              {connecting ? "Connecting..." : "Connect Freighter"}
+            </Button>
+          )}
+
+          {user ? (
+            user.stellarAddress && user.stellarAddress === address ? (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30">
+                <CheckCircle2 className="h-4 w-4" />
+                Linked to your account
+              </div>
+            ) : address ? (
+              <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+                This wallet is connected locally but not linked to your GitHub account.
+                {user.stellarAddress ? ` Your account is currently linked to ${user.stellarAddress.slice(0, 4)}...${user.stellarAddress.slice(-4)}.` : ""}
+              </div>
+            ) : user.stellarAddress ? (
+              <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+                Your account is linked to {user.stellarAddress.slice(0, 4)}...{user.stellarAddress.slice(-4)}, but it is not currently active in Freighter.
+              </div>
+            ) : null
+          ) : address ? (
+            <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+              Wallet connected locally. Sign in with GitHub above to link this wallet to your account for payouts.
+            </div>
+          ) : null}
+        </div>
         {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
       </div>
     </div>

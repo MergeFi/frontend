@@ -137,13 +137,26 @@ export async function fetchMaintenancePools(
   }
 }
 
+/**
+ * Fetch a single user's reputation by username using a scoped backend lookup.
+ *
+ * Backend dependency (#80): this function now calls GET /users/by-username/:username
+ * instead of downloading the entire /users collection and filtering client-side.
+ * The mergefi-backend must expose this endpoint (or an equivalent query-parameterized
+ * variant like /users?username=X). Until that lands, this will fall back to the
+ * provided fallback/mock data on any 404 or network error, preserving existing
+ * behavior for nonexistent handles and offline/demo states.
+ */
 export async function fetchReputationByUsername(
   username: string,
   fallback: ReputationProfile | null,
 ): Promise<ReputationProfile | null> {
   try {
-    const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    const user = users.find((u) => u.username === username);
+    // Scoped lookup: fetch exactly one user by username instead of the full table.
+    // Falls through to catch block if backend hasn't implemented the endpoint yet.
+    const user = await request<RawUserProfile & { id: string }>(
+      `/users/by-username/${encodeURIComponent(username)}`,
+    );
     if (!user) return fallback;
     const snapshot = await request<RawReputationSnapshot | null>(
       `/reputation/${user.id}`,
@@ -151,6 +164,24 @@ export async function fetchReputationByUsername(
     return adaptReputation(user, snapshot);
   } catch {
     return fallback;
+  }
+}
+
+
+export async function fetchReputationWithStatus(
+  username: string,
+  fallback: ReputationProfile | null,
+): Promise<{ profile: ReputationProfile | null; isLive: boolean }> {
+  try {
+    const users = await request<(RawUserProfile & { id: string })[]>("/users");
+    const user = users.find((u) => u.username === username);
+    if (!user) return { profile: fallback, isLive: false };
+    const snapshot = await request<RawReputationSnapshot | null>(
+      `/reputation/${user.id}`,
+    );
+    return { profile: adaptReputation(user, snapshot), isLive: true };
+  } catch {
+    return { profile: fallback, isLive: false };
   }
 }
 

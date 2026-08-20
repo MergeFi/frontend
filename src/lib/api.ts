@@ -142,8 +142,12 @@ export async function fetchReputationByUsername(
   fallback: ReputationProfile | null,
 ): Promise<ReputationProfile | null> {
   try {
-    const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    const user = users.find((u) => u.username === username);
+    // Scoped lookup: request only the matching user instead of the full table.
+    // Requires mergefi-backend to support ?username= filtering on GET /users.
+    const users = await request<(RawUserProfile & { id: string })[]>(
+      `/users?username=${encodeURIComponent(username)}`,
+    );
+    const user = users.find((u) => u.username === username) ?? users[0];
     if (!user) return fallback;
     const snapshot = await request<RawReputationSnapshot | null>(
       `/reputation/${user.id}`,

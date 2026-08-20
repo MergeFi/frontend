@@ -129,7 +129,10 @@ export default async function MaintainerDashboardPage() {
             )}
           </div>
         </div>
-        <div>
+        <div className="relative">
+          <span className="absolute right-2 top-0 z-10 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+            Sample Data
+          </span>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
             Recent activity
           </h2>

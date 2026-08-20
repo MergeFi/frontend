@@ -169,13 +169,23 @@ export default function SponsorDashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          {isLive && (
+            <span className="absolute right-4 top-4 z-10 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+              Sample Data
+            </span>
+          )}
           <h2 className="font-medium text-slate-900 dark:text-white">Spend, last 8 weeks</h2>
           <div className="mt-6">
             <BarChart data={spendChartData} formatValue={(v) => formatCurrency(v)} />
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          {isLive && (
+            <span className="absolute right-4 top-4 z-10 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+              Sample Data
+            </span>
+          )}
           <h2 className="font-medium text-slate-900 dark:text-white">Spend by repository</h2>
           <div className="mt-5 space-y-3">
             {sponsorSpendByRepo.map((r) => (
@@ -212,9 +222,16 @@ export default function SponsorDashboardPage() {
         />
       )}
 
-      <h2 className="mt-10 text-xl font-semibold text-slate-900 dark:text-white">Recent activity</h2>
-      <div className="mt-4">
-        <ActivityList events={recentActivity.slice(0, 5)} />
+      <div className="relative mt-10">
+        {isLive && (
+          <span className="absolute right-2 top-0 z-10 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+            Sample Data
+          </span>
+        )}
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Recent activity</h2>
+        <div className="mt-4">
+          <ActivityList events={recentActivity.slice(0, 5)} />
+        </div>
       </div>
 
       {/* Dev-only: visual kitchen sink — renders all four StatCard states

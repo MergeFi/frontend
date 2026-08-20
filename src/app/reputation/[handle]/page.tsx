@@ -1,10 +1,36 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { fetchReputationWithStatus } from "@/lib/api";
 import { mockReputationProfiles } from "@/lib/mock-data";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 // formatCurrency/formatPercent no longer needed — StatCard handles numeric formatting
+
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}): Promise<Metadata> {
+  const { handle } = await params;
+  try {
+    const result = await fetchReputationWithStatus(handle, null);
+    if (!result.profile) {
+      return { title: "Profile Not Found | MergeFi" };
+    }
+    return {
+      title: `@${result.profile.handle} | MergeFi`,
+      description: `${result.profile.handle}'s contributor profile on MergeFi.`,
+      openGraph: {
+        title: `@${result.profile.handle} | MergeFi`,
+        description: `${result.profile.handle}'s contributor profile on MergeFi.`,
+      },
+    };
+  } catch {
+    return { title: "Profile | MergeFi" };
+  }
+}
 
 export default async function ReputationPage({
   params,

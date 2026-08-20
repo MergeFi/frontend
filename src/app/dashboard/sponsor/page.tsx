@@ -9,7 +9,7 @@ import { StatCard, type StatCardStatus } from "@/components/ui/StatCard";
 import { BarChart } from "@/components/ui/BarChart";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency , computeTrend} from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
 import { adaptBounty, type RawBounty, type RawMilestone } from "@/lib/adapters";
 import {
@@ -138,7 +138,7 @@ export default function SponsorDashboardPage() {
           format="currency"
           status={fetchStatus}
           icon={Receipt}
-          trend={fetchStatus === "loaded" ? 18 : undefined}
+          trend={fetchStatus === "loaded" ? computeTrend(sponsorSpendHistory) : undefined}
           sparkline={fetchStatus === "loaded" ? sponsorSpendHistory : undefined}
         />
         <StatCard

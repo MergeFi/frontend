@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { connectWallet as freighterConnect } from "@/lib/wallet";
+import { connectWallet as freighterConnect, getActiveFreighterAddress } from "@/lib/wallet";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
@@ -21,6 +21,8 @@ interface WalletContextValue {
   error: string | null;
   connect: () => Promise<string | null>;
   disconnect: () => void;
+  mismatch: boolean;
+  reconcile: () => Promise<boolean>;
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -31,14 +33,29 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [network, setNetwork] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mismatch, setMismatch] = useState(false);
+
+  const reconcile = useCallback(async () => {
+    const stored = window.localStorage.getItem(WALLET_KEY);
+    if (!stored) {
+      setMismatch(false);
+      return false;
+    }
+    const active = await getActiveFreighterAddress();
+    if (active && active !== stored) {
+      setMismatch(true);
+      return true;
+    } else {
+      setMismatch(false);
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
-    // localStorage is unavailable during SSR, so this can't be a lazy
-    // useState initializer — it must run after mount on the client.
     const stored = window.localStorage.getItem(WALLET_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored) setAddress(stored);
-  }, []);
+    reconcile();
+  }, [reconcile]);
 
   const handleWalletKeyChangedElsewhere = useCallback((newValue: string | null) => {
     setAddress(newValue);
@@ -57,6 +74,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setAddress(connection.address);
       setNetwork(connection.network);
       window.localStorage.setItem(WALLET_KEY, connection.address);
+      setMismatch(false);
 
       if (user) {
         try {
@@ -91,7 +109,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ address, network, connecting, error, connect, disconnect }}
+      value={{ address, network, connecting, error, connect, disconnect, mismatch, reconcile }}
     >
       {children}
     </WalletContext.Provider>

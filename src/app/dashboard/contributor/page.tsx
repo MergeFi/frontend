@@ -176,13 +176,27 @@ export default function ContributorDashboardPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="font-medium text-slate-900 dark:text-white">Earnings, last 8 weeks</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-medium text-slate-900 dark:text-white">Earnings, last 8 weeks</h2>
+            {isLive && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+                Sample data
+              </span>
+            )}
+          </div>
           <div className="mt-6">
             <BarChart data={earningsChartData} formatValue={(v) => formatCurrency(v)} />
           </div>
         </div>
         <div>
-          <h2 className="font-medium text-slate-900 dark:text-white">Recent activity</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-medium text-slate-900 dark:text-white">Recent activity</h2>
+            {isLive && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+                Sample data
+              </span>
+            )}
+          </div>
           <div className="mt-4">
             <ActivityList events={recentActivity.slice(0, 4)} />
           </div>

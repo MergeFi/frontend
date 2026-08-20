@@ -6,6 +6,35 @@ import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
+
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
+  const { handle } = await params;
+  const profile = await fetchReputationByUsername(
+    handle,
+    mockReputationProfiles[handle] ?? null,
+  );
+
+  if (!profile) {
+    return {
+      title: "Profile Not Found | MergeFi",
+      description: "The requested contributor profile could not be found.",
+    };
+  }
+
+  const title = `@${profile.handle} | MergeFi`;
+  const description = `${profile.handle} has merged ${profile.mergedPRs} PRs with a ${Math.round(profile.completionRate * 100)}% completion rate across ${profile.organizations.length || 0} organizations.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/reputation/${profile.handle}`,
+    },
+  };
+}
+
 export default async function ReputationPage({
   params,
 }: {

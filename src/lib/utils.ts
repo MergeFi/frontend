@@ -82,3 +82,41 @@ export function validateTeamSplits(
     message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
   };
 }
+
+/**
+ * Validate and normalize a user-entered monetary amount for Stellar assets.
+ * Rejects empty, non-numeric, zero, negative, Infinity, NaN, and over-precision
+ * values. Returns a normalized decimal string suitable for API submission.
+ *
+ * @param raw - The raw input string from a number/text field.
+ * @param asset - "USDC" (2 decimals) or "XLM" (7 decimals).
+ * @returns Object with `valid`, optional `normalized` string, and optional `error`.
+ */
+export function parseMoneyInput(
+  raw: string,
+  asset: "USDC" | "XLM",
+): { valid: boolean; normalized?: string; error?: string } {
+  if (!raw || raw.trim() === "") {
+    return { valid: false, error: "Amount is required." };
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return { valid: false, error: "Enter a valid numeric amount." };
+  }
+  if (n <= 0) {
+    return { valid: false, error: "Amount must be greater than zero." };
+  }
+  const maxDecimals = asset === "USDC" ? 2 : 7;
+  if (raw.includes(".")) {
+    const frac = raw.split(".")[1];
+    if (frac && frac.length > maxDecimals) {
+      return {
+        valid: false,
+        error: `${asset} supports up to ${maxDecimals} decimal places.`,
+      };
+    }
+  }
+  // Normalize: fixed decimal places matching asset precision
+  const normalized = n.toFixed(maxDecimals);
+  return { valid: true, normalized };
+}

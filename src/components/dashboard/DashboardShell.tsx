@@ -10,8 +10,11 @@ import {
   Users,
   Wallet,
   Receipt,
+  Menu,
+  X,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Role = "contributor" | "maintainer" | "sponsor";
@@ -65,56 +68,82 @@ export function DashboardShell({
 }) {
   const pathname = usePathname();
   const items = navByRole[role];
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => (
+    <>
+      <p className="px-3 text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        Dashboard
+      </p>
+      <nav className="mt-3 space-y-1">
+        {items.map((item) => {
+          const active = pathname === item.href;
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              onClick={onItemClick}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800",
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <p className="mt-8 px-3 text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        Switch role
+      </p>
+      <nav className="mt-3 space-y-1">
+        {roleSwitcher.map((r) => (
+          <Link
+            key={r.role}
+            href={r.href}
+            onClick={onItemClick}
+            className={cn(
+              "block rounded-lg px-3 py-2 text-sm transition-colors",
+              r.role === role
+                ? "font-medium text-slate-900 dark:text-white"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-white",
+            )}
+          >
+            {r.label}
+          </Link>
+        ))}
+      </nav>
+    </>
+  );
 
   return (
-    <div className="mx-auto flex max-w-7xl gap-8 px-6 py-10">
+    <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10 md:flex-row">
       <aside className="hidden w-56 shrink-0 md:block">
         <div className="sticky top-24">
-          <p className="px-3 text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
-            Dashboard
-          </p>
-          <nav className="mt-3 space-y-1">
-            {items.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
-                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800",
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <p className="mt-8 px-3 text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
-            Switch role
-          </p>
-          <nav className="mt-3 space-y-1">
-            {roleSwitcher.map((r) => (
-              <Link
-                key={r.role}
-                href={r.href}
-                className={cn(
-                  "block rounded-lg px-3 py-2 text-sm transition-colors",
-                  r.role === role
-                    ? "font-medium text-slate-900 dark:text-white"
-                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-white",
-                )}
-              >
-                {r.label}
-              </Link>
-            ))}
-          </nav>
+          <SidebarContent />
         </div>
       </aside>
+
+      <div className="md:hidden">
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-dashboard-nav"
+        >
+          {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          {mobileMenuOpen ? "Close menu" : "Dashboard menu"}
+        </button>
+        {mobileMenuOpen && (
+          <div id="mobile-dashboard-nav" className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <SidebarContent onItemClick={() => setMobileMenuOpen(false)} />
+          </div>
+        )}
+      </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-4">

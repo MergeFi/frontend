@@ -77,7 +77,7 @@ export default async function MilestonesPage() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {formatCurrency(pool.monthlyDeposit, pool.asset)} deposited monthly
             </p>
-            <PoolDepositButton poolId={pool.id} />
+            <PoolDepositButton poolId={pool.id} asset={pool.asset} />
           </div>
         ))}
       </div>

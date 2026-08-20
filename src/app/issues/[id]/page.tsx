@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ShieldCheck, Clock, GitBranch, Milestone as MilestoneIcon } from "lucide-react";
 import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
@@ -6,6 +7,32 @@ import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { formatCurrency, daysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
+
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const bounty = await fetchBounty(id, undefined);
+    if (!bounty) {
+      return { title: "Bounty Not Found | MergeFi" };
+    }
+    const rewardStr = formatCurrency(bounty.reward, bounty.asset);
+    return {
+      title: `${bounty.title} — ${rewardStr} | MergeFi`,
+      description: bounty.description?.slice(0, 160) || `Bounty: ${rewardStr}`,
+      openGraph: {
+        title: `${bounty.title} — ${rewardStr}`,
+        description: bounty.description?.slice(0, 160) || `Bounty: ${rewardStr}`,
+      },
+    };
+  } catch {
+    return { title: "Bounty | MergeFi" };
+  }
+}
 
 export default async function IssueDetailPage({
   params,
@@ -84,10 +111,16 @@ export default async function IssueDetailPage({
         )}
       </div>
 
-      {bounty.teamSplits && (
+      {bounty.teamSplits && bounty.teamSplits.length > 0 && (
         <div className="mt-8">
           <h2 className="font-medium text-slate-900 dark:text-white">Team payout split</h2>
-          <div className="mt-3 space-y-2">
+          {/* Surface validation warning if splits don't sum to 100% (#85) */}
+                {bounty.teamSplitsValid && !bounty.teamSplitsValid.valid && (
+                  <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                    ⚠️ {bounty.teamSplitsValid.message ?? `Team splits sum to ${bounty.teamSplitsValid.sum.toFixed(2)}% (expected 100%)`}
+                  </div>
+                )}
+                <div className="mt-3 space-y-2">
             {bounty.teamSplits.map((split) => (
               <div
                 key={split.role}

@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 export function CallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,9 +18,21 @@ export function CallbackClient() {
       return;
     }
     login(token)
-      .then(() => router.replace("/dashboard/contributor"))
+      .then(() => {
+        // Role-based redirect precedence: maintainer > sponsor > contributor.
+        // user may be null if refresh() failed internally after login resolved;
+        // fall back to contributor dashboard in that case (#77).
+        const roles = user?.roles ?? [];
+        let target = "/dashboard/contributor";
+        if (roles.includes("maintainer")) {
+          target = "/dashboard/maintainer";
+        } else if (roles.includes("sponsor")) {
+          target = "/dashboard/sponsor";
+        }
+        router.replace(target);
+      })
       .catch(() => setError("Could not complete sign-in. Please try again."));
-  }, [searchParams, login, router]);
+  }, [searchParams, login, router, user]);
 
   return (
     <div className="mx-auto max-w-md px-6 py-24 text-center">

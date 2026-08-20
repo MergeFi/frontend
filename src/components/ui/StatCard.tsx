@@ -22,7 +22,7 @@
  * always available via the title attribute (keyboard-navigable, hover tooltip).
  */
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency as fmtCurrencyUtil } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sparkline } from "./Sparkline";
@@ -71,19 +71,32 @@ export interface StatCardProps {
  * Format a numeric value according to the requested format.
  * Returns both the display string and the full exact string for the tooltip.
  */
+/**
+ * Resolve the viewer's locale for Intl formatting.
+ * Falls back to "en-US" when running on the server or when navigator is unavailable.
+ */
+function resolveLocale(): string {
+  if (typeof navigator !== "undefined" && navigator.language) {
+    return navigator.language;
+  }
+  return "en-US";
+}
+
 function formatValue(
   value: number,
   format: StatCardFormat,
   asset: "USDC" | "XLM",
 ): { display: string; exact: string } {
+  const locale = resolveLocale();
   switch (format) {
     case "currency": {
-      const formatted = value.toLocaleString("en-US", {
+      const formatted = new Intl.NumberFormat(locale, {
         maximumFractionDigits: 2,
-      });
+        minimumFractionDigits: 0,
+      }).format(value);
       const display = `${formatted} ${asset}`;
       // Exact value for tooltip always shows full precision
-      const exact = `${value.toLocaleString("en-US", { maximumFractionDigits: 6 })} ${asset}`;
+      const exact = `${new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(value)} ${asset}`;
       return { display, exact };
     }
     case "percent": {
@@ -91,7 +104,7 @@ function formatValue(
       return { display: pct, exact: pct };
     }
     case "count": {
-      const s = value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+      const s = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
       return { display: s, exact: s };
     }
     case "raw":

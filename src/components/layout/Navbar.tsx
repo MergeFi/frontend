@@ -43,7 +43,7 @@ export function Navbar() {
                 Dashboards
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
-              <div className="invisible absolute left-0 top-full pt-3 opacity-0 transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute start-0 top-full pt-3 opacity-0 transition-all group-hover:visible group-hover:opacity-100">
                 <div className="w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900">
                   {dashboardLinks.map((link) => (
                     <Link

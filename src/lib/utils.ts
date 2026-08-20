@@ -51,9 +51,65 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
  * consistency across the app. The same negative input will now render
  * identically whether formatted by formatCurrency() or StatCard.
  */
+/**
+ * Resolve the viewer's locale for Intl formatting.
+ * Falls back to "en-US" when running on the server or when navigator is unavailable.
+ */
+function resolveLocale(): string {
+  if (typeof navigator !== "undefined" && navigator.language) {
+    return navigator.language;
+  }
+  return "en-US";
+}
+
+/**
+ * Format a numeric amount as a locale-aware currency string with the specified asset label.
+ * Uses the viewer's actual browser locale for thousands/decimal separators.
+ * The asset label is appended after the number following the convention of the resolved locale.
+ */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+  const locale = resolveLocale();
+  const formatted = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  }).format(amount);
+  return `${formatted} ${asset}`;
+}
+
+/**
+ * Format an ISO date string using the viewer's locale.
+ * Returns a locale-appropriate short date (e.g. "12/31/2024" in en-US, "31.12.2024" in de-DE).
+ */
+export function formatDate(dateIso: string): string {
+  const d = new Date(dateIso);
+  if (Number.isNaN(d.getTime())) return dateIso;
+  const locale = resolveLocale();
+  return new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}
+
+/**
+ * Format a relative time string (e.g. "2 days ago") using the viewer's locale.
+ */
+export function formatRelativeTime(dateIso: string): string {
+  const d = new Date(dateIso);
+  if (Number.isNaN(d.getTime())) return dateIso;
+  const locale = resolveLocale();
+  const diffMs = d.getTime() - Date.now();
+  const diffSec = Math.round(diffMs / 1000);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const absSec = Math.abs(diffSec);
+  if (absSec < 60) return rtf.format(diffSec, "second");
+  const diffMin = Math.round(diffSec / 60);
+  if (Math.abs(diffMin) < 60) return rtf.format(diffMin, "minute");
+  const diffHr = Math.round(diffMin / 60);
+  if (Math.abs(diffHr) < 24) return rtf.format(diffHr, "hour");
+  const diffDay = Math.round(diffHr / 24);
+  return rtf.format(diffDay, "day");
 }
 
 export function formatPercent(value: number) {

@@ -35,6 +35,9 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     }
   }
 
+  // handleFund is intentionally unconditional: any authenticated sponsor
+  // can fund an open bounty (crowdfunding model per README). Unlike refund,
+  // funding doesn't require being a specific prior participant.
   async function handleFund() {
     await withWallet(async (walletAddress) => {
       await apiPost(`/bounties/${bounty.id}/fund`, { funderAddress: walletAddress });
@@ -89,11 +92,12 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
             {pending ? "Claiming..." : "Claim this issue"}
           </Button>
         )}
-        {(bounty.status === "funded" || bounty.status === "claimed") && (
-          <Button size="lg" variant="outline" onClick={handleRefund} disabled={pending}>
-            Refund sponsor
-          </Button>
-        )}
+        {(bounty.status === "funded" || bounty.status === "claimed") &&
+          user?.stellarAddress === bounty.funderAddress && (
+            <Button size="lg" variant="outline" onClick={handleRefund} disabled={pending}>
+              Refund sponsor
+            </Button>
+          )}
         {["in_review", "merged", "paid", "refunded", "expired"].includes(
           bounty.status,
         ) && (

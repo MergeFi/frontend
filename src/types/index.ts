@@ -37,6 +37,7 @@ export interface Bounty {
   teamSplits?: TeamSplit[];
   milestoneId?: string;
   escrowId?: string;
+  funderAddress?: string;
 }
 
 export interface Milestone {

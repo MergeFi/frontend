@@ -35,6 +35,8 @@ export interface Bounty {
   labels: string[];
   claimedBy?: string;
   teamSplits?: TeamSplit[];
+  /** Validation result for team splits; undefined if no splits present. */
+  teamSplitsValid?: { valid: boolean; sum: number; message?: string };
   milestoneId?: string;
   escrowId?: string;
   /** Stellar address of the sponsor who funded this bounty (for refund gating). */

@@ -7,8 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 export function CallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -18,9 +19,22 @@ export function CallbackClient() {
       return;
     }
     login(token)
-      .then(() => router.replace("/dashboard/contributor"))
+      .then(() => setJustLoggedIn(true))
       .catch(() => setError("Could not complete sign-in. Please try again."));
-  }, [searchParams, login, router]);
+  }, [searchParams, login]);
+
+  useEffect(() => {
+    if (justLoggedIn && user) {
+      const roles = user.roles || [];
+      let target = "/dashboard/contributor";
+      if (roles.includes("maintainer")) {
+        target = "/dashboard/maintainer";
+      } else if (roles.includes("sponsor")) {
+        target = "/dashboard/sponsor";
+      }
+      router.replace(target);
+    }
+  }, [justLoggedIn, user, router]);
 
   return (
     <div className="mx-auto max-w-md px-6 py-24 text-center">

@@ -41,3 +41,15 @@ export async function signTransaction(xdr: string, address: string) {
         : "Test SDF Network ; September 2015",
   });
 }
+
+export async function getActiveFreighterAddress(): Promise<string | null> {
+  try {
+    const allowed = await isAllowed();
+    if (!allowed.isAllowed) return null;
+    const { address, error } = await getAddress();
+    if (error || !address) return null;
+    return address;
+  } catch {
+    return null;
+  }
+}

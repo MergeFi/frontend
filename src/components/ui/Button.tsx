@@ -1,5 +1,6 @@
-import { ButtonHTMLAttributes } from "react";
+import { forwardRef, type ElementType, type ComponentPropsWithRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import type { ClassValue } from "clsx";
 
 type Variant = "primary" | "secondary" | "ghost" | "outline";
 type Size = "sm" | "md" | "lg";
@@ -21,26 +22,49 @@ const sizeClasses: Record<Size, string> = {
   lg: "px-6 py-3 text-base",
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+type ButtonOwnProps = {
   variant?: Variant;
   size?: Size;
-}
+  loading?: boolean;
+  className?: ClassValue;
+  children?: ReactNode;
+};
 
-export function Button({
-  variant = "primary",
-  size = "md",
-  className,
-  ...props
-}: ButtonProps) {
+export type ButtonProps<C extends ElementType = "button"> = ButtonOwnProps &
+  Omit<ComponentPropsWithRef<C>, keyof ButtonOwnProps | "as"> & {
+    as?: C;
+  };
+
+export const Button = forwardRef(function Button(
+  { as, variant = "primary", size = "md", loading, className, disabled, children, ...props }: ButtonOwnProps & Record<string, unknown>,
+  ref: React.Ref<unknown>,
+) {
+  const Component = (as ?? "button") as ElementType;
+  const isDisabled = disabled || loading;
+
   return (
-    <button
+    <Component
+      ref={ref}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "relative inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         variantClasses[variant],
         sizeClasses[size],
-        className,
+        className as ClassValue,
       )}
+      disabled={Component === "button" ? isDisabled : undefined}
+      aria-disabled={isDisabled || undefined}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {loading && (
+        <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-60" />
+        </span>
+      )}
+      <span className={cn("inline-flex items-center gap-2", loading && "invisible")}>
+        {children as ReactNode}
+      </span>
+    </Component>
   );
-}
+}) as <C extends ElementType = "button">(props: ButtonProps<C>) => React.ReactElement | null;

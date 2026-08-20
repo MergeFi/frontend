@@ -24,7 +24,8 @@ export default async function MaintainerDashboardPage() {
   let statStatus: "loaded" | "error" = "loaded";
 
   try {
-    bounties = await fetchBounties(mockBounties);
+    const bountyResult = await fetchBounties(mockBounties);
+    bounties = bountyResult.items;
   } catch {
     statStatus = "error";
   }

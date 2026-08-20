@@ -51,7 +51,7 @@ export default function ContributorDashboardPage() {
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
 
   useEffect(() => {
-    fetchBounties(mockBounties).then(setBounties);
+    fetchBounties(mockBounties).then((res) => setBounties(res.items));
   }, []);
 
   useEffect(() => {

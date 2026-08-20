@@ -51,14 +51,35 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
  * consistency across the app. The same negative input will now render
  * identically whether formatted by formatCurrency() or StatCard.
  */
+/**
+ * Locale-aware currency formatter for USDC and XLM.
+ * Uses the viewer's browser locale via Intl.NumberFormat for correct
+ * thousands/decimal separators. USDC uses 2 decimal places; XLM uses 7
+ * (matching Stellar's native precision). The asset label is appended
+ * after the formatted number following en-US convention; full i18n with
+ * per-locale unit placement requires a translation library (#51 scope note).
+ */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+  const maxDigits = asset === "XLM" ? 7 : 2;
+  const formatted = amount.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDigits,
+  });
+  return `${formatted} ${asset}`;
 }
 
+/**
+ * Locale-aware percentage formatter. Input is a 0–1 fraction.
+ * Uses Intl.NumberFormat with percent style for correct locale conventions.
+ */
 export function formatPercent(value: number) {
   if (!Number.isFinite(value)) return "0%";
-  return `${Math.round(value * 100)}%`;
+  return value.toLocaleString(undefined, {
+    style: "percent",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  });
 }
 
 export function daysUntil(dateIso: string) {
@@ -81,4 +102,18 @@ export function validateTeamSplits(
     sum,
     message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
   };
+}
+
+/**
+ * Compute period-over-period percentage change from a history array.
+ * Compares the last element against the second-to-last element.
+ * Returns undefined if fewer than 2 data points are available.
+ * A result of exactly 0 is valid and distinct from undefined (#92).
+ */
+export function computeTrend(history: number[] | undefined): number | undefined {
+  if (!history || history.length < 2) return undefined;
+  const current = history[history.length - 1];
+  const previous = history[history.length - 2];
+  if (previous === 0) return current === 0 ? 0 : 100;
+  return ((current - previous) / Math.abs(previous)) * 100;
 }

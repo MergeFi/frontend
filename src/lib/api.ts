@@ -154,4 +154,22 @@ export async function fetchReputationByUsername(
   }
 }
 
+
+export async function fetchReputationWithStatus(
+  username: string,
+  fallback: ReputationProfile | null,
+): Promise<{ profile: ReputationProfile | null; isLive: boolean }> {
+  try {
+    const users = await request<(RawUserProfile & { id: string })[]>("/users");
+    const user = users.find((u) => u.username === username);
+    if (!user) return { profile: fallback, isLive: false };
+    const snapshot = await request<RawReputationSnapshot | null>(
+      `/reputation/${user.id}`,
+    );
+    return { profile: adaptReputation(user, snapshot), isLive: true };
+  } catch {
+    return { profile: fallback, isLive: false };
+  }
+}
+
 export { request };

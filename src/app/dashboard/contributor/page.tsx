@@ -10,7 +10,7 @@ import { BarChart } from "@/components/ui/BarChart";
 import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, computeTrend } from "@/lib/utils";
 import { apiPost, fetchBounties } from "@/lib/api";
 import {
   mockReputationProfiles,
@@ -138,7 +138,7 @@ export default function ContributorDashboardPage() {
           format="currency"
           status={fetchStatus}
           icon={DollarSign}
-          trend={fetchStatus === "loaded" ? 12 : undefined}
+          trend={fetchStatus === "loaded" ? computeTrend(contributorEarningsHistory) : undefined}
           sparkline={fetchStatus === "loaded" ? contributorEarningsHistory : undefined}
           zeroLabel="No earnings yet"
         />
@@ -148,7 +148,7 @@ export default function ContributorDashboardPage() {
           format="count"
           status={fetchStatus}
           icon={GitMerge}
-          trend={fetchStatus === "loaded" ? 8 : undefined}
+          trend={fetchStatus === "loaded" ? computeTrend(contributorSparkline) : undefined}
           sparkline={fetchStatus === "loaded" ? contributorSparkline : undefined}
           zeroLabel="No merged PRs yet"
         />

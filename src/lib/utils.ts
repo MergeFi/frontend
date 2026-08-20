@@ -82,3 +82,17 @@ export function validateTeamSplits(
     message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
   };
 }
+
+/**
+ * Computes the period-over-period percentage change from a historical array.
+ * Returns undefined if there aren't at least 2 data points to compare.
+ */
+export function computeTrend(history: number[] | undefined): number | undefined {
+  if (!history || history.length < 2) return undefined;
+  const current = history[history.length - 1];
+  const previous = history[history.length - 2];
+  if (previous === 0) {
+    return current === 0 ? 0 : 100;
+  }
+  return Math.round(((current - previous) / Math.abs(previous)) * 100);
+}

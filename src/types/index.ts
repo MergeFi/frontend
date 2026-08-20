@@ -37,6 +37,8 @@ export interface Bounty {
   teamSplits?: TeamSplit[];
   milestoneId?: string;
   escrowId?: string;
+  /** Stellar address of the sponsor who funded this bounty (for refund gating). */
+  funderAddress?: string;
 }
 
 export interface Milestone {

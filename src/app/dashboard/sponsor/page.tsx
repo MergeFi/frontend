@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Wallet, Receipt, Lock, FolderGit2, Inbox } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -44,6 +44,7 @@ export default function SponsorDashboardPage() {
   // Explicit fetch status so StatCards can show skeletons rather than
   // hiding the whole page, and errors rather than flashing zeroes.
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
+  const dashboardGenRef = useRef(0);
 
   useEffect(() => {
     if (loading) return;
@@ -64,6 +65,7 @@ export default function SponsorDashboardPage() {
       return;
     }
 
+    const gen = ++dashboardGenRef.current;
     setFetchStatus("loading");
 
     apiRequest<{
@@ -73,6 +75,7 @@ export default function SponsorDashboardPage() {
       activeMilestones: RawMilestone[];
     }>(`/sponsors/${user.id}/dashboard`)
       .then((raw) => {
+        if (gen !== dashboardGenRef.current) return;
         const activeBounties = raw.activeBounties.map(adaptBounty);
         const repoCount = new Set(activeBounties.map((b) => `${b.org}/${b.repo}`)).size;
         setData({
@@ -85,9 +88,7 @@ export default function SponsorDashboardPage() {
         setIsLive(true);
       })
       .catch(() => {
-        // On error: keep data null so cards can show their error state.
-        // Do NOT set values to 0 — that would be indistinguishable from a
-        // real zero balance, which is a trust-eroding false signal for a sponsor.
+        if (gen !== dashboardGenRef.current) return;
         setData(null);
         setFetchStatus("error");
         setIsLive(false);

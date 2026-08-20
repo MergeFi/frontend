@@ -47,6 +47,7 @@ export default function SponsorDashboardPage() {
 
   useEffect(() => {
     if (loading) return;
+    let isActive = true;
 
     if (!user) {
       // Demo-mode fallback when signed out.
@@ -61,7 +62,7 @@ export default function SponsorDashboardPage() {
       });
       setFetchStatus("loaded");
       setIsLive(false);
-      return;
+      return () => { isActive = false; };
     }
 
     setFetchStatus("loading");
@@ -73,6 +74,7 @@ export default function SponsorDashboardPage() {
       activeMilestones: RawMilestone[];
     }>(`/sponsors/${user.id}/dashboard`)
       .then((raw) => {
+        if (!isActive) return;
         const activeBounties = raw.activeBounties.map(adaptBounty);
         const repoCount = new Set(activeBounties.map((b) => `${b.org}/${b.repo}`)).size;
         setData({
@@ -85,6 +87,7 @@ export default function SponsorDashboardPage() {
         setIsLive(true);
       })
       .catch(() => {
+        if (!isActive) return;
         // On error: keep data null so cards can show their error state.
         // Do NOT set values to 0 — that would be indistinguishable from a
         // real zero balance, which is a trust-eroding false signal for a sponsor.
@@ -92,6 +95,10 @@ export default function SponsorDashboardPage() {
         setFetchStatus("error");
         setIsLive(false);
       });
+      
+    return () => {
+      isActive = false;
+    };
   }, [user, loading]);
 
   // Derive per-card values only when data is available.

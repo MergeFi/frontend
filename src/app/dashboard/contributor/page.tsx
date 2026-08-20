@@ -11,7 +11,8 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { formatCurrency } from "@/lib/utils";
-import { apiPost, fetchBounties } from "@/lib/api";
+import { apiPost, request } from "@/lib/api";
+import { adaptBounty, type RawBounty } from "@/lib/adapters";
 import {
   mockReputationProfiles,
   mockBounties,
@@ -44,18 +45,35 @@ export default function ContributorDashboardPage() {
   const { user, loading } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [bounties, setBounties] = useState<Bounty[]>(mockBounties);
-  const [isLive, setIsLive] = useState(false);
+  const [isStatsLive, setIsStatsLive] = useState(false);
+  const [isBountiesLive, setIsBountiesLive] = useState(false);
+  const isLive = isStatsLive && isBountiesLive;
   const [tab, setTab] = useState<"active" | "completed">("active");
   // Explicit fetch status: starts "loading" so cards shimmer rather than
   // flashing zeroes while the auth check + API call are in flight.
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
 
   useEffect(() => {
-    fetchBounties(mockBounties).then(setBounties);
+    let isActive = true;
+    request<RawBounty[]>("/bounties")
+      .then((raw) => {
+        if (!isActive) return;
+        setBounties(raw.map(adaptBounty));
+        setIsBountiesLive(true);
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setBounties(mockBounties);
+        setIsBountiesLive(false);
+      });
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {
     if (loading) return;
+    let isActive = true;
 
     if (!user) {
       const demo = mockReputationProfiles.priyaeth;
@@ -67,14 +85,15 @@ export default function ContributorDashboardPage() {
         completionRate: demo.completionRate,
       });
       setFetchStatus("loaded");
-      setIsLive(false);
-      return;
+      setIsStatsLive(false);
+      return () => { isActive = false; };
     }
 
     setFetchStatus("loading");
 
     apiPost<ReputationSnapshot>(`/reputation/${user.id}/recompute`)
       .then((snapshot) => {
+        if (!isActive) return;
         setStats({
           handle: user.username,
           lifetimeEarnings: Number(snapshot.totalEarnings),
@@ -82,9 +101,10 @@ export default function ContributorDashboardPage() {
           completionRate: Number(snapshot.completionRate) / 100,
         });
         setFetchStatus("loaded");
-        setIsLive(true);
+        setIsStatsLive(true);
       })
       .catch(() => {
+        if (!isActive) return;
         // BUG FIX: the previous implementation set all stat values to 0 on
         // fetch failure. A contributor seeing "$0 lifetime earnings" due to a
         // network error is indistinguishable from a real zero — a demoralising
@@ -92,8 +112,12 @@ export default function ContributorDashboardPage() {
         // status to "error" so each StatCard renders its error state instead.
         setStats(null);
         setFetchStatus("error");
-        setIsLive(true);
+        setIsStatsLive(false);
       });
+      
+    return () => {
+      isActive = false;
+    };
   }, [user, loading]);
 
   // Derive display handle: show username if live, else demo handle.

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { GitMerge, ChevronDown, LogOut } from "lucide-react";
+import { GitMerge, ChevronDown, LogOut, Menu, X } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -21,6 +22,7 @@ const dashboardLinks = [
 
 export function Navbar() {
   const { user, loading, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
@@ -65,6 +67,15 @@ export function Navbar() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
+                    <button
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav"
+            aria-label="Toggle mobile menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
           <NetworkBadge />
           <ThemeToggle />
           {loading ? null : user ? (
@@ -98,6 +109,28 @@ export function Navbar() {
           )}
         </div>
       </div>
+      {mobileMenuOpen && (
+        <div id="mobile-nav" className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 md:hidden">
+          <nav className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" onClick={() => setMobileMenuOpen(false)}>
+                {link.label}
+              </Link>
+            ))}
+            <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Dashboards</p>
+            {dashboardLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="rounded-lg px-3 py-2 pl-6 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" onClick={() => setMobileMenuOpen(false)}>
+                {link.label}
+              </Link>
+            ))}
+            {user && (
+              <Link href={`/reputation/${user.username}`} className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" onClick={() => setMobileMenuOpen(false)}>
+                Reputation
+              </Link>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

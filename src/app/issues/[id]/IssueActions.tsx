@@ -49,6 +49,18 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
       router.push("/connect");
       return;
     }
+    // Hard-block: a claimed bounty with no linked payout wallet is an
+    // unrecoverable dead end — the backend releases payment automatically
+    // on PR merge with no manual approval step, so there's nowhere for
+    // funds to go if stellarAddress is null. Require a linked wallet
+    // before allowing the claim action at all.
+    if (!user.stellarAddress) {
+      setError(
+        "Link a Stellar payout wallet before claiming. Without one, you can't be paid when your PR merges.",
+      );
+      router.push("/connect");
+      return;
+    }
     setPending(true);
     try {
       await apiPost(`/bounties/${bounty.id}/claim`, { contributorId: user.id });

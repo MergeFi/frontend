@@ -1,5 +1,6 @@
 import type {
   Bounty,
+  BountyStatus,
   Milestone,
   MaintenancePool,
   TeamSplit,
@@ -12,6 +13,27 @@ import {
   coercePercentage,
   validateTeamSplits,
 } from "./utils";
+
+export const VALID_BOUNTY_STATUSES: readonly BountyStatus[] = [
+  "open",
+  "funded",
+  "claimed",
+  "in_review",
+  "merged",
+  "paid",
+  "refunded",
+  "expired",
+] as const;
+
+export function coerceBountyStatus(
+  status: unknown,
+  fallback: BountyStatus = "open",
+): BountyStatus {
+  if (typeof status === "string" && (VALID_BOUNTY_STATUSES as readonly string[]).includes(status)) {
+    return status as BountyStatus;
+  }
+  return fallback;
+}
 
 // Shapes returned by mergefi-backend's TypeORM entities (see
 // mergefi-backend/src/common/entities). These are intentionally loose since
@@ -49,7 +71,7 @@ export interface RawBounty {
   amount: string;
   asset: "USDC" | "XLM";
   difficulty: Difficulty;
-  status: Bounty["status"];
+  status: Bounty["status"] | string;
   deadline: string | null;
   escrowId: string | null;
   issue?: RawIssue;
@@ -107,7 +129,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     reward: coerceNonNegative(raw.amount),
     asset: raw.asset,
     difficulty: raw.difficulty,
-    status: raw.status,
+    status: coerceBountyStatus(raw.status),
     deadline: raw.deadline ?? new Date().toISOString(),
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,

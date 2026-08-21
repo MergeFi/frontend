@@ -120,3 +120,40 @@ describe("adaptBounty — field coverage audit (#86)", () => {
     }
   });
 });
+
+
+describe("adaptBounty — status validation and coercion (#279)", () => {
+  it("preserves valid BountyStatus values", () => {
+    const validStatuses = [
+      "open",
+      "funded",
+      "claimed",
+      "in_review",
+      "merged",
+      "paid",
+      "refunded",
+      "expired",
+    ] as const;
+
+    for (const status of validStatuses) {
+      const raw = rawBounty({ status });
+      expect(adaptBounty(raw).status).toBe(status);
+    }
+  });
+
+  it("coerces an unrecognized backend status to the safe fallback 'open'", () => {
+    const raw = rawBounty({ status: "some_unrecognized_future_status" as any });
+    expect(adaptBounty(raw).status).toBe("open");
+  });
+
+  it("coerces null or undefined or empty status to 'open'", () => {
+    const rawNull = rawBounty({ status: null as any });
+    expect(adaptBounty(rawNull).status).toBe("open");
+
+    const rawUndefined = rawBounty({ status: undefined as any });
+    expect(adaptBounty(rawUndefined).status).toBe("open");
+
+    const rawEmpty = rawBounty({ status: "" as any });
+    expect(adaptBounty(rawEmpty).status).toBe("open");
+  });
+});

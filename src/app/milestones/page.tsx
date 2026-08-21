@@ -1,6 +1,8 @@
+import { Layers } from "lucide-react";
 import { fetchMilestones, fetchMaintenancePools } from "@/lib/api";
 import { mockMilestones, mockMaintenancePools } from "@/lib/mock-data";
 import { formatCurrency, formatPercent } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { MilestoneFundButton, PoolDepositButton } from "./MilestoneActions";
 
 export const metadata = {
@@ -25,37 +27,47 @@ export default async function MilestonesPage() {
         each one resolves.
       </p>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        {milestones.map((m) => {
-          const pct = m.distributed / m.budget;
-          return (
-            <div
-              key={m.id}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-            >
-              <p className="text-xs text-slate-500 dark:text-slate-400">{m.repo}</p>
-              <h3 className="mt-1 font-medium text-slate-900 dark:text-white">{m.name}</h3>
-              <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div
-                  className="h-full bg-indigo-600"
-                  style={{ width: `${Math.min(pct * 100, 100)}%` }}
-                />
+      {milestones.length > 0 ? (
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {milestones.map((m) => {
+            const pct = m.distributed / m.budget;
+            return (
+              <div
+                key={m.id}
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              >
+                <p className="text-xs text-slate-500 dark:text-slate-400">{m.repo}</p>
+                <h3 className="mt-1 font-medium text-slate-900 dark:text-white">{m.name}</h3>
+                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                  <div
+                    className="h-full bg-indigo-600"
+                    style={{ width: `${Math.min(pct * 100, 100)}%` }}
+                  />
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+                  <span>
+                    {formatCurrency(m.distributed, m.asset)} of{" "}
+                    {formatCurrency(m.budget, m.asset)}
+                  </span>
+                  <span>{formatPercent(pct)}</span>
+                </div>
+                <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+                  {m.completedCount} of {m.issueCount} issues complete
+                </p>
+                <MilestoneFundButton milestoneId={m.id} />
               </div>
-              <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-                <span>
-                  {formatCurrency(m.distributed, m.asset)} of{" "}
-                  {formatCurrency(m.budget, m.asset)}
-                </span>
-                <span>{formatPercent(pct)}</span>
-              </div>
-              <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                {m.completedCount} of {m.issueCount} issues complete
-              </p>
-              <MilestoneFundButton milestoneId={m.id} />
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-8">
+          <EmptyState
+            icon={Layers}
+            title="No active milestones"
+            description="There are currently no milestones open for funding. Check back soon."
+          />
+        </div>
+      )}
 
       <h2 className="mt-16 text-2xl font-semibold text-slate-900 dark:text-white">
         Recurring maintenance pools
@@ -64,23 +76,33 @@ export default async function MilestonesPage() {
         Sponsors deposit monthly so maintainers can reward ongoing upkeep, like
         dependency bumps, docs, and cleanup, that would otherwise go unfunded.
       </p>
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        {pools.map((pool) => (
-          <div
-            key={pool.id}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-          >
-            <p className="text-xs text-slate-500 dark:text-slate-400">{pool.repo}</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">
-              {formatCurrency(pool.balance, pool.asset)} balance
-            </p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {formatCurrency(pool.monthlyDeposit, pool.asset)} deposited monthly
-            </p>
-            <PoolDepositButton poolId={pool.id} />
-          </div>
-        ))}
-      </div>
+      {pools.length > 0 ? (
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {pools.map((pool) => (
+            <div
+              key={pool.id}
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+            >
+              <p className="text-xs text-slate-500 dark:text-slate-400">{pool.repo}</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">
+                {formatCurrency(pool.balance, pool.asset)} balance
+              </p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {formatCurrency(pool.monthlyDeposit, pool.asset)} deposited monthly
+              </p>
+              <PoolDepositButton poolId={pool.id} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-8">
+          <EmptyState
+            icon={Layers}
+            title="No maintenance pools"
+            description="There are currently no maintenance pools created yet."
+          />
+        </div>
+      )}
     </div>
   );
 }

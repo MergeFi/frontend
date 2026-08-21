@@ -49,6 +49,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
   useCrossTabStorage(WALLET_KEY, handleWalletKeyChangedElsewhere);
 
+  // When the user logs out (e.g. across tabs or in current session), clear the connected wallet
+  // to prevent an unauthenticated user from retaining an active connected wallet state (#270).
+  useEffect(() => {
+    if (!user && address) {
+      disconnect();
+    }
+  }, [user, address, disconnect]);
+
   const connect = useCallback(async () => {
     setError(null);
     setConnecting(true);

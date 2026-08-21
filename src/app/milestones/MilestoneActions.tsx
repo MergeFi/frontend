@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { useWallet } from "@/context/WalletContext";
 import { apiPost, ApiRequestError } from "@/lib/api";
 
-export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
+export function MilestoneFundButton({
+  milestoneId,
+  milestoneName,
+}: {
+  milestoneId: string;
+  milestoneName?: string;
+}) {
   const router = useRouter();
   const { address, connect, connecting } = useWallet();
   const [pending, setPending] = useState(false);
@@ -34,7 +40,13 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
 
   return (
     <div className="mt-4">
-      <Button size="sm" variant="outline" onClick={handleFund} disabled={pending || connecting}>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleFund}
+        disabled={pending || connecting}
+        aria-label={milestoneName ? `Fund ${milestoneName}` : "Fund milestone"}
+      >
         {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
       </Button>
       {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
@@ -42,7 +54,13 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
   );
 }
 
-export function PoolDepositButton({ poolId }: { poolId: string }) {
+export function PoolDepositButton({
+  poolId,
+  poolRepo,
+}: {
+  poolId: string;
+  poolRepo?: string;
+}) {
   const router = useRouter();
   const { address, connect, connecting } = useWallet();
   const [amount, setAmount] = useState("100");
@@ -79,7 +97,13 @@ export function PoolDepositButton({ poolId }: { poolId: string }) {
         onChange={(e) => setAmount(e.target.value)}
         className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
       />
-      <Button size="sm" variant="outline" onClick={handleDeposit} disabled={pending || connecting}>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleDeposit}
+        disabled={pending || connecting}
+        aria-label={poolRepo ? `Deposit to ${poolRepo} pool` : "Deposit"}
+      >
         {pending || connecting ? "Confirming..." : "Deposit"}
       </Button>
       {error && <p className="text-xs text-rose-600">{error}</p>}

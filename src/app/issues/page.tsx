@@ -24,6 +24,7 @@ export default async function IssuesPage() {
           moment it&apos;s merged.
         </p>
       </div>
+      <h2 className="sr-only">Bounties list</h2>
       <div className="grid gap-4 md:grid-cols-2">
         {bounties.map((bounty) => (
           <BountyCard key={bounty.id} bounty={bounty} />

@@ -28,7 +28,9 @@ export function CallbackClient() {
         <>
           <p className="font-medium text-rose-600">{error}</p>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Make sure the mergefi-backend is running and reachable.
+            {searchParams.get("token")
+              ? "Make sure the mergefi-backend is running and reachable."
+              : "Please return to /connect and try signing in again."}
           </p>
         </>
       ) : (

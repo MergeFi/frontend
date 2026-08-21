@@ -102,7 +102,9 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
               ? "Payout complete"
               : bounty.status === "in_review"
                 ? "Awaiting PR merge"
-                : "No action available"}
+                : bounty.status === "merged"
+                  ? "Payout pending"
+                  : "No action available"}
           </Button>
         )}
       </div>

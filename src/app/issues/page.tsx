@@ -1,6 +1,10 @@
+import Link from "next/link";
+import { Inbox } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { BountyCard } from "@/components/bounty/BountyCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 
 export const metadata = {
   title: "Paid Issues | MergeFi",
@@ -24,11 +28,27 @@ export default async function IssuesPage() {
           moment it&apos;s merged.
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {bounties.map((bounty) => (
-          <BountyCard key={bounty.id} bounty={bounty} />
-        ))}
-      </div>
+      {bounties.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {bounties.map((bounty) => (
+            <BountyCard key={bounty.id} bounty={bounty} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={Inbox}
+          title="No bounties yet"
+          description="Check back soon, or browse milestones instead."
+          action={
+            <Link href="/milestones">
+              <Button variant="outline" size="sm">
+                Browse milestones
+              </Button>
+            </Link>
+          }
+        />
+      )}
     </div>
   );
 }
+

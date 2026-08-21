@@ -22,7 +22,7 @@
  * always available via the title attribute (keyboard-navigable, hover tooltip).
  */
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sparkline } from "./Sparkline";
@@ -78,10 +78,7 @@ function formatValue(
 ): { display: string; exact: string } {
   switch (format) {
     case "currency": {
-      const formatted = value.toLocaleString("en-US", {
-        maximumFractionDigits: 2,
-      });
-      const display = `${formatted} ${asset}`;
+      const display = formatCurrency(value, asset);
       // Exact value for tooltip always shows full precision
       const exact = `${value.toLocaleString("en-US", { maximumFractionDigits: 6 })} ${asset}`;
       return { display, exact };

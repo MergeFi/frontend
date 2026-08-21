@@ -1,3 +1,7 @@
+export const metadata = {
+  title: "Page Not Found | MergeFi",
+};
+
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 

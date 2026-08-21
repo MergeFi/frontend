@@ -4,6 +4,7 @@ import { BountyCard } from "@/components/bounty/BountyCard";
 
 export const metadata = {
   title: "Paid Issues | MergeFi",
+  description: "Browse funded bounties backed by on-chain Soroban escrow on Stellar. Solve issues and earn USDC instantly upon merge.",
 };
 
 export default async function IssuesPage() {

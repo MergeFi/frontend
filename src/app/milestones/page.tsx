@@ -5,6 +5,7 @@ import { MilestoneFundButton, PoolDepositButton } from "./MilestoneActions";
 
 export const metadata = {
   title: "Milestones | MergeFi",
+  description: "Fund entire open source milestones or maintenance pools with escrow-backed milestone budgets on Stellar.",
 };
 
 export default async function MilestonesPage() {

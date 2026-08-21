@@ -59,6 +59,8 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   images: {
     dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    contentDispositionType: "attachment",
     remotePatterns: [
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
       { protocol: "https", hostname: "api.dicebear.com" },

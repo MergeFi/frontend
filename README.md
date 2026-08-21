@@ -15,7 +15,7 @@ contributors, maintainers, and sponsors.
 Related repositories:
 - [`mergefi/backend`](https://github.com/MergeFi/backend) — NestJS API: GitHub sync, webhooks, bounty/escrow orchestration, reputation, analytics.
 - [`mergefi/contracts`](https://github.com/MergeFi/contracts) — Soroban smart contracts: escrow, milestone funding, maintenance pools, team splits.
-- 
+
 <img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/c019b457-90a0-4f2e-94d9-ab927de326dd" />
 
 ## Why Stellar and Soroban?
@@ -73,17 +73,24 @@ Next.js (App Router)                 this repo
 src/
   app/                 App Router routes (one folder per route above)
   components/
-    ui/                Button, Badge, StatCard — small reusable primitives
+    ui/                Button, Badge, StatCard, Tabs, Avatar — small reusable primitives
     layout/            Navbar, Footer
-    bounty/            BountyCard
+    bounty/            BountyCard, BountyDescription
+    dashboard/         ActivityList, DashboardShell, PipelineBoard
+  context/             AuthContext, ThemeContext, WalletContext
+  hooks/               useCrossTabStorage
   lib/
+    adapters.ts        backend API to UI model mapping & sanitization
     api.ts             fetch wrapper + mock-data fallback
-    config.ts           env-driven API base URL, OAuth URL, Stellar network
-    mock-data.ts        realistic sample bounties/milestones/profiles for demos
-    utils.ts            cn(), currency/percent/date formatting
-    wallet.ts            Freighter connect/sign helpers
+    auth.ts            auth token storage & helpers
+    config.ts          env-driven API base URL, OAuth URL, Stellar network
+    env.ts             build-time environment variable validation
+    markdown.ts        safe markdown sanitization & rendering helpers
+    mock-data.ts       realistic sample bounties/milestones/profiles for demos
+    utils.ts           cn(), currency/percent/date formatting
+    wallet.ts          Freighter connect/sign helpers
   types/
-    index.ts             shared domain types (Bounty, Milestone, ReputationProfile, ...)
+    index.ts           shared domain types (Bounty, Milestone, ReputationProfile, ...)
 ```
 
 ## Getting started
@@ -101,12 +108,13 @@ useful for frontend-only development or a quick demo. Point
 
 ### Environment variables
 
-Both variables are validated at build time (`next.config.ts` / `src/lib/env.ts`, #26) — an unset or invalid value fails `next build`/`next dev`/`next start` immediately with a clear error, rather than silently falling back and only surfacing as a confusing on-chain failure later. `.env.example` sets both explicitly, so the quickstart above needs no manual edits.
+`NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_STELLAR_NETWORK` are validated at build time (`next.config.ts` / `src/lib/env.ts`, #26) — an unset or invalid value fails `next build`/`next dev`/`next start` immediately with a clear error, rather than silently falling back and only surfacing as a confusing on-chain failure later. `.env.example` sets these explicitly, so the quickstart above needs no manual edits.
 
 | Variable | Purpose | Default |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | Base URL of the `mergefi-backend` API. Must be a well-formed URL. | `http://localhost:4000/api` |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | Must be exactly `TESTNET` or `PUBLIC` (case-sensitive) — selects the Freighter network passphrase used to sign transactions. | **None.** Network selection is too consequential to guess a default for — the wrong value signs transactions with the wrong passphrase. Set it explicitly (`.env.example` does this for local dev). |
+| `NEXT_PUBLIC_SITE_URL` | Base canonical site URL used by `sitemap.ts` and metadata tags. | `https://mergefi.app` |
 
 ### Scripts
 
@@ -116,6 +124,9 @@ Both variables are validated at build time (`next.config.ts` / `src/lib/env.ts`,
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint (flat config, `eslint-config-next`) |
+| `npm test` | Run Jest unit and component test suite |
+| `npm run test:watch` | Run Jest in interactive watch mode |
+| `npm run verify:env` | Validate environment variables configuration against rules in `scripts/verify-env-validation.mjs` |
 | `npm run verify:headers` | Boots the production build and asserts security headers are present on real responses (run `npm run build` first) |
 
 ## Security headers

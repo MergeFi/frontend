@@ -49,6 +49,30 @@ const markdownComponents: Components = {
       {children}
     </blockquote>
   ),
+  table: ({ children }) => (
+    <div className="my-4 overflow-x-auto">
+      <table className="w-full border-collapse text-left text-sm text-slate-600 dark:text-slate-300">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+      {children}
+    </thead>
+  ),
+  tbody: ({ children }) => (
+    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+      {children}
+    </tbody>
+  ),
+  tr: ({ children }) => <tr>{children}</tr>,
+  th: ({ children }) => (
+    <th className="px-4 py-2 font-semibold text-slate-900 dark:text-white">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => <td className="px-4 py-2">{children}</td>,
 };
 
 /**

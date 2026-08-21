@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clock, GitPullRequest } from "lucide-react";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { formatCurrency, daysUntil } from "@/lib/utils";
+import { formatCurrency, formatDaysUntil, daysUntil } from "@/lib/utils";
 import { stripMarkdownToPlainText } from "@/lib/markdown";
 import type { Bounty } from "@/types";
 
@@ -49,7 +49,7 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
       <div className="mt-4 flex items-center gap-4 pl-2 text-xs text-slate-400 dark:text-slate-500">
         <span className="flex items-center gap-1">
           <Clock className="h-3.5 w-3.5" />
-          {days > 0 ? `${days}d left` : "Deadline passed"}
+          {formatDaysUntil(days)}
         </span>
         {bounty.claimedBy && (
           <span className="flex items-center gap-1">

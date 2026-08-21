@@ -7,6 +7,7 @@
 
 import {
   formatCurrency,
+  formatDaysUntil,
   formatPercent,
   coerceDecimal,
   coerceNonNegative,
@@ -92,7 +93,20 @@ describe("formatCurrency", () => {
   });
 });
 
-// ─── formatPercent ───────────────────────────────────────────────────────────
+// ─── formatDaysUntil ────────────────────────────────────────────────────────
+
+describe("formatDaysUntil", () => {
+  it("formats positive days correctly", () => {
+    expect(formatDaysUntil(5)).toBe("5 days left");
+    expect(formatDaysUntil(1)).toBe("1 day left");
+  });
+
+  it("formats 0 or negative days as 'Deadline passed'", () => {
+    expect(formatDaysUntil(0)).toBe("Deadline passed");
+    expect(formatDaysUntil(-2)).toBe("Deadline passed");
+  });
+});
+
 
 describe("formatPercent", () => {
   it("converts a fraction to a percentage", () => {

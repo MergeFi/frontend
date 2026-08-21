@@ -66,6 +66,11 @@ export function daysUntil(dateIso: string) {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
+export function formatDaysUntil(days: number): string {
+  if (days <= 0) return "Deadline passed";
+  return `${days} ${days === 1 ? "day" : "days"} left`;
+}
+
 export function validateTeamSplits(
   splits: Array<{ percentage: string | number }>,
   tolerance = 0.01

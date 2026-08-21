@@ -149,3 +149,4 @@ None of these headers affect the Freighter wallet bridge or the GitHub OAuth flo
 - Real-time bounty/escrow status via websockets or polling once the backend emits webhook-driven events.
 - AI-powered issue recommendations based on a contributor's language/repo history.
 - Organization verification badges and cross-repository reputation aggregation.
+# bounty-fix-ref: https://github.com/MergeFi/frontend/issues/225

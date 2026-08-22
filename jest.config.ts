@@ -23,12 +23,11 @@ const config: Config = {
       { plugins: ["@babel/plugin-transform-modules-commonjs"] },
     ],
   },
-  // react-markdown's dependency tree (remark/rehype/unified/hast/mdast/
-  // micromark, and each of *their* sub-dependencies) is too deep to name
-  // exhaustively — new transitive packages kept surfacing one at a time.
-  // Transform all of node_modules rather than maintain a brittle allowlist;
-  // this only affects Jest's test run, never the production build.
-  transformIgnorePatterns: [],
+  // Targeted negative lookahead: only transform ESM packages that actually require
+  // CommonJS transpilation, leaving standard CJS packages untouched (#251).
+  transformIgnorePatterns: [
+    "node_modules/(?!(react-markdown|remark-.*|rehype-.*|unified|hast-.*|mdast-.*|micromark.*|vfile.*|unist-.*|bail|is-plain-obj|trough|zwitch|longest-streak|ccount|escape-string-regexp|markdown-table|trim-lines|decode-named-character-reference|character-entities.*|devlop|comma-separated-tokens|space-separated-tokens|property-information|html-void-elements|html-url-attributes|estree-util-is-identifier-name)/)",
+  ],
 };
 
 export default config;

@@ -24,6 +24,7 @@ import {
   recentActivity,
   faqs,
 } from "@/lib/mock-data";
+import { STELLAR_NETWORK } from "@/lib/config";
 import { formatCurrency } from "@/lib/utils";
 
 const integrations = [
@@ -90,7 +91,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-6 pb-20 pt-20 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Built for Stellar Mainnet
+            {STELLAR_NETWORK === "PUBLIC" ? "Built for Stellar Mainnet" : `Built for Stellar (${STELLAR_NETWORK})`}
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl dark:text-white">
             Merge code.
@@ -118,7 +119,7 @@ export default function HomePage() {
           <div className="mt-8 flex items-center justify-center gap-3 text-sm text-slate-500 dark:text-slate-400">
             <AvatarStack seeds={topContributors.map((c) => c.handle)} />
             <span>
-              Joined by <strong className="text-slate-900 dark:text-white">341 contributors</strong>{" "}
+              Joined by <strong className="text-slate-900 dark:text-white">{platformStats.activeContributors.toLocaleString()} contributors</strong>{" "}
               already earning
             </span>
           </div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Layers, Clock, Coins, FolderGit2, CheckCircle2 } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties, recentActivity, bountiesCompletedSparkline } from "@/lib/mock-data";
@@ -42,9 +43,11 @@ export default async function MaintainerDashboardPage() {
       title="Bounty pipeline"
       subtitle="Create bounties from your GitHub issues and approve completed work. Payout release happens automatically once a linked pull request is merged."
       action={
-        <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900">
-          Create bounty
-        </span>
+        <Link href="/issues">
+          <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+            Create bounty
+          </span>
+        </Link>
       }
     >
       {/* Pass statStatus so that a fetchBounties failure renders error states

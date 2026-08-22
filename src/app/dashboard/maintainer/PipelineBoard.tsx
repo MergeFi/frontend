@@ -60,7 +60,10 @@ function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[]
             <p className="truncate text-xs text-slate-400 dark:text-slate-500">
               {b.org}/{b.repo} #{b.issueNumber}
             </p>
-            <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-900 dark:text-white">
+            <p
+              className="mt-1 line-clamp-2 text-sm font-medium text-slate-900 dark:text-white"
+              title={b.title}
+            >
               {b.title}
             </p>
             <p className="mt-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">

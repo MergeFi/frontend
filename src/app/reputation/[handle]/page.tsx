@@ -12,9 +12,15 @@ export default async function ReputationPage({
   params: Promise<{ handle: string }>;
 }) {
   const { handle } = await params;
+  const normalizedHandle = handle.toLowerCase();
+  const matchedMockKey = Object.keys(mockReputationProfiles).find(
+    (k) => k.toLowerCase() === normalizedHandle,
+  );
+  const fallbackProfile = matchedMockKey ? mockReputationProfiles[matchedMockKey] : null;
+
   const profile = await fetchReputationByUsername(
     handle,
-    mockReputationProfiles[handle] ?? null,
+    fallbackProfile,
   );
 
   if (!profile) notFound();

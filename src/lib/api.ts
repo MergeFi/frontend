@@ -143,7 +143,8 @@ export async function fetchReputationByUsername(
 ): Promise<ReputationProfile | null> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    const user = users.find((u) => u.username === username);
+    const normalizedTarget = username.toLowerCase();
+    const user = users.find((u) => u.username.toLowerCase() === normalizedTarget);
     if (!user) return fallback;
     const snapshot = await request<RawReputationSnapshot | null>(
       `/reputation/${user.id}`,

@@ -48,6 +48,18 @@ const roleSwitcher: { role: Role; label: string; href: string }[] = [
   { role: "sponsor", label: "Sponsor", href: "/dashboard/sponsor" },
 ];
 
+function isNavItemActive(pathname: string, href: string): boolean {
+  // Dashboard overview links are single-page destinations: nested routes
+  // under a different dashboard section must not keep them highlighted.
+  if (href.startsWith("/dashboard/")) {
+    return pathname === href;
+  }
+
+  // Top-level sections (e.g. /issues, /milestones) should stay highlighted
+  // while the user is drilled into a child page such as /issues/abc123.
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function DashboardShell({
   role,
   title,
@@ -75,7 +87,7 @@ export function DashboardShell({
           </p>
           <nav className="mt-3 space-y-1">
             {items.map((item) => {
-              const active = pathname === item.href;
+              const active = isNavItemActive(pathname, item.href);
               return (
                 <Link
                   key={item.label}

@@ -193,7 +193,14 @@ export function adaptReputation(
     completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
     avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
     onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
-    languages: snapshot ? Object.keys(snapshot.languages) : [],
+    // Object.keys() alone discards the usage weight and returns keys in
+    // insertion order, not "most used first" — sort by value descending so
+    // the rendered badge order actually means something (#196).
+    languages: snapshot
+      ? Object.entries(snapshot.languages)
+          .sort(([, a], [, b]) => b - a)
+          .map(([lang]) => lang)
+      : [],
     organizations: snapshot?.orgsContributedTo ?? [],
   };
 }

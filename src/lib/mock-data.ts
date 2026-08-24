@@ -2,7 +2,6 @@ import type {
   Bounty,
   Milestone,
   ReputationProfile,
-  SponsorSummary,
   MaintenancePool,
 } from "@/types";
 
@@ -148,7 +147,19 @@ export const mockReputationProfiles: Record<string, ReputationProfile> = {
   },
 };
 
-export const mockSponsorSummary: SponsorSummary = {
+// Not modeled in types/index.ts alongside Bounty/Milestone/etc: this shape
+// only ever backs the signed-out demo title on the sponsor dashboard and
+// has no corresponding backend endpoint or adapter (#202) — keeping it
+// local here avoids implying parity with the adapter-backed domain types.
+interface MockSponsorSummary {
+  name: string;
+  totalFunded: number;
+  activeBounties: number;
+  budgetRemaining: number;
+  repos: string[];
+}
+
+export const mockSponsorSummary: MockSponsorSummary = {
   name: "Stellar Development Foundation",
   totalFunded: 42500,
   activeBounties: 9,

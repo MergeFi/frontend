@@ -63,14 +63,6 @@ export interface ReputationProfile {
   organizations: string[];
 }
 
-export interface SponsorSummary {
-  name: string;
-  totalFunded: number;
-  activeBounties: number;
-  budgetRemaining: number;
-  repos: string[];
-}
-
 export interface MaintenancePool {
   id: string;
   repo: string;

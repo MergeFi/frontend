@@ -18,6 +18,9 @@ export async function isFreighterInstalled(): Promise<boolean> {
 }
 
 export async function connectWallet(): Promise<WalletConnection> {
+  if (!(await isFreighterInstalled())) {
+    throw new Error("Install the Freighter wallet extension to continue.");
+  }
   const allowed = await isAllowed();
   if (!allowed.isAllowed) {
     const granted = await setAllowed();

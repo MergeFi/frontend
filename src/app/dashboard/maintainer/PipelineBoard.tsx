@@ -41,7 +41,15 @@ export const ESCROW_LOCKED_EXCLUDED_STATUSES: BountyStatus[] = [
   "expired",
 ];
 
+// Cap per-column rendering so a busy repo's pipeline (potentially hundreds
+// of bounties in one status) doesn't render an unbounded, unvirtualized
+// list of cards on every dashboard visit (#226).
+const MAX_VISIBLE_PER_COLUMN = 8;
+
 function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[] }) {
+  const visible = bounties.slice(0, MAX_VISIBLE_PER_COLUMN);
+  const hiddenCount = bounties.length - visible.length;
+
   return (
     <div className="min-w-0 flex-1">
       <div className="flex items-center justify-between px-1">
@@ -51,10 +59,11 @@ function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[]
         </span>
       </div>
       <div className="mt-3 space-y-2">
-        {bounties.map((b) => (
+        {visible.map((b) => (
           <Link
             key={b.id}
             href={`/issues/${b.id}`}
+            title={b.title}
             className="block rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-700"
           >
             <p className="truncate text-xs text-slate-400 dark:text-slate-500">
@@ -72,6 +81,14 @@ function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[]
           <p className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
             Nothing here
           </p>
+        )}
+        {hiddenCount > 0 && (
+          <Link
+            href="/issues"
+            className="block rounded-xl border border-dashed border-slate-200 px-3 py-2 text-center text-xs font-medium text-indigo-600 transition-colors hover:border-indigo-300 dark:border-slate-800 dark:text-indigo-400 dark:hover:border-indigo-700"
+          >
+            View all {bounties.length} in Bounty pipeline
+          </Link>
         )}
       </div>
     </div>

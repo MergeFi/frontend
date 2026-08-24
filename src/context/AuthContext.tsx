@@ -49,9 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Session hydration on mount: reads the JWT from localStorage and
-    // resolves the current user. Inherently async, not a render-time value.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refresh();
+    // resolves the current user. Deferred by a tick (#223) so it runs after
+    // the initial commit instead of on the critical path to interactivity —
+    // every route mounts this provider, including static marketing pages.
+    const id = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [refresh]);
 
   const handleTokenChangedElsewhere = useCallback(

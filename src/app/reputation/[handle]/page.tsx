@@ -56,7 +56,7 @@ export default async function ReputationPage({
         />
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
+      <div className="mt-8">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="font-medium text-slate-900 dark:text-white">Languages</h2>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -64,17 +64,6 @@ export default async function ReputationPage({
               <Badge key={lang}>{lang}</Badge>
             ))}
             {profile.languages.length === 0 && (
-              <span className="text-sm text-slate-400 dark:text-slate-500">No data yet.</span>
-            )}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="font-medium text-slate-900 dark:text-white">Top clients</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {profile.topClients.map((client) => (
-              <Badge key={client}>{client}</Badge>
-            ))}
-            {profile.topClients.length === 0 && (
               <span className="text-sm text-slate-400 dark:text-slate-500">No data yet.</span>
             )}
           </div>

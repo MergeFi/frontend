@@ -195,6 +195,5 @@ export function adaptReputation(
     onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
     languages: snapshot ? Object.keys(snapshot.languages) : [],
     organizations: snapshot?.orgsContributedTo ?? [],
-    topClients: [],
   };
 }

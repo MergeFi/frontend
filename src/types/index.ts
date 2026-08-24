@@ -61,7 +61,6 @@ export interface ReputationProfile {
   onTimeDeliveryRate: number;
   languages: string[];
   organizations: string[];
-  topClients: string[];
 }
 
 export interface SponsorSummary {

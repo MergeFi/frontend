@@ -134,7 +134,6 @@ export const mockReputationProfiles: Record<string, ReputationProfile> = {
     onTimeDeliveryRate: 0.88,
     languages: ["Rust", "TypeScript", "Go"],
     organizations: ["stellar-labs", "mergefi"],
-    topClients: ["stellar-labs", "openzeppelin"],
   },
   "0xkoda": {
     handle: "0xkoda",
@@ -146,7 +145,6 @@ export const mockReputationProfiles: Record<string, ReputationProfile> = {
     onTimeDeliveryRate: 0.81,
     languages: ["Rust", "Solidity"],
     organizations: ["mergefi"],
-    topClients: ["mergefi"],
   },
 };
 

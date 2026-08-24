@@ -9,6 +9,7 @@ import {
 } from "react";
 import { connectWallet as freighterConnect } from "@/lib/wallet";
 import { apiRequest } from "@/lib/api";
+import { STELLAR_NETWORK } from "@/lib/config";
 import { useAuth } from "@/context/AuthContext";
 import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 
@@ -40,7 +41,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // critical path to interactivity for routes that don't need it yet.
     const id = window.setTimeout(() => {
       const stored = window.localStorage.getItem(WALLET_KEY);
-      if (stored) setAddress(stored);
+      if (stored) {
+        setAddress(stored);
+        // This app only ever signs against the build's configured network,
+        // so a restored address always comes with that network (#228) —
+        // no need to persist a separate network key.
+        setNetwork(STELLAR_NETWORK);
+      }
     }, 0);
     return () => window.clearTimeout(id);
   }, []);
@@ -71,8 +78,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           });
           await refresh();
         } catch {
-          // Linking to the profile is best-effort; the wallet is still usable
-          // for signing this session even if the backend write failed.
+          // The wallet is still usable for signing this session even if the
+          // backend write failed, but the user needs to know their payout
+          // wallet wasn't actually saved to their profile (#229).
+          setError(
+            "Wallet connected, but couldn't save it to your profile — try reconnecting.",
+          );
         }
       }
       return connection.address;

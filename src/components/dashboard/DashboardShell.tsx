@@ -7,8 +7,6 @@ import {
   GitPullRequest,
   Milestone,
   Trophy,
-  Users,
-  Wallet,
   Receipt,
   type LucideIcon,
 } from "lucide-react";
@@ -32,13 +30,11 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: "Overview", href: "/dashboard/maintainer", icon: LayoutDashboard },
     { label: "Bounty pipeline", href: "/issues", icon: GitPullRequest },
     { label: "Milestones", href: "/milestones", icon: Milestone },
-    { label: "Team", href: "/dashboard/maintainer", icon: Users },
   ],
   sponsor: [
     { label: "Overview", href: "/dashboard/sponsor", icon: LayoutDashboard },
     { label: "Bounties funded", href: "/issues", icon: Receipt },
     { label: "Milestones", href: "/milestones", icon: Milestone },
-    { label: "Payments", href: "/dashboard/sponsor", icon: Wallet },
   ],
 };
 

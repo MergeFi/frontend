@@ -20,7 +20,7 @@ export default async function IssueDetailPage({
 
   if (!bounty) notFound();
 
-  const days = daysUntil(bounty.deadline);
+  const days = bounty.deadline ? daysUntil(bounty.deadline) : null;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
@@ -59,7 +59,7 @@ export default async function IssueDetailPage({
             <span className="text-sm">Deadline</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
-            {days > 0 ? `${days} days left` : "Passed"}
+            {days === null ? "No deadline" : days > 0 ? `${days} days left` : "Passed"}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

@@ -14,7 +14,7 @@ const accentByDifficulty: Record<Bounty["difficulty"], string> = {
 };
 
 export function BountyCard({ bounty }: { bounty: Bounty }) {
-  const days = daysUntil(bounty.deadline);
+  const days = bounty.deadline ? daysUntil(bounty.deadline) : null;
   return (
     <Link
       href={`/issues/${bounty.id}`}
@@ -49,7 +49,7 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
       <div className="mt-4 flex items-center gap-4 pl-2 text-xs text-slate-400 dark:text-slate-500">
         <span className="flex items-center gap-1">
           <Clock className="h-3.5 w-3.5" />
-          {days > 0 ? `${days}d left` : "Deadline passed"}
+          {days === null ? "No deadline" : days > 0 ? `${days}d left` : "Deadline passed"}
         </span>
         {bounty.claimedBy && (
           <span className="flex items-center gap-1">

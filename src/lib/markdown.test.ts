@@ -32,6 +32,13 @@ describe("stripMarkdownToPlainText", () => {
     expect(stripMarkdownToPlainText(input)).toBe("Repro: const x = 1; Thanks");
   });
 
+  it("strips an unterminated fence marker instead of leaving ``` visible (#199)", () => {
+    const input = "Repro:\n```bash\nnpm install\nsome output";
+    const result = stripMarkdownToPlainText(input);
+    expect(result).not.toContain("```");
+    expect(result).toBe("Repro: npm install some output");
+  });
+
   it("strips heading markers", () => {
     expect(stripMarkdownToPlainText("## Steps to reproduce")).toBe("Steps to reproduce");
   });

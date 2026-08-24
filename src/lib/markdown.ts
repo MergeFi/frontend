@@ -17,6 +17,11 @@ export function stripMarkdownToPlainText(markdown: string): string {
   return markdown
     // Fenced code blocks -> their inner content, unfenced.
     .replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, "$1")
+    // Fallback for an unterminated fence (opened but never closed, e.g. a
+    // truncated description or a forgotten trailing ```): the paired regex
+    // above can't match it, so strip the leftover ``` markers/language tag
+    // directly rather than leaving them visible in the preview (#199).
+    .replace(/```[a-zA-Z0-9]*\n?/g, "")
     // Images: drop entirely — alt text isn't meaningful in a short preview.
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
     // Links: keep the link text, drop the URL.

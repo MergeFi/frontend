@@ -47,6 +47,38 @@ describe("BountyDescription — content fidelity", () => {
     expect(screen.getByText("first step").closest("li")).toBeInTheDocument();
     expect(screen.getByText("second step").closest("li")).toBeInTheDocument();
   });
+
+  it("styles h4/h5/h6 headings instead of falling back to unstyled defaults (#214)", () => {
+    render(
+      <BountyDescription
+        description={"#### Steps to reproduce\n\n##### Expected\n\n###### Actual"}
+      />,
+    );
+
+    const h4 = screen.getByText("Steps to reproduce");
+    expect(h4.tagName.toLowerCase()).toBe("h5");
+    expect(h4.className).toContain("font-semibold");
+
+    const h5 = screen.getByText("Expected");
+    expect(h5.tagName.toLowerCase()).toBe("h6");
+    expect(h5.className).toContain("font-semibold");
+
+    const h6 = screen.getByText("Actual");
+    expect(h6.tagName.toLowerCase()).toBe("p");
+    expect(h6.className).toContain("font-semibold");
+  });
+
+  it("renders a markdown image with layout-safe classes instead of an unstyled bare <img> (#215)", () => {
+    const { container } = render(
+      <BountyDescription description="![a screenshot](https://user-images.githubusercontent.com/1/shot.png)" />,
+    );
+
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", "https://user-images.githubusercontent.com/1/shot.png");
+    expect(img).toHaveAttribute("alt", "a screenshot");
+    expect(img?.className).toContain("max-w-full");
+  });
 });
 
 describe("BountyDescription — untrusted-content hardening", () => {

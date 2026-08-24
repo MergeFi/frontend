@@ -187,7 +187,7 @@ export function adaptReputation(
     handle: user.username,
     avatarUrl:
       user.avatarUrl ??
-      `https://api.dicebear.com/9.x/identicon/svg?seed=${user.username}`,
+      `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username)}`,
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
     completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,

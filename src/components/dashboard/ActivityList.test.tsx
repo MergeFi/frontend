@@ -51,3 +51,40 @@ describe("ActivityList — amount rendering", () => {
     expect(screen.getByText("480 USDC")).toBeInTheDocument();
   });
 });
+
+describe("ActivityList — relative time (#217)", () => {
+  it("renders the minutes branch for a value under 60", () => {
+    render(<ActivityList events={[makeEvent({ minutesAgo: 6 })]} />);
+    expect(screen.getByText("6m ago")).toBeInTheDocument();
+  });
+
+  it("renders the minutes branch at the 59-minute boundary", () => {
+    render(<ActivityList events={[makeEvent({ minutesAgo: 59 })]} />);
+    expect(screen.getByText("59m ago")).toBeInTheDocument();
+  });
+
+  it("renders the hours branch at the 60-minute boundary", () => {
+    render(<ActivityList events={[makeEvent({ minutesAgo: 60 })]} />);
+    expect(screen.getByText("1h ago")).toBeInTheDocument();
+  });
+
+  it("renders the hours branch for a mid-range value", () => {
+    render(<ActivityList events={[makeEvent({ minutesAgo: 300 })]} />);
+    expect(screen.getByText("5h ago")).toBeInTheDocument();
+  });
+
+  it("renders the hours branch at the 23-hour boundary", () => {
+    render(<ActivityList events={[makeEvent({ minutesAgo: 23 * 60 })]} />);
+    expect(screen.getByText("23h ago")).toBeInTheDocument();
+  });
+
+  it("renders the days branch at the 24-hour boundary", () => {
+    render(<ActivityList events={[makeEvent({ minutesAgo: 24 * 60 })]} />);
+    expect(screen.getByText("1d ago")).toBeInTheDocument();
+  });
+
+  it("renders the days branch for a multi-day value", () => {
+    render(<ActivityList events={[makeEvent({ minutesAgo: 3 * 24 * 60 })]} />);
+    expect(screen.getByText("3d ago")).toBeInTheDocument();
+  });
+});

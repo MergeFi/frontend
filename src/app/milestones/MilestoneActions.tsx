@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useWallet } from "@/context/WalletContext";
@@ -45,6 +45,9 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
 export function PoolDepositButton({ poolId }: { poolId: string }) {
   const router = useRouter();
   const { address, connect, connecting } = useWallet();
+  // One button renders per pool, so the label's htmlFor target has to be
+  // unique per instance rather than a fixed string.
+  const amountInputId = useId();
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +75,11 @@ export function PoolDepositButton({ poolId }: { poolId: string }) {
 
   return (
     <div className="mt-4 flex items-center gap-2">
+      <label htmlFor={amountInputId} className="sr-only">
+        Deposit amount
+      </label>
       <input
+        id={amountInputId}
         type="number"
         min="1"
         value={amount}

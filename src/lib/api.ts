@@ -26,15 +26,17 @@ export class ApiRequestError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
+    cache: "no-store",
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
-    cache: "no-store",
   });
   if (!res.ok) {
     throw new ApiUnavailableError(`Request to ${path} failed: ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
+
+const REQUEST_TIMEOUT_MS = 20_000;
 
 /**
  * Client-side call that attaches the signed-in user's JWT (if any) and
@@ -47,14 +49,24 @@ export async function apiRequest<T>(
   init?: RequestInit,
 ): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
-  });
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
+      signal: init?.signal ?? timeout,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      throw new ApiRequestError("Request timed out — please try again.", 0);
+    }
+    throw err;
+  }
   if (!res.ok) {
     const body = await res.text();
     let message = body;

@@ -245,4 +245,16 @@ describe("validateTeamSplits", () => {
     // Empty splits don't sum to 100, so valid=false is correct behavior
     expect(result.sum).toBe(0);
   });
+
+  it("degrades a non-numeric percentage string to 0 instead of producing NaN (#198)", () => {
+    const result = validateTeamSplits([
+      { percentage: "abc" },
+      { percentage: "50" },
+    ]);
+    expect(Number.isNaN(result.sum)).toBe(false);
+    expect(result.sum).toBe(50);
+    expect(result.valid).toBe(false);
+    expect(result.message).not.toContain("NaN");
+    expect(result.message).toContain("50.00%");
+  });
 });

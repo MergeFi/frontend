@@ -3,9 +3,25 @@
  *
  * Tests for adaptBounty's mapping of milestoneId (#86) — declared on the
  * Bounty type but never actually set by adaptBounty prior to this fix.
+ *
+ * Also covers adaptMilestone, adaptMaintenancePool, and adaptReputation
+ * (#197) — previously the only three of this module's four exports with no
+ * dedicated test at all, despite being the sole seam between
+ * mergefi-backend's raw entity JSON and every number the milestones page,
+ * maintenance-pool cards, and reputation profile page render.
  */
 
-import { adaptBounty, type RawBounty } from "./adapters";
+import {
+  adaptBounty,
+  adaptMilestone,
+  adaptMaintenancePool,
+  adaptReputation,
+  type RawBounty,
+  type RawMilestone,
+  type RawMaintenancePool,
+  type RawReputationSnapshot,
+  type RawUserProfile,
+} from "./adapters";
 
 function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
   return {
@@ -117,6 +133,167 @@ describe("adaptBounty — field coverage audit (#86)", () => {
 
     for (const field of EXPECTED_BOUNTY_FIELDS) {
       expect(bounty[field]).not.toBeUndefined();
+    }
+  });
+});
+
+// ─── adaptMilestone (#197) ─────────────────────────────────────────────────
+
+function rawMilestone(overrides: Partial<RawMilestone> = {}): RawMilestone {
+  return {
+    id: "milestone-1",
+    title: "v2.0 launch",
+    budget: "5000",
+    distributed: "2000",
+    asset: "USDC",
+    repository: { owner: "acme", name: "widgets" },
+    issues: [{ state: "closed" }, { state: "closed" }, { state: "open" }],
+    ...overrides,
+  };
+}
+
+describe("adaptMilestone", () => {
+  it("derives issueCount and completedCount from raw.issues", () => {
+    const milestone = adaptMilestone(rawMilestone());
+    expect(milestone.issueCount).toBe(3);
+    expect(milestone.completedCount).toBe(2);
+  });
+
+  it("defaults issueCount/completedCount to 0 when raw.issues is absent", () => {
+    const milestone = adaptMilestone(rawMilestone({ issues: undefined }));
+    expect(milestone.issueCount).toBe(0);
+    expect(milestone.completedCount).toBe(0);
+  });
+
+  it("joins repository owner/name, or falls back to \"unassigned\"", () => {
+    expect(adaptMilestone(rawMilestone()).repo).toBe("acme/widgets");
+    expect(adaptMilestone(rawMilestone({ repository: undefined })).repo).toBe("unassigned");
+  });
+
+  it("sets every Milestone field to a defined value given a fully-populated raw milestone", () => {
+    const milestone = adaptMilestone(rawMilestone());
+    for (const field of [
+      "id",
+      "name",
+      "repo",
+      "budget",
+      "distributed",
+      "asset",
+      "issueCount",
+      "completedCount",
+    ] as const) {
+      expect(milestone[field]).not.toBeUndefined();
+    }
+  });
+});
+
+// ─── adaptMaintenancePool (#197) ───────────────────────────────────────────
+
+function rawMaintenancePool(
+  overrides: Partial<RawMaintenancePool> = {},
+): RawMaintenancePool {
+  return {
+    id: "pool-1",
+    monthlyDeposit: "500",
+    balance: "3000",
+    asset: "USDC",
+    repository: { owner: "acme", name: "widgets" },
+    ...overrides,
+  };
+}
+
+describe("adaptMaintenancePool", () => {
+  it("joins repository owner/name, or falls back to \"platform-wide\" when null", () => {
+    expect(adaptMaintenancePool(rawMaintenancePool()).repo).toBe("acme/widgets");
+    expect(
+      adaptMaintenancePool(rawMaintenancePool({ repository: null })).repo,
+    ).toBe("platform-wide");
+  });
+
+  it("sets every MaintenancePool field to a defined value given a fully-populated raw pool", () => {
+    const pool = adaptMaintenancePool(rawMaintenancePool());
+    for (const field of ["id", "repo", "monthlyDeposit", "balance", "asset"] as const) {
+      expect(pool[field]).not.toBeUndefined();
+    }
+  });
+});
+
+// ─── adaptReputation (#197) ────────────────────────────────────────────────
+
+function rawUserProfile(overrides: Partial<RawUserProfile> = {}): RawUserProfile {
+  return {
+    username: "devrel_ana",
+    avatarUrl: null,
+    ...overrides,
+  };
+}
+
+function rawReputationSnapshot(
+  overrides: Partial<RawReputationSnapshot> = {},
+): RawReputationSnapshot {
+  return {
+    totalEarnings: "8420",
+    mergedPrCount: 61,
+    completionRate: "94",
+    avgReviewTimeHours: "14",
+    onTimeDeliveryPercentage: "88",
+    languages: { Rust: 12, TypeScript: 40, Go: 3 },
+    orgsContributedTo: ["stellar-labs"],
+    ...overrides,
+  };
+}
+
+describe("adaptReputation", () => {
+  it("divides completionRate/onTimeDeliveryRate by 100 into a 0-1 fraction", () => {
+    const profile = adaptReputation(rawUserProfile(), rawReputationSnapshot());
+    expect(profile.completionRate).toBeCloseTo(0.94);
+    expect(profile.onTimeDeliveryRate).toBeCloseTo(0.88);
+  });
+
+  it("returns zeroed fields when there is no snapshot", () => {
+    const profile = adaptReputation(rawUserProfile(), null);
+    expect(profile.lifetimeEarnings).toBe(0);
+    expect(profile.mergedPRs).toBe(0);
+    expect(profile.completionRate).toBe(0);
+    expect(profile.avgReviewTimeHours).toBe(0);
+    expect(profile.onTimeDeliveryRate).toBe(0);
+    expect(profile.languages).toEqual([]);
+    expect(profile.organizations).toEqual([]);
+  });
+
+  it("sorts languages by usage weight descending, not object-key insertion order", () => {
+    const profile = adaptReputation(rawUserProfile(), rawReputationSnapshot());
+    expect(profile.languages).toEqual(["TypeScript", "Rust", "Go"]);
+  });
+
+  it("escapes the username when falling back to a generated dicebear avatar URL", () => {
+    const profile = adaptReputation(rawUserProfile({ username: "a&b" }), null);
+    expect(profile.avatarUrl).toContain("seed=a%26b");
+    expect(profile.avatarUrl).not.toContain("seed=a&b");
+  });
+
+  it("uses the provided avatarUrl instead of generating one when present", () => {
+    const profile = adaptReputation(
+      rawUserProfile({ avatarUrl: "https://avatars.githubusercontent.com/u/1" }),
+      null,
+    );
+    expect(profile.avatarUrl).toBe("https://avatars.githubusercontent.com/u/1");
+  });
+
+  it("sets every ReputationProfile field to a defined value given a fully-populated snapshot", () => {
+    const profile = adaptReputation(rawUserProfile(), rawReputationSnapshot());
+    for (const field of [
+      "handle",
+      "avatarUrl",
+      "lifetimeEarnings",
+      "mergedPRs",
+      "completionRate",
+      "avgReviewTimeHours",
+      "onTimeDeliveryRate",
+      "languages",
+      "organizations",
+    ] as const) {
+      expect(profile[field]).not.toBeUndefined();
     }
   });
 });

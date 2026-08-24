@@ -37,21 +37,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /**
- * Fetches live data from the MergeFi backend, falling back to the provided
- * mock value when the backend is unreachable (e.g. during frontend-only demos).
- */
-export async function fetchWithFallback<T>(
-  path: string,
-  fallback: T,
-): Promise<T> {
-  try {
-    return await request<T>(path);
-  } catch {
-    return fallback;
-  }
-}
-
-/**
  * Client-side call that attaches the signed-in user's JWT (if any) and
  * surfaces backend error bodies instead of silently falling back — used for
  * actions the user explicitly triggers (claim, fund, deposit, ...), where
@@ -74,7 +59,11 @@ export async function apiRequest<T>(
     const body = await res.text();
     let message = body;
     try {
-      message = JSON.parse(body).message ?? body;
+      const parsed = JSON.parse(body);
+      // A JSON body without a `.message` (e.g. a NestJS validation error
+      // shaped like `{statusCode,error,details}`) must not fall back to the
+      // raw JSON text — that would get rendered verbatim in the UI (#187).
+      message = parsed.message ?? `Request failed (${res.status})`;
     } catch {
       // plain-text error body, use as-is
     }
@@ -153,5 +142,3 @@ export async function fetchReputationByUsername(
     return fallback;
   }
 }
-
-export { request };

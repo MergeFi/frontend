@@ -35,9 +35,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // localStorage is unavailable during SSR, so this can't be a lazy
     // useState initializer — it must run after mount on the client.
-    const stored = window.localStorage.getItem(WALLET_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored) setAddress(stored);
+    // Deferred by a tick (#223), same as AuthProvider's mount hydration,
+    // so this provider (mounted on every route) doesn't add to the
+    // critical path to interactivity for routes that don't need it yet.
+    const id = window.setTimeout(() => {
+      const stored = window.localStorage.getItem(WALLET_KEY);
+      if (stored) setAddress(stored);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   const handleWalletKeyChangedElsewhere = useCallback((newValue: string | null) => {

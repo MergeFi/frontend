@@ -88,10 +88,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       }
       return connection.address;
     } catch (err) {
+      // connectWallet() (lib/wallet.ts) already throws a real Error with a
+      // specific, actionable message for every failure path it detects —
+      // including "not installed" via isFreighterInstalled() — so there's
+      // no distinct "not an Error" case that means "extension missing" to
+      // special-case here (#192). The non-Error fallback below only covers
+      // a genuinely unexpected non-Error throw.
       setError(
-        err instanceof Error
-          ? err.message
-          : "Install the Freighter wallet extension to continue.",
+        err instanceof Error ? err.message : "Unable to connect wallet. Please try again.",
       );
       return null;
     } finally {

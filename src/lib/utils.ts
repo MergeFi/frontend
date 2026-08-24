@@ -71,8 +71,10 @@ export function validateTeamSplits(
   tolerance = 0.01
 ): { valid: boolean; sum: number; message?: string } {
   if (!splits || splits.length === 0) return { valid: true, sum: 0 };
+  // coerceDecimal degrades a malformed percentage string to 0 instead of
+  // NaN, so one bad split can't poison the whole sum into "NaN%" (#198).
   const percentages = splits.map((s) =>
-    typeof s.percentage === "string" ? Number(s.percentage) : s.percentage
+    typeof s.percentage === "string" ? coerceDecimal(s.percentage) : s.percentage
   );
   const sum = percentages.reduce((a, b) => a + b, 0);
   const valid = Math.abs(sum - 100) <= tolerance;

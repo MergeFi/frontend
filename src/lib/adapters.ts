@@ -108,7 +108,11 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     asset: raw.asset,
     difficulty: raw.difficulty,
     status: raw.status,
-    deadline: raw.deadline ?? new Date().toISOString(),
+    // A null deadline means the bounty is genuinely open-ended, not "due
+    // now" — pass it through as-is rather than fabricating a "now"
+    // timestamp that would make daysUntil() render it as already expired
+    // (#193). Consumers must render a "No deadline" state for null.
+    deadline: raw.deadline,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
     milestoneId: raw.issue?.milestoneId ?? undefined,
@@ -183,7 +187,7 @@ export function adaptReputation(
     handle: user.username,
     avatarUrl:
       user.avatarUrl ??
-      `https://api.dicebear.com/9.x/identicon/svg?seed=${user.username}`,
+      `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username)}`,
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
     completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
@@ -191,6 +195,5 @@ export function adaptReputation(
     onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
     languages: snapshot ? Object.keys(snapshot.languages) : [],
     organizations: snapshot?.orgsContributedTo ?? [],
-    topClients: [],
   };
 }

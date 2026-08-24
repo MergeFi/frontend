@@ -31,7 +31,8 @@ export interface Bounty {
   asset: "USDC" | "XLM";
   difficulty: Difficulty;
   status: BountyStatus;
-  deadline: string;
+  /** null means the bounty is open-ended — no deadline was set. */
+  deadline: string | null;
   labels: string[];
   claimedBy?: string;
   teamSplits?: TeamSplit[];
@@ -60,7 +61,6 @@ export interface ReputationProfile {
   onTimeDeliveryRate: number;
   languages: string[];
   organizations: string[];
-  topClients: string[];
 }
 
 export interface SponsorSummary {

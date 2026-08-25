@@ -1,10 +1,25 @@
+import type { Metadata } from "next";
 import { fetchMilestones, fetchMaintenancePools } from "@/lib/api";
 import { mockMilestones, mockMaintenancePools } from "@/lib/mock-data";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { MilestoneFundButton, PoolDepositButton } from "./MilestoneActions";
 
-export const metadata = {
+const milestonesDescription =
+  "Fund open source release milestones and recurring maintenance pools through MergeFi.";
+
+export const metadata: Metadata = {
   title: "Milestones | MergeFi",
+  description: milestonesDescription,
+  openGraph: {
+    title: "Milestones | MergeFi",
+    description: milestonesDescription,
+    url: "/milestones",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Milestones | MergeFi",
+    description: milestonesDescription,
+  },
 };
 
 export default async function MilestonesPage() {

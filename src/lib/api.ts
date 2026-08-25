@@ -154,3 +154,12 @@ export async function fetchReputationByUsername(
     return fallback;
   }
 }
+
+export async function fetchReputationHandles(fallback: string[]): Promise<string[]> {
+  try {
+    const users = await request<(RawUserProfile & { id: string })[]>("/users");
+    return users.map((user) => user.username).filter(Boolean);
+  } catch {
+    return fallback;
+  }
+}

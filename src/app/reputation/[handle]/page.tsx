@@ -16,7 +16,7 @@ export async function generateMetadata({
     Object.values(mockReputationProfiles).find(
       (p) => p.handle.toLowerCase() === handle.toLowerCase(),
     ) ?? null;
-  const profile = await fetchReputationByUsername(handle, mockFallback);
+  const { data: profile } = await fetchReputationByUsername(handle, mockFallback);
 
   if (!profile) {
     return { title: "Profile not found | MergeFi" };
@@ -54,7 +54,7 @@ export default async function ReputationPage({
     Object.values(mockReputationProfiles).find(
       (p) => p.handle.toLowerCase() === handle.toLowerCase(),
     ) ?? null;
-  const profile = await fetchReputationByUsername(handle, mockFallback);
+  const { data: profile } = await fetchReputationByUsername(handle, mockFallback);
 
   if (!profile) notFound();
 

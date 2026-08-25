@@ -25,8 +25,12 @@ export const metadata: Metadata = {
 };
 
 export default async function MilestonesPage() {
-  const milestones = await fetchMilestones(mockMilestones);
-  const pools = await fetchMaintenancePools(mockMaintenancePools);
+  const [milestonesRes, poolsRes] = await Promise.all([
+    fetchMilestones(mockMilestones),
+    fetchMaintenancePools(mockMaintenancePools),
+  ]);
+  const milestones = milestonesRes.data;
+  const pools = poolsRes.data;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">

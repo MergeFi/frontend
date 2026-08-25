@@ -11,7 +11,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { formatCurrency } from "@/lib/utils";
-import { apiRequest, fetchBounties } from "@/lib/api";
+import { apiRequest, fetchBounties, type FetchResult } from "@/lib/api";
 import {
   mockReputationProfiles,
   mockBounties,
@@ -51,10 +51,6 @@ export default function ContributorDashboardClient() {
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
 
   useEffect(() => {
-    fetchBounties(mockBounties).then(setBounties);
-  }, []);
-
-  useEffect(() => {
     if (loading) return;
 
     if (!user) {
@@ -73,34 +69,34 @@ export default function ContributorDashboardClient() {
 
     setFetchStatus("loading");
 
-    // GET, not the /recompute mutation: that endpoint's name indicates it
-    // triggers real backend recomputation, not a cached read — firing it
-    // unconditionally on every mount (and every AuthContext#refresh(),
-    // including unrelated cross-tab token pings) forced avoidable backend
-    // load on every dashboard visit. This mirrors the same read-only
-    // GET /reputation/:id endpoint fetchReputationByUsername already uses
-    // for *other* users' profiles (#242).
-    apiRequest<ReputationSnapshot | null>(`/reputation/${user.id}`)
-      .then((snapshot) => {
-        setStats({
-          handle: user.username,
-          lifetimeEarnings: snapshot ? Number(snapshot.totalEarnings) : 0,
-          mergedPRs: snapshot ? snapshot.mergedPrCount : 0,
-          completionRate: snapshot ? Number(snapshot.completionRate) / 100 : 0,
-        });
-        setFetchStatus("loaded");
+    // Parallelize independent fetches: bounties and reputation are unrelated
+    // resources — no reason to waterfall them (#8).
+    const bountiesResult = fetchBounties(mockBounties);
+    const reputationResult = apiRequest<ReputationSnapshot | null>(
+      `/reputation/${user.id}`,
+    ).then(
+      (snapshot) => ({
+        handle: user.username,
+        lifetimeEarnings: snapshot ? Number(snapshot.totalEarnings) : 0,
+        mergedPRs: snapshot ? snapshot.mergedPrCount : 0,
+        completionRate: snapshot ? Number(snapshot.completionRate) / 100 : 0,
+      } as DashboardStats | null),
+      () => null,
+    );
+
+    void Promise.all([bountiesResult, reputationResult]).then(
+      ([bountiesRes, statsResult]) => {
+        setBounties(bountiesRes.data);
+        if (statsResult) {
+          setStats(statsResult);
+          setFetchStatus("loaded");
+        } else {
+          setStats(null);
+          setFetchStatus("error");
+        }
         setIsLive(true);
-      })
-      .catch(() => {
-        // BUG FIX: the previous implementation set all stat values to 0 on
-        // fetch failure. A contributor seeing "$0 lifetime earnings" due to a
-        // network error is indistinguishable from a real zero — a demoralising
-        // and misleading false signal. We now leave stats null and set the
-        // status to "error" so each StatCard renders its error state instead.
-        setStats(null);
-        setFetchStatus("error");
-        setIsLive(true);
-      });
+      },
+    );
   }, [user, loading]);
 
   // Derive display handle: show username if live, else demo handle.

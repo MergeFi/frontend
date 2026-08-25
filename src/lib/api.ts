@@ -24,16 +24,41 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * Distinguishes live backend data from mock fallback so callers can surface
+ * a visible indicator without relying on fragile reference-identity checks.
+ */
+export interface FetchResult<T> {
+  data: T;
+  source: "live" | "mock";
+}
+
+function logFetchError(path: string, kind: "network" | "http" | "parse", detail: string) {
+  console.error(`[api] ${kind} error on ${path}: ${detail}`);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    cache: "no-store",
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      cache: "no-store",
+      ...init,
+      headers: { "Content-Type": "application/json", ...init?.headers },
+    });
+  } catch (err) {
+    logFetchError(path, "network", err instanceof Error ? err.message : String(err));
+    throw new ApiUnavailableError(`Network error on ${path}`);
+  }
   if (!res.ok) {
+    logFetchError(path, "http", `${res.status} ${res.statusText}`);
     throw new ApiUnavailableError(`Request to ${path} failed: ${res.status}`);
   }
-  return res.json() as Promise<T>;
+  try {
+    return (await res.json()) as T;
+  } catch (err) {
+    logFetchError(path, "parse", err instanceof Error ? err.message : String(err));
+    throw new ApiUnavailableError(`Invalid JSON from ${path}`);
+  }
 }
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -97,74 +122,70 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
  * into the flat shapes the UI renders, falling back to mock data (already in
  * the target shape) when the backend is unreachable.
  */
-export async function fetchBounties(fallback: Bounty[]): Promise<Bounty[]> {
+export async function fetchBounties(fallback: Bounty[]): Promise<FetchResult<Bounty[]>> {
   try {
     const raw = await request<RawBounty[]>("/bounties");
-    return raw.map(adaptBounty);
+    return { data: raw.map(adaptBounty), source: "live" };
   } catch {
-    return fallback;
+    return { data: fallback, source: "mock" };
   }
 }
 
 export async function fetchBounty(
   id: string,
   fallback: Bounty | undefined,
-): Promise<Bounty | undefined> {
+): Promise<FetchResult<Bounty | undefined>> {
   try {
     const raw = await request<RawBounty>(`/bounties/${id}`);
-    return adaptBounty(raw);
+    return { data: adaptBounty(raw), source: "live" };
   } catch {
-    return fallback;
+    return { data: fallback, source: "mock" };
   }
 }
 
-export async function fetchMilestones(fallback: Milestone[]): Promise<Milestone[]> {
+export async function fetchMilestones(fallback: Milestone[]): Promise<FetchResult<Milestone[]>> {
   try {
     const raw = await request<RawMilestone[]>("/milestones");
-    return raw.map(adaptMilestone);
+    return { data: raw.map(adaptMilestone), source: "live" };
   } catch {
-    return fallback;
+    return { data: fallback, source: "mock" };
   }
 }
 
 export async function fetchMaintenancePools(
   fallback: MaintenancePool[],
-): Promise<MaintenancePool[]> {
+): Promise<FetchResult<MaintenancePool[]>> {
   try {
     const raw = await request<RawMaintenancePool[]>("/maintenance-pools");
-    return raw.map(adaptMaintenancePool);
+    return { data: raw.map(adaptMaintenancePool), source: "live" };
   } catch {
-    return fallback;
+    return { data: fallback, source: "mock" };
   }
 }
 
 export async function fetchReputationByUsername(
   username: string,
   fallback: ReputationProfile | null,
-): Promise<ReputationProfile | null> {
+): Promise<FetchResult<ReputationProfile | null>> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    // GitHub usernames are canonically case-insensitive (torvalds and
-    // Torvalds resolve to the same account) — a strict === comparison
-    // 404s a profile that genuinely exists under different letter casing
-    // (#245).
     const target = username.toLowerCase();
     const user = users.find((u) => u.username.toLowerCase() === target);
-    if (!user) return fallback;
+    if (!user) return { data: fallback, source: "mock" };
     const snapshot = await request<RawReputationSnapshot | null>(
       `/reputation/${user.id}`,
     );
-    return adaptReputation(user, snapshot);
+    return { data: adaptReputation(user, snapshot), source: "live" };
   } catch {
-    return fallback;
+    return { data: fallback, source: "mock" };
   }
 }
 
-export async function fetchReputationHandles(fallback: string[]): Promise<string[]> {
+export async function fetchReputationHandles(fallback: string[]): Promise<FetchResult<string[]>> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    return users.map((user) => user.username).filter(Boolean);
+    return { data: users.map((user) => user.username).filter(Boolean), source: "live" };
   } catch {
-    return fallback;
+    return { data: fallback, source: "mock" };
   }
 }

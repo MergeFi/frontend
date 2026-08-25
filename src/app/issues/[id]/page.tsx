@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const bounty = await fetchBounty(
+  const { data: bounty } = await fetchBounty(
     id,
     mockBounties.find((b) => b.id === id),
   );
@@ -48,7 +48,7 @@ export default async function IssueDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const bounty = await fetchBounty(
+  const { data: bounty } = await fetchBounty(
     id,
     mockBounties.find((b) => b.id === id),
   );

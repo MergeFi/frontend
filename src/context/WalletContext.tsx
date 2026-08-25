@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { connectWallet as freighterConnect } from "@/lib/wallet";
@@ -22,6 +23,16 @@ interface WalletContextValue {
   error: string | null;
   connect: () => Promise<string | null>;
   disconnect: () => void;
+  /**
+   * Synchronously reads the error connect() most recently set, bypassing
+   * React's render/commit timing. A caller that awaits connect() and gets
+   * null back can't rely on the `error` field above for the reason why —
+   * that's a value from whatever render created the closure, not
+   * necessarily updated yet by the time the awaited call resolves. This
+   * reads a ref updated in lockstep with every setError() call, so it's
+   * always current the instant connect()'s promise settles (#235).
+   */
+  getError: () => string | null;
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -32,6 +43,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [network, setNetwork] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<string | null>(null);
+  const updateError = useCallback((message: string | null) => {
+    errorRef.current = message;
+    setError(message);
+  }, []);
+  const getError = useCallback(() => errorRef.current, []);
 
   useEffect(() => {
     // localStorage is unavailable during SSR, so this can't be a lazy
@@ -62,7 +79,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useCrossTabStorage(WALLET_KEY, handleWalletKeyChangedElsewhere);
 
   const connect = useCallback(async () => {
-    setError(null);
+    updateError(null);
     setConnecting(true);
     try {
       const connection = await freighterConnect();
@@ -81,7 +98,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           // The wallet is still usable for signing this session even if the
           // backend write failed, but the user needs to know their payout
           // wallet wasn't actually saved to their profile (#229).
-          setError(
+          updateError(
             "Wallet connected, but couldn't save it to your profile — try reconnecting.",
           );
         }
@@ -94,14 +111,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // no distinct "not an Error" case that means "extension missing" to
       // special-case here (#192). The non-Error fallback below only covers
       // a genuinely unexpected non-Error throw.
-      setError(
+      updateError(
         err instanceof Error ? err.message : "Unable to connect wallet. Please try again.",
       );
       return null;
     } finally {
       setConnecting(false);
     }
-  }, [user, refresh]);
+  }, [user, refresh, updateError]);
 
   const disconnect = useCallback(() => {
     window.localStorage.removeItem(WALLET_KEY);
@@ -123,7 +140,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ address, network, connecting, error, connect, disconnect }}
+      value={{ address, network, connecting, error, connect, disconnect, getError }}
     >
       {children}
     </WalletContext.Provider>

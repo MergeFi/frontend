@@ -118,7 +118,10 @@ export default function HomePage() {
           <div className="mt-8 flex items-center justify-center gap-3 text-sm text-slate-500 dark:text-slate-400">
             <AvatarStack seeds={topContributors.map((c) => c.handle)} />
             <span>
-              Joined by <strong className="text-slate-900 dark:text-white">341 contributors</strong>{" "}
+              Joined by{" "}
+              <strong className="text-slate-900 dark:text-white">
+                {platformStats.activeContributors.toLocaleString()} contributors
+              </strong>{" "}
               already earning
             </span>
           </div>

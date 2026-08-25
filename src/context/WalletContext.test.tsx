@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { WalletProvider, useWallet } from "./WalletContext";
 import { useAuth } from "@/context/AuthContext";
@@ -27,14 +28,27 @@ const mockApiRequest = apiRequest as jest.Mock;
 const mockRefresh = jest.fn();
 
 function TestConsumer() {
-  const { address, connecting, error, connect, disconnect } = useWallet();
+  const { address, connecting, error, connect, disconnect, getError } = useWallet();
+  const [readAfterConnect, setReadAfterConnect] = useState<string>("not-read-yet");
+
   return (
     <div>
       <div data-testid="address">{address ?? "disconnected"}</div>
       <div data-testid="connecting">{String(connecting)}</div>
       <div data-testid="error">{error ?? "none"}</div>
+      <div data-testid="read-after-connect">{readAfterConnect}</div>
       <button onClick={() => void connect()}>connect</button>
       <button onClick={disconnect}>disconnect</button>
+      <button
+        onClick={async () => {
+          await connect();
+          // Mirrors IssueActions/MilestoneActions' pattern: read getError()
+          // synchronously right after the awaited connect() settles.
+          setReadAfterConnect(getError() ?? "none");
+        }}
+      >
+        connect-and-read-getError
+      </button>
     </div>
   );
 }
@@ -206,6 +220,27 @@ describe("WalletContext — connect() (#231)", () => {
       expect.objectContaining({ method: "PATCH" }),
     );
     expect(screen.getByTestId("error")).toHaveTextContent("none");
+  });
+
+  it("getError() returns the fresh failure reason synchronously right after connect() settles (#235)", async () => {
+    mockConnectWallet.mockRejectedValue(new Error("Wallet access was not granted."));
+
+    render(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    fireEvent.click(screen.getByText("connect-and-read-getError"));
+
+    // The consumer read getError() immediately after `await connect()`
+    // resolved in its own click handler — not from a later render's
+    // `error` prop — and still got the correct, specific message.
+    await waitFor(() =>
+      expect(screen.getByTestId("read-after-connect")).toHaveTextContent(
+        "Wallet access was not granted.",
+      ),
+    );
   });
 });
 

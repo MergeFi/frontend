@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Inbox } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { BountyCard } from "@/components/bounty/BountyCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const issuesDescription =
   "Browse paid, escrow-backed GitHub issues funded through MergeFi and ready for contributors.";
@@ -39,11 +41,19 @@ export default async function IssuesPage() {
           moment it&apos;s merged.
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {bounties.map((bounty) => (
-          <BountyCard key={bounty.id} bounty={bounty} />
-        ))}
-      </div>
+      {bounties.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title="No paid issues yet"
+          description="Nothing is funded on this deployment right now. Once a sponsor locks funds into an escrow, the bounty shows up here."
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {bounties.map((bounty) => (
+            <BountyCard key={bounty.id} bounty={bounty} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

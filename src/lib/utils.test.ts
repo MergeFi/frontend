@@ -53,13 +53,22 @@ describe("formatCurrency", () => {
       expect(formatCurrency(-1234567.89, "USDC")).toBe("-1,234,567.89 USDC");
     });
 
-    it("limits decimal places to 2 by default", () => {
+    it("limits USDC to 2 decimal places", () => {
       expect(formatCurrency(123.456789, "USDC")).toBe("123.46 USDC");
-      expect(formatCurrency(-123.456789, "XLM")).toBe("-123.46 XLM");
+    });
+
+    it("shows up to 7 decimal places for XLM", () => {
+      expect(formatCurrency(12.3456789, "XLM")).toBe("12.3456789 XLM");
+      expect(formatCurrency(-12.3456789, "XLM")).toBe("-12.3456789 XLM");
+    });
+
+    it("does not display small nonzero XLM as zero", () => {
+      expect(formatCurrency(0.0000005, "XLM")).not.toBe("0 XLM");
     });
 
     it("does not add trailing zeros for whole numbers", () => {
       expect(formatCurrency(100, "USDC")).toBe("100 USDC");
+      expect(formatCurrency(100, "XLM")).toBe("100 XLM");
     });
   });
 

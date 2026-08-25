@@ -63,7 +63,8 @@ const SANITY_CEILING = 1_000_000_000; // 1 billion
  */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  const formatted = amount.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  const maxDecimals = asset === "XLM" ? 7 : 2;
+  const formatted = amount.toLocaleString("en-US", { maximumFractionDigits: maxDecimals });
   if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
   return `${formatted} ${asset}`;
 }

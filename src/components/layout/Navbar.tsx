@@ -39,11 +39,22 @@ export function Navbar() {
               </Link>
             ))}
             <div className="group relative">
-              <button className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white">
+              <button
+                aria-haspopup="menu"
+                className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white"
+              >
                 Dashboards
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
-              <div className="invisible absolute left-0 top-full pt-3 opacity-0 transition-all group-hover:visible group-hover:opacity-100">
+              {/* group-focus-within alongside group-hover: the submenu was
+                  only reachable via mouse hover — a keyboard user tabbing
+                  to the trigger never made it visible, and the links
+                  inside stayed in the tab order (invisible/opacity-0, not
+                  display: none) so focus could land on an invisible link
+                  (#222). focus-within keeps it open while focus is
+                  anywhere inside this wrapper, including on the links
+                  themselves. */}
+              <div className="invisible absolute left-0 top-full pt-3 opacity-0 transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                 <div className="w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900">
                   {dashboardLinks.map((link) => (
                     <Link

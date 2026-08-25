@@ -12,7 +12,7 @@ import type { Bounty } from "@/types";
 export function IssueActions({ bounty }: { bounty: Bounty }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
+  const { address, connect, connecting, addressMismatch, networkMismatch, getError: getWalletError } = useWallet();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -26,6 +26,16 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     if (addressMismatch) {
       setError(
         "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
+      );
+      return;
+    }
+
+    // Block if Freighter's network doesn't match the app's configured network.
+    // A signed transaction would be rejected by Soroban anyway, but this
+    // avoids burning the user's attention on an doomed approval (#2).
+    if (networkMismatch) {
+      setError(
+        "Your Freighter wallet is on the wrong network. Switch it in the extension and try again.",
       );
       return;
     }

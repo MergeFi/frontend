@@ -11,6 +11,7 @@ import {
 import {
   connectWallet as freighterConnect,
   getActiveFreighterAddress,
+  checkNetworkMismatch,
 } from "@/lib/wallet";
 import { apiRequest } from "@/lib/api";
 import { STELLAR_NETWORK } from "@/lib/config";
@@ -26,6 +27,8 @@ interface WalletContextValue {
   error: string | null;
   /** True when Freighter's active account differs from the cached address. */
   addressMismatch: boolean;
+  /** True when Freighter's network doesn't match the app's configured network. */
+  networkMismatch: boolean;
   connect: () => Promise<string | null>;
   disconnect: () => void;
   /**
@@ -49,6 +52,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addressMismatch, setAddressMismatch] = useState(false);
+  const [networkMismatch, setNetworkMismatch] = useState(false);
   const errorRef = useRef<string | null>(null);
   const updateError = useCallback((message: string | null) => {
     errorRef.current = message;
@@ -78,6 +82,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           if (live && live !== stored) {
             setAddressMismatch(true);
           }
+        });
+
+        // Also verify the extension's network matches the app's (#2).
+        checkNetworkMismatch().then((msg) => {
+          if (msg) setNetworkMismatch(true);
         });
       }
     }, 0);
@@ -170,7 +179,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ address, network, connecting, error, addressMismatch, connect, disconnect, getError }}
+      value={{ address, network, connecting, error, addressMismatch, networkMismatch, connect, disconnect, getError }}
     >
       {children}
     </WalletContext.Provider>

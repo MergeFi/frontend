@@ -3,6 +3,7 @@ import {
   isAllowed,
   setAllowed,
   getAddress,
+  getNetwork,
   signTransaction as freighterSignTransaction,
 } from "@stellar/freighter-api";
 import { STELLAR_NETWORK } from "./config";
@@ -10,6 +11,40 @@ import { STELLAR_NETWORK } from "./config";
 export interface WalletConnection {
   address: string;
   network: string;
+}
+
+const NETWORK_PASSPHRASES: Record<string, string> = {
+  PUBLIC: "Public Global Stellar Network ; September 2015",
+  TESTNET: "Test SDF Network ; September 2015",
+};
+
+/**
+ * Read the network passphrase the Freighter extension is currently set to.
+ * Returns null if the extension doesn't support getNetwork or isn't
+ * reachable — callers should treat null as "unknown, proceed with caution."
+ */
+export async function getFreighterNetwork(): Promise<string | null> {
+  try {
+    const result = await getNetwork();
+    if (result.error || !result.network) return null;
+    return result.network;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check whether Freighter's active network matches the app's configured
+ * network. Returns a human-readable mismatch message if they differ, or
+ * null if they match (or the check couldn't be performed).
+ */
+export async function checkNetworkMismatch(): Promise<string | null> {
+  const freighterNetwork = await getFreighterNetwork();
+  if (!freighterNetwork) return null;
+  const expected = NETWORK_PASSPHRASES[STELLAR_NETWORK];
+  if (!expected) return null;
+  if (freighterNetwork === expected) return null;
+  return `Your Freighter wallet is on the wrong network. Switch it to ${STELLAR_NETWORK === "PUBLIC" ? "Mainnet" : "Testnet"} and try again.`;
 }
 
 export async function isFreighterInstalled(): Promise<boolean> {
@@ -51,6 +86,13 @@ export async function connectWallet(): Promise<WalletConnection> {
   const { address, error } = await getAddress();
   if (error || !address) {
     throw new Error(error?.message ?? "Unable to read wallet address.");
+  }
+  // Pre-flight: verify the extension's network matches the app's.
+  // A mismatch means any signed transaction will be rejected by Soroban,
+  // but only after the user has already approved it in the extension (#2).
+  const mismatchMsg = await checkNetworkMismatch();
+  if (mismatchMsg) {
+    throw new Error(mismatchMsg);
   }
   return { address, network: STELLAR_NETWORK };
 }

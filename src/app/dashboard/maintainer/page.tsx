@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Layers, Clock, Coins, FolderGit2, CheckCircle2 } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties, recentActivity, bountiesCompletedSparkline } from "@/lib/mock-data";
@@ -9,7 +10,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency } from "@/lib/utils";
 import { PipelineBoard, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
-import type { Bounty } from "@/types";
 
 export const metadata = {
   title: "Maintainer Dashboard | MergeFi",
@@ -17,17 +17,17 @@ export const metadata = {
 
 export default async function MaintainerDashboardPage() {
   // Maintainer dashboard is a Server Component (no client-side loading state).
-  // We wrap fetchBounties in a try/catch so that if the fetch fails, the cards
-  // explicitly show "Error loading data" rather than rendering stale zeros or
-  // crashing the page render.
-  let bounties: Bounty[] = [];
-  let statStatus: "loaded" | "error" = "loaded";
-
-  try {
-    bounties = await fetchBounties(mockBounties);
-  } catch {
-    statStatus = "error";
-  }
+  // fetchBounties (lib/api.ts) already catches every failure internally and
+  // resolves to the `fallback` argument instead of rejecting — it can never
+  // throw, so a try/catch around it here would be dead code. Detect the
+  // fallback case instead by reference: fetchBounties returns the exact
+  // fallback array on failure, but always a freshly-mapped array (a new
+  // reference, even if its contents happened to match) on a real live
+  // fetch, so this reliably distinguishes "live data" from "backend down,
+  // showing mockBounties" without changing fetchBounties' shared contract
+  // (#240).
+  const bounties = await fetchBounties(mockBounties);
+  const statStatus: "loaded" | "error" = bounties === mockBounties ? "error" : "loaded";
 
   const needsReview = bounties.filter((b) => b.status === "in_review");
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
@@ -42,9 +42,15 @@ export default async function MaintainerDashboardPage() {
       title="Bounty pipeline"
       subtitle="Create bounties from your GitHub issues and approve completed work. Payout release happens automatically once a linked pull request is merged."
       action={
-        <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900">
-          Create bounty
-        </span>
+        // Bounties are created from your GitHub issues (per the subtitle
+        // above) — /issues is the same destination the contributor and
+        // sponsor dashboards' equivalent action buttons already link to
+        // for picking a bounty to work with (#241).
+        <Link href="/issues">
+          <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+            Create bounty
+          </span>
+        </Link>
       }
     >
       {/* Pass statStatus so that a fetchBounties failure renders error states

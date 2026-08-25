@@ -1,12 +1,16 @@
 import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { TOKEN_KEY } from "@/lib/auth";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, ApiRequestError } from "@/lib/api";
 import type { AuthUser } from "@/types";
 
-jest.mock("@/lib/api", () => ({
-  apiRequest: jest.fn(),
-}));
+jest.mock("@/lib/api", () => {
+  const actual = jest.requireActual("@/lib/api");
+  return {
+    ...actual,
+    apiRequest: jest.fn(),
+  };
+});
 
 const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
@@ -170,9 +174,9 @@ describe("AuthContext — session hydration (#232)", () => {
     expect(mockApiRequest).not.toHaveBeenCalled();
   });
 
-  it("refresh(): clears the token and signs out when /auth/me rejects (expired/invalid token)", async () => {
+  it("refresh(): clears the token and signs out when /auth/me returns 401", async () => {
     window.localStorage.setItem(TOKEN_KEY, "stale-token");
-    mockApiRequest.mockRejectedValue(new Error("401"));
+    mockApiRequest.mockRejectedValue(new ApiRequestError("Unauthorized", 401));
 
     render(
       <AuthProvider>
@@ -184,6 +188,60 @@ describe("AuthContext — session hydration (#232)", () => {
       expect(screen.getByTestId("state")).toHaveTextContent("signed-out"),
     );
     expect(window.localStorage.getItem(TOKEN_KEY)).toBeNull();
+  });
+
+  it("refresh(): retries on network errors and keeps the token", async () => {
+    jest.useFakeTimers();
+    window.localStorage.setItem(TOKEN_KEY, "valid-token");
+    const successImpl = async (path: string) => {
+      if (path === "/auth/me") return { userId: "user-1", username: "alice" };
+      return PROFILE;
+    };
+    mockApiRequest
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockImplementation(successImpl);
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    // Advance past the deferred mount setTimeout(, 0)
+    await act(async () => { jest.advanceTimersByTime(10); });
+    // Advance past first retry backoff (200ms)
+    await act(async () => { jest.advanceTimersByTime(300); });
+    // Advance past second retry backoff (400ms)
+    await act(async () => { jest.advanceTimersByTime(500); });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("state")).toHaveTextContent("signed-in:alice"),
+    );
+    expect(window.localStorage.getItem(TOKEN_KEY)).toBe("valid-token");
+    jest.useRealTimers();
+  });
+
+  it("refresh(): keeps the session after all retries are exhausted", async () => {
+    jest.useFakeTimers();
+    window.localStorage.setItem(TOKEN_KEY, "valid-token");
+    mockApiRequest.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    // Advance past mount + 3 retries with backoff delays
+    await act(async () => { jest.advanceTimersByTime(10); });
+    await act(async () => { jest.advanceTimersByTime(300); });
+    await act(async () => { jest.advanceTimersByTime(500); });
+    await act(async () => { jest.advanceTimersByTime(1000); });
+
+    expect(mockApiRequest).toHaveBeenCalledTimes(3);
+    expect(window.localStorage.getItem(TOKEN_KEY)).toBe("valid-token");
+    jest.useRealTimers();
   });
 
   it("login(): persists the token and resolves the session", async () => {

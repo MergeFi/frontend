@@ -48,6 +48,43 @@ describe("BountyDescription — content fidelity", () => {
     expect(screen.getByText("second step").closest("li")).toBeInTheDocument();
   });
 
+  it("renders an ordered list as real <ol><li> elements with decimal styling", () => {
+    render(<BountyDescription description={"1. first\n2. second\n3. third"} />);
+
+    const ol = screen.getByText("first").closest("ol");
+    expect(ol).toBeInTheDocument();
+    expect(ol?.className).toContain("list-decimal");
+    expect(screen.getByText("first").closest("li")).toBeInTheDocument();
+    expect(screen.getByText("second").closest("li")).toBeInTheDocument();
+    expect(screen.getByText("third").closest("li")).toBeInTheDocument();
+  });
+
+  it("renders a blockquote with left-border styling", () => {
+    render(<BountyDescription description={"> quoted text"} />);
+
+    const blockquote = screen.getByText("quoted text").closest("blockquote");
+    expect(blockquote).toBeInTheDocument();
+    expect(blockquote?.className).toContain("border-l-2");
+    expect(blockquote?.className).toContain("italic");
+  });
+
+  it("remaps h1→h2, h2→h3, h3→h4 so issue headings don't compete with the page title", () => {
+    render(
+      <BountyDescription
+        description={"# Top Level\n\n## Section\n\n### Subsection"}
+      />,
+    );
+
+    const h1 = screen.getByText("Top Level");
+    expect(h1.tagName.toLowerCase()).toBe("h2");
+
+    const h2 = screen.getByText("Section");
+    expect(h2.tagName.toLowerCase()).toBe("h3");
+
+    const h3 = screen.getByText("Subsection");
+    expect(h3.tagName.toLowerCase()).toBe("h4");
+  });
+
   it("styles h4/h5/h6 headings instead of falling back to unstyled defaults (#214)", () => {
     render(
       <BountyDescription

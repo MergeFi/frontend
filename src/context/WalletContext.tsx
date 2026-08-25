@@ -78,6 +78,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
   useCrossTabStorage(WALLET_KEY, handleWalletKeyChangedElsewhere);
 
+  // #270: When AuthContext logs the user out (cross-tab or otherwise),
+  // clear the wallet connection too so a stale address is never usable
+  // in a tab where the session has ended.
+  useEffect(() => {
+    if (user === null) {
+      setAddress((prev) => {
+        if (prev === null) return prev;
+        window.localStorage.removeItem(WALLET_KEY);
+        setNetwork(null);
+        return null;
+      });
+    }
+  }, [user]);
+
   const connect = useCallback(async () => {
     updateError(null);
     setConnecting(true);

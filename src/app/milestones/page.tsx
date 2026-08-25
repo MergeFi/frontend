@@ -3,6 +3,8 @@ import { fetchMilestones, fetchMaintenancePools } from "@/lib/api";
 import { mockMilestones, mockMaintenancePools } from "@/lib/mock-data";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { MilestoneFundButton, PoolDepositButton } from "./MilestoneActions";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Target, Droplets } from "lucide-react";
 
 const milestonesDescription =
   "Fund open source release milestones and recurring maintenance pools through MergeFi.";
@@ -41,7 +43,13 @@ export default async function MilestonesPage() {
       </p>
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
-        {milestones.map((m) => {
+        {milestones.length === 0 ? (
+          <EmptyState
+            icon={Target}
+            title="No milestones yet"
+            description="Milestones will appear here once sponsors create them for open source releases."
+          />
+        ) : milestones.map((m) => {
           const pct = m.distributed / m.budget;
           return (
             <div
@@ -80,7 +88,13 @@ export default async function MilestonesPage() {
         dependency bumps, docs, and cleanup, that would otherwise go unfunded.
       </p>
       <div className="mt-8 grid gap-4 md:grid-cols-2">
-        {pools.map((pool) => (
+        {pools.length === 0 ? (
+          <EmptyState
+            icon={Droplets}
+            title="No maintenance pools yet"
+            description="Maintenance pools will appear here once sponsors set them up for ongoing upkeep."
+          />
+        ) : pools.map((pool) => (
           <div
             key={pool.id}
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"

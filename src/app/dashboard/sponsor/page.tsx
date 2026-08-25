@@ -92,7 +92,13 @@ export default function SponsorDashboardPage() {
         setFetchStatus("error");
         setIsLive(false);
       });
-  }, [user, loading]);
+    // Depend on user?.id, not the whole user object: AuthContext#refresh()
+    // sets a freshly-parsed user object on every call — including unrelated
+    // cross-tab token-storage pings — so a reference-based dependency
+    // re-ran this fetch even when the signed-in sponsor's identity hadn't
+    // actually changed (#243).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, loading]);
 
   // Derive per-card values only when data is available.
   const totalSpent = data?.totalSpent;

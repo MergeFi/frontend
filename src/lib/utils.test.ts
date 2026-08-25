@@ -8,6 +8,7 @@
 import {
   formatCurrency,
   formatPercent,
+  parseMoneyInput,
   coerceDecimal,
   coerceNonNegative,
   coerceFraction,
@@ -52,13 +53,22 @@ describe("formatCurrency", () => {
       expect(formatCurrency(-1234567.89, "USDC")).toBe("-1,234,567.89 USDC");
     });
 
-    it("limits decimal places to 2 by default", () => {
+    it("limits USDC to 2 decimal places", () => {
       expect(formatCurrency(123.456789, "USDC")).toBe("123.46 USDC");
-      expect(formatCurrency(-123.456789, "XLM")).toBe("-123.46 XLM");
+    });
+
+    it("shows up to 7 decimal places for XLM", () => {
+      expect(formatCurrency(12.3456789, "XLM")).toBe("12.3456789 XLM");
+      expect(formatCurrency(-12.3456789, "XLM")).toBe("-12.3456789 XLM");
+    });
+
+    it("does not display small nonzero XLM as zero", () => {
+      expect(formatCurrency(0.0000005, "XLM")).not.toBe("0 XLM");
     });
 
     it("does not add trailing zeros for whole numbers", () => {
       expect(formatCurrency(100, "USDC")).toBe("100 USDC");
+      expect(formatCurrency(100, "XLM")).toBe("100 XLM");
     });
   });
 
@@ -256,5 +266,85 @@ describe("validateTeamSplits", () => {
     expect(result.valid).toBe(false);
     expect(result.message).not.toContain("NaN");
     expect(result.message).toContain("50.00%");
+  });
+});
+
+// ─── parseMoneyInput ────────────────────────────────────────────────────────
+
+describe("parseMoneyInput", () => {
+  describe("valid inputs", () => {
+    it("accepts a whole number", () => {
+      const r = parseMoneyInput("100", "USDC");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("100");
+    });
+
+    it("accepts a decimal with valid precision for USDC", () => {
+      const r = parseMoneyInput("12.50", "USDC");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("12.5");
+    });
+
+    it("accepts a decimal with valid precision for XLM", () => {
+      const r = parseMoneyInput("12.3456789", "XLM");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("12.3456789");
+    });
+
+    it("normalizes trailing zeros", () => {
+      const r = parseMoneyInput("1.10", "USDC");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("1.1");
+    });
+  });
+
+  describe("invalid inputs", () => {
+    it("rejects empty string", () => {
+      const r = parseMoneyInput("", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toBeDefined();
+    });
+
+    it("rejects zero", () => {
+      const r = parseMoneyInput("0", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("greater than zero");
+    });
+
+    it("rejects negative values", () => {
+      const r = parseMoneyInput("-50", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("greater than zero");
+    });
+
+    it("rejects non-numeric text", () => {
+      const r = parseMoneyInput("abc", "USDC");
+      expect(r.valid).toBe(false);
+    });
+
+    it("rejects Infinity", () => {
+      const r = parseMoneyInput("1e500", "USDC");
+      expect(r.valid).toBe(false);
+    });
+
+    it("rejects over-precision for USDC (more than 2 decimals)", () => {
+      const r = parseMoneyInput("10.555", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("2 decimal places");
+    });
+
+    it("rejects over-precision for XLM (more than 7 decimals)", () => {
+      const r = parseMoneyInput("1.12345678", "XLM");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("7 decimal places");
+    });
+  });
+
+  describe("defaults", () => {
+    it("defaults to USDC when asset is omitted", () => {
+      const r = parseMoneyInput("10.555");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("2 decimal places");
+    });
   });
 });

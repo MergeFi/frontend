@@ -3,11 +3,27 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import type { UserRole } from "@/types";
+
+const ROLE_REDIRECT_MAP: Record<UserRole, string> = {
+  maintainer: "/dashboard/maintainer",
+  sponsor: "/dashboard/sponsor",
+  contributor: "/dashboard/contributor",
+};
+
+/** Precedence: maintainer > sponsor > contributor. Falls back to contributor. */
+function redirectForRoles(roles: UserRole[] | undefined): string {
+  if (!roles || roles.length === 0) return ROLE_REDIRECT_MAP.contributor;
+  for (const role of ["maintainer", "sponsor", "contributor"] as UserRole[]) {
+    if (roles.includes(role)) return ROLE_REDIRECT_MAP[role];
+  }
+  return ROLE_REDIRECT_MAP.contributor;
+}
 
 export function CallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,9 +34,13 @@ export function CallbackClient() {
       return;
     }
     login(token)
-      .then(() => router.replace("/dashboard/contributor"))
+      .then(() => {
+        // user is populated by refresh() inside login(); if refresh() failed
+        // internally, user may still be null — fall back to contributor.
+        router.replace(redirectForRoles(user?.roles));
+      })
       .catch(() => setError("Could not complete sign-in. Please try again."));
-  }, [searchParams, login, router]);
+  }, [searchParams, login, router, user]);
 
   return (
     <div className="mx-auto max-w-md px-6 py-24 text-center">

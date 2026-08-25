@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useWallet } from "@/context/WalletContext";
 import { apiPost, ApiRequestError } from "@/lib/api";
+import { parseMoneyInput } from "@/lib/utils";
 
 export function MilestoneFundButton({
   milestoneId,
@@ -73,9 +74,11 @@ export function MilestoneFundButton({
 export function PoolDepositButton({
   poolId,
   poolRepo,
+  asset = "USDC",
 }: {
   poolId: string;
   poolRepo?: string;
+  asset?: "USDC" | "XLM";
 }) {
   const router = useRouter();
   const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
@@ -83,8 +86,22 @@ export function PoolDepositButton({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const validation = parseMoneyInput(amount, asset);
+  const inputValid = validation.valid;
+
+  function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAmount(e.target.value);
+    setError(null);
+  }
+
   async function handleDeposit() {
     setError(null);
+    // Re-validate at submit time in case state drifted
+    const result = parseMoneyInput(amount, asset);
+    if (!result.valid) {
+      setError(result.error ?? "Invalid amount.");
+      return;
+    }
 
     if (addressMismatch) {
       setError(
@@ -97,15 +114,11 @@ export function PoolDepositButton({
     try {
       const walletAddress = address ?? (await connect());
       if (!walletAddress) {
-        // getError() reads WalletContext's specific failure reason off a
-        // ref, always current the instant connect() settles — unlike the
-        // `error` context value, which may still reflect a pre-await
-        // render (#235).
         setError(getWalletError() ?? "Connect a Stellar wallet to deposit.");
         return;
       }
       await apiPost(`/maintenance-pools/${poolId}/deposit`, {
-        amount,
+        amount: result.normalized,
         funderAddress: walletAddress,
       });
       router.refresh();
@@ -126,9 +139,10 @@ export function PoolDepositButton({
       <input
         id={inputId}
         type="number"
-        min="1"
+        min="0.01"
+        step="0.01"
         value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        onChange={handleAmountChange}
         className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
       />
       <Button
@@ -136,6 +150,7 @@ export function PoolDepositButton({
         variant="outline"
         onClick={handleDeposit}
         loading={pending || connecting}
+        disabled={!inputValid}
         aria-label={poolRepo ? `Deposit to pool: ${poolRepo}` : "Deposit to pool"}
       >
         {pending || connecting ? "Confirming..." : "Deposit"}

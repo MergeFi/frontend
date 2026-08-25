@@ -63,7 +63,8 @@ const SANITY_CEILING = 1_000_000_000; // 1 billion
  */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  const formatted = amount.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  const maxDecimals = asset === "XLM" ? 7 : 2;
+  const formatted = amount.toLocaleString("en-US", { maximumFractionDigits: maxDecimals });
   if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
   return `${formatted} ${asset}`;
 }
@@ -74,6 +75,57 @@ export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
  */
 export function isPlausibleAmount(amount: number): boolean {
   return Number.isFinite(amount) && Math.abs(amount) <= SANITY_CEILING;
+}
+
+/**
+ * Validate and normalize a monetary amount string entered by a user.
+ *
+ * Returns a result object indicating whether the input is valid, and if so,
+ * the normalized canonical decimal string suitable for sending to the backend.
+ *
+ * @param raw - The raw string from a number input.
+ * @param asset - The asset type, which determines the maximum fractional precision.
+ *                USDC: 2 decimals, XLM: 7 decimals.
+ */
+export function parseMoneyInput(
+  raw: string,
+  asset: "USDC" | "XLM" = "USDC",
+): { valid: boolean; normalized?: string; error?: string } {
+  const trimmed = raw.trim();
+
+  if (trimmed === "") {
+    return { valid: false, error: "Enter a deposit amount." };
+  }
+
+  const num = Number(trimmed);
+
+  if (!Number.isFinite(num)) {
+    return { valid: false, error: "Enter a valid number." };
+  }
+
+  if (num <= 0) {
+    return { valid: false, error: "Amount must be greater than zero." };
+  }
+
+  const maxDecimals = asset === "XLM" ? 7 : 2;
+  const decimalPart = trimmed.includes(".") ? trimmed.split(".")[1] : "";
+
+  if (decimalPart.length > maxDecimals) {
+    return {
+      valid: false,
+      error: `${asset} supports up to ${maxDecimals} decimal places.`,
+    };
+  }
+
+  // Normalize: convert to a canonical decimal string with the right precision.
+  // Use toLocaleString with fixed fraction digits to get a clean representation,
+  // then strip thousands separators.
+  const normalized = num.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDecimals,
+  }).replace(/,/g, "");
+
+  return { valid: true, normalized };
 }
 
 export function formatPercent(value: number) {

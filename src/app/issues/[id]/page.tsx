@@ -88,9 +88,13 @@ export default async function IssueDetailPage({
         <div className="mt-8">
           <h2 className="font-medium text-slate-900 dark:text-white">Team payout split</h2>
           <div className="mt-3 space-y-2">
-            {bounty.teamSplits.map((split) => (
+            {bounty.teamSplits.map((split, index) => (
               <div
-                key={split.role}
+                // adaptBounty defaults a missing role to a fixed
+                // "Contributor" literal, so two splits that both lack an
+                // explicit role produce a duplicate key on `role` alone —
+                // include the index to guarantee uniqueness (#244).
+                key={`${split.role}-${split.contributor ?? "unassigned"}-${index}`}
                 className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-900"
               >
                 <span className="text-slate-600 dark:text-slate-300">

@@ -18,11 +18,23 @@ export function BarChart({
     <div className="flex gap-2" style={{ height }}>
       {data.map((d) => {
         const pct = Math.max((d.value / max) * 100, 2);
+        // The 2% floor above keeps a zero (or near-zero) value visible
+        // instead of collapsing to nothing, but that same floor made a
+        // negative value render as an identical small bar with no visual
+        // distinction from a genuine zero/near-zero positive — the sign
+        // was completely lost. A distinct color at least keeps the sign
+        // visible at a glance; the hover tooltip below still shows the
+        // exact signed figure either way (#206).
+        const isNegative = d.value < 0;
         return (
           <div key={d.label} className="group flex flex-1 flex-col items-center gap-2">
             <div className="relative flex w-full flex-1 items-end justify-center">
               <div
-                className="w-full max-w-8 rounded-t-md bg-indigo-500/80 transition-colors group-hover:bg-indigo-500 dark:bg-indigo-400/70 dark:group-hover:bg-indigo-400"
+                className={
+                  isNegative
+                    ? "w-full max-w-8 rounded-t-md bg-rose-500/80 transition-colors group-hover:bg-rose-500 dark:bg-rose-400/70 dark:group-hover:bg-rose-400"
+                    : "w-full max-w-8 rounded-t-md bg-indigo-500/80 transition-colors group-hover:bg-indigo-500 dark:bg-indigo-400/70 dark:group-hover:bg-indigo-400"
+                }
                 style={{ height: `${pct}%` }}
                 title={formatValue ? formatValue(d.value) : String(d.value)}
               />

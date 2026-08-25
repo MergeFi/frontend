@@ -182,3 +182,52 @@ export function validateTeamSplits(
     message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Idempotency key generation (#6)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a v4 UUID for use as an idempotency key on financial API calls.
+ * The backend should deduplicate requests with the same key, preventing
+ * double-submission when the user retries after a network blip or Freighter
+ * popup timeout.
+ */
+export function generateIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID (very unlikely in
+  // modern browsers, but defensive).
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Decimal-safe financial arithmetic (#17)
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a monetary string (e.g. "12.50") to integer minor units (cents).
+ * USDC has 2 decimal places → "12.50" → 1250.
+ * XLM has 7 decimal places → "1.0000000" → 10000000.
+ *
+ * This avoids IEEE-754 float drift when summing many amounts — integers
+ * don't have representation gaps in the ranges we care about.
+ */
+export function toCents(value: string | number, decimals = 2): number {
+  const str = typeof value === "number" ? value.toFixed(decimals) : String(value);
+  const [whole = "0", frac = ""] = str.split(".");
+  const padded = frac.padEnd(decimals, "0").slice(0, decimals);
+  return parseInt(whole, 10) * 10 ** decimals + parseInt(padded || "0", 10);
+}
+
+/**
+ * Convert integer minor units back to a major-unit float for display.
+ * 1250 → 12.5 (for USDC with 2 decimals).
+ */
+export function toMajorUnits(cents: number, decimals = 2): number {
+  return cents / 10 ** decimals;
+}

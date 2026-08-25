@@ -48,11 +48,14 @@ export default async function IssuesPage() {
           description="Check back soon — funded issues appear here once sponsors lock them in escrow."
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <>
+          <h2 className="sr-only">Available bounties</h2>
+          <div className="grid gap-4 md:grid-cols-2">
           {bounties.map((bounty) => (
             <BountyCard key={bounty.id} bounty={bounty} />
           ))}
         </div>
+        </>
       )}
     </div>
   );

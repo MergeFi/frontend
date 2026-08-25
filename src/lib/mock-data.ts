@@ -179,8 +179,8 @@ export const trustedOrgs = [
   "mergefi",
   "openzeppelin",
   "soroban-foundation",
-  "wallet-kit",
-  "core-indexer",
+  "obsrvr",
+  "lightsail-network",
 ];
 
 export interface LeaderboardEntry {

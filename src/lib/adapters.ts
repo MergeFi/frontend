@@ -22,6 +22,10 @@ interface RawRepository {
 }
 
 interface RawUser {
+  // Stable identifier, unlike username (a mutable GitHub handle) — carried
+  // through separately on Bounty.claimedById so a profile link built from
+  // a bounty survives the claimer renaming their GitHub account (#203).
+  id?: string;
   username: string;
 }
 
@@ -115,6 +119,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     deadline: raw.deadline,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
+    claimedById: raw.claimedBy?.id,
     milestoneId: raw.issue?.milestoneId ?? undefined,
     escrowId: raw.escrowId ?? undefined,
     teamSplits: splits,

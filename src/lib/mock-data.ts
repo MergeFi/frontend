@@ -2,7 +2,6 @@ import type {
   Bounty,
   Milestone,
   ReputationProfile,
-  SponsorSummary,
   MaintenancePool,
 } from "@/types";
 
@@ -148,7 +147,19 @@ export const mockReputationProfiles: Record<string, ReputationProfile> = {
   },
 };
 
-export const mockSponsorSummary: SponsorSummary = {
+// Not modeled in types/index.ts alongside Bounty/Milestone/etc: this shape
+// only ever backs the signed-out demo title on the sponsor dashboard and
+// has no corresponding backend endpoint or adapter (#202) — keeping it
+// local here avoids implying parity with the adapter-backed domain types.
+interface MockSponsorSummary {
+  name: string;
+  totalFunded: number;
+  activeBounties: number;
+  budgetRemaining: number;
+  repos: string[];
+}
+
+export const mockSponsorSummary: MockSponsorSummary = {
   name: "Stellar Development Foundation",
   totalFunded: 42500,
   activeBounties: 9,
@@ -168,8 +179,8 @@ export const trustedOrgs = [
   "mergefi",
   "openzeppelin",
   "soroban-foundation",
-  "wallet-kit",
-  "core-indexer",
+  "obsrvr",
+  "lightsail-network",
 ];
 
 export interface LeaderboardEntry {
@@ -194,7 +205,20 @@ export interface ActivityEvent {
   target: string;
   amount?: number;
   asset?: "USDC" | "XLM";
-  minutesAgo: number;
+  /**
+   * ISO timestamp of when the event happened. ActivityList derives its
+   * "Nm/h/d ago" text from this at render time via Date.now() — a static
+   * minutesAgo literal would never advance, contradicting the "Live on the
+   * platform" framing this feed is rendered under (#201).
+   */
+  occurredAt: string;
+}
+
+// minutesAgo(n) anchors each mock event n minutes before whenever this
+// module is evaluated, so the feed's relative-time text keeps advancing
+// (within a given server render) instead of being frozen at deploy time.
+function minutesAgo(n: number): string {
+  return new Date(Date.now() - n * 60_000).toISOString();
 }
 
 export const recentActivity: ActivityEvent[] = [
@@ -205,21 +229,21 @@ export const recentActivity: ActivityEvent[] = [
     target: "core-indexer#288",
     amount: 40,
     asset: "USDC",
-    minutesAgo: 6,
+    occurredAt: minutesAgo(6),
   },
   {
     id: "a2",
     handle: "0xkoda",
     action: "claimed",
     target: "soroban-escrow-sdk#17",
-    minutesAgo: 22,
+    occurredAt: minutesAgo(22),
   },
   {
     id: "a3",
     handle: "linh_dev",
     action: "opened a pull request for",
     target: "stellar-wallet-kit#475",
-    minutesAgo: 48,
+    occurredAt: minutesAgo(48),
   },
   {
     id: "a4",
@@ -228,7 +252,7 @@ export const recentActivity: ActivityEvent[] = [
     target: "v2.0: Multi-asset escrow",
     amount: 2500,
     asset: "USDC",
-    minutesAgo: 71,
+    occurredAt: minutesAgo(71),
   },
   {
     id: "a5",
@@ -237,14 +261,14 @@ export const recentActivity: ActivityEvent[] = [
     target: "core-indexer#301",
     amount: 480,
     asset: "USDC",
-    minutesAgo: 130,
+    occurredAt: minutesAgo(130),
   },
   {
     id: "a6",
     handle: "qa_marcus",
     action: "joined as a",
     target: "contributor",
-    minutesAgo: 210,
+    occurredAt: minutesAgo(210),
   },
 ];
 

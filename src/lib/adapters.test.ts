@@ -90,6 +90,20 @@ describe("adaptBounty — milestoneId mapping (#86)", () => {
   });
 });
 
+describe("adaptBounty — claimedById mapping (#203)", () => {
+  it("maps claimedById from the claimer's stable id alongside the display username", () => {
+    const raw = rawBounty({ claimedBy: { id: "user-1", username: "alice" } });
+    const bounty = adaptBounty(raw);
+    expect(bounty.claimedBy).toBe("alice");
+    expect(bounty.claimedById).toBe("user-1");
+  });
+
+  it("leaves claimedById undefined when the bounty is unclaimed", () => {
+    const raw = rawBounty({ claimedBy: undefined });
+    expect(adaptBounty(raw).claimedById).toBeUndefined();
+  });
+});
+
 describe("adaptBounty — field coverage audit (#86)", () => {
   // Every key the Bounty interface declares (src/types/index.ts). Kept as
   // an explicit list, checked against adaptBounty's actual output below,
@@ -109,6 +123,7 @@ describe("adaptBounty — field coverage audit (#86)", () => {
     "deadline",
     "labels",
     "claimedBy",
+    "claimedById",
     "teamSplits",
     "milestoneId",
     "escrowId",
@@ -117,7 +132,7 @@ describe("adaptBounty — field coverage audit (#86)", () => {
   it("sets every Bounty field to a defined value given a fully-populated raw bounty", () => {
     const raw = rawBounty({
       escrowId: "escrow-1",
-      claimedBy: { username: "alice" },
+      claimedBy: { id: "user-1", username: "alice" },
       team: { splits: [{ role: "Lead", percentage: "100", user: { username: "alice" } }] },
       issue: {
         number: 42,

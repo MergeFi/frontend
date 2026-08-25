@@ -34,7 +34,10 @@ export interface Bounty {
   /** null means the bounty is open-ended — no deadline was set. */
   deadline: string | null;
   labels: string[];
+  /** Display username of the claimer — mutable; do not build links from it alone. */
   claimedBy?: string;
+  /** Stable id of the claimer, for building profile links that survive a GitHub rename (#203). */
+  claimedById?: string;
   teamSplits?: TeamSplit[];
   milestoneId?: string;
   escrowId?: string;

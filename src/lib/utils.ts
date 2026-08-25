@@ -33,12 +33,21 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
 }
 
 /**
+ * Soft ceiling for currency display. Values above this are likely corrupted,
+ * misconfigured (e.g. sent in base units instead of whole units), or a
+ * backend data-entry error. formatCurrency appends a warning indicator.
+ */
+const SANITY_CEILING = 1_000_000_000; // 1 billion
+
+/**
  * Format a numeric amount as a currency string with the specified asset label.
  *
  * @param amount - The numeric value to format. Negative values are preserved
  *                 and rendered with a leading minus sign (e.g., -50 → "-50 USDC").
  * @param asset - The asset label to append ("USDC" or "XLM"). Defaults to "USDC".
  * @returns Locale-formatted currency string (e.g., "1,234.56 USDC", "-50 XLM").
+ *          Values above the sanity ceiling are suffixed with " ⚠" to flag
+ *          implausibly large figures that may indicate corrupted data.
  *
  * @remarks
  * This function deliberately preserves the sign of negative amounts rather than
@@ -54,7 +63,17 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
  */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
+  const formatted = amount.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
+  return `${formatted} ${asset}`;
+}
+
+/**
+ * Check whether a currency amount is within a plausible range.
+ * Useful for conditionally rendering a warning badge or tooltip.
+ */
+export function isPlausibleAmount(amount: number): boolean {
+  return Number.isFinite(amount) && Math.abs(amount) <= SANITY_CEILING;
 }
 
 export function formatPercent(value: number) {

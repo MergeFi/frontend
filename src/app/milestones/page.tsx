@@ -42,7 +42,11 @@ export default async function MilestonesPage() {
         each one resolves.
       </p>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
+      <h2 className="mt-8 text-xl font-semibold text-slate-900 dark:text-white">
+        Active milestones
+      </h2>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
         {milestones.length === 0 ? (
           <EmptyState
             icon={Target}

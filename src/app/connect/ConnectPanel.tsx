@@ -62,10 +62,22 @@ export function ConnectPanel() {
           </div>
         </div>
         {address ? (
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">
-            <CheckCircle2 className="h-4 w-4" />
-            Connected: {address.slice(0, 4)}...{address.slice(-4)} ({network})
-          </div>
+          <>
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">
+              <CheckCircle2 className="h-4 w-4" />
+              Connected: {address.slice(0, 4)}...{address.slice(-4)} ({network})
+            </div>
+            {user?.stellarAddress && user.stellarAddress !== address && (
+              <div role="alert" className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-amber-200">
+                <p className="font-medium">Wallet address mismatch</p>
+                <p className="mt-1">
+                  The connected wallet ({address.slice(0, 4)}...{address.slice(-4)}) differs from
+                  the payout address on file ({user.stellarAddress.slice(0, 4)}...{user.stellarAddress.slice(-4)}).
+                  Payouts will be sent to the address on file.
+                </p>
+              </div>
+            )}
+          </>
         ) : (
           <Button
             className="mt-4 w-full"

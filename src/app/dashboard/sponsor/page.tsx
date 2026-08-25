@@ -90,7 +90,7 @@ export default function SponsorDashboardPage() {
         // real zero balance, which is a trust-eroding false signal for a sponsor.
         setData(null);
         setFetchStatus("error");
-        setIsLive(false);
+        setIsLive(true);
       });
     // Depend on user?.id, not the whole user object: AuthContext#refresh()
     // sets a freshly-parsed user object on every call — including unrelated

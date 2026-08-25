@@ -25,6 +25,15 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: "dark light",
+  // Matches the light/dark backgrounds in globals.css so mobile browser
+  // chrome (the address/status bar) doesn't clash with the page the
+  // instant it loads — without this, browsers fall back to their own
+  // default (usually white), which visibly contradicts a near-black dark
+  // mode page (#224).
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfbfd" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
+  ],
 };
 
 export default function RootLayout({

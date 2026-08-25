@@ -76,7 +76,11 @@ export function ConnectPanel() {
             {connecting ? "Connecting..." : "Connect Freighter"}
           </Button>
         )}
-        {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-rose-600">
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

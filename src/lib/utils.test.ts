@@ -14,6 +14,9 @@ import {
   coerceFraction,
   coercePercentage,
   validateTeamSplits,
+  generateIdempotencyKey,
+  toCents,
+  toMajorUnits,
 } from "./utils";
 
 // ─── formatCurrency ──────────────────────────────────────────────────────────
@@ -346,5 +349,66 @@ describe("parseMoneyInput", () => {
       expect(r.valid).toBe(false);
       expect(r.error).toContain("2 decimal places");
     });
+  });
+});
+
+// ─── generateIdempotencyKey ────────────────────────────────────────────────
+
+describe("generateIdempotencyKey", () => {
+  it("returns a UUID v4 string", () => {
+    const key = generateIdempotencyKey();
+    expect(key).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it("generates unique keys on successive calls", () => {
+    const keys = new Set(Array.from({ length: 50 }, () => generateIdempotencyKey()));
+    expect(keys.size).toBe(50);
+  });
+});
+
+// ─── toCents / toMajorUnits ────────────────────────────────────────────────
+
+describe("toCents", () => {
+  it("converts a USDC string to cents", () => {
+    expect(toCents("12.50")).toBe(1250);
+    expect(toCents("0.01")).toBe(1);
+    expect(toCents("100")).toBe(10000);
+  });
+
+  it("converts an XLM string to minor units (7 decimals)", () => {
+    expect(toCents("1.0000000", 7)).toBe(10000000);
+    expect(toCents("0.0000001", 7)).toBe(1);
+  });
+
+  it("converts a number to cents", () => {
+    expect(toCents(12.5)).toBe(1250);
+    expect(toCents(0.01)).toBe(1);
+  });
+
+  it("handles whole numbers without a decimal point", () => {
+    expect(toCents("100")).toBe(10000);
+  });
+
+  it("sums without float drift (#17)", () => {
+    // 0.1 + 0.2 in float = 0.30000000000000004
+    const a = toCents("0.1");
+    const b = toCents("0.2");
+    expect(a + b).toBe(30); // exact integer
+    expect(toMajorUnits(a + b)).toBe(0.3);
+  });
+});
+
+describe("toMajorUnits", () => {
+  it("converts cents to dollars", () => {
+    expect(toMajorUnits(1250)).toBe(12.5);
+    expect(toMajorUnits(1)).toBe(0.01);
+    expect(toMajorUnits(0)).toBe(0);
+  });
+
+  it("converts minor units back for XLM (7 decimals)", () => {
+    expect(toMajorUnits(10000000, 7)).toBe(1);
+    expect(toMajorUnits(1, 7)).toBe(0.0000001);
   });
 });

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { useWallet } from "@/context/WalletContext";
 import { apiPost, ApiRequestError } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, generateIdempotencyKey } from "@/lib/utils";
 import type { Bounty } from "@/types";
 
 export function IssueActions({ bounty }: { bounty: Bounty }) {
@@ -53,7 +53,10 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
 
   async function handleFund() {
     await withWallet(async (walletAddress) => {
-      await apiPost(`/bounties/${bounty.id}/fund`, { funderAddress: walletAddress });
+      await apiPost(`/bounties/${bounty.id}/fund`, {
+        funderAddress: walletAddress,
+        idempotencyKey: generateIdempotencyKey(),
+      });
       setNotice("Escrow funded on-chain. This bounty is now open for claims.");
     });
   }
@@ -67,7 +70,10 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     }
     setPending(true);
     try {
-      await apiPost(`/bounties/${bounty.id}/claim`, { contributorId: user.id });
+      await apiPost(`/bounties/${bounty.id}/claim`, {
+        contributorId: user.id,
+        idempotencyKey: generateIdempotencyKey(),
+      });
       setNotice("You've claimed this issue. Open a pull request to get started.");
       router.refresh();
     } catch (err) {
@@ -87,7 +93,9 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     setNotice(null);
     setPending(true);
     try {
-      await apiPost(`/bounties/${bounty.id}/refund`);
+      await apiPost(`/bounties/${bounty.id}/refund`, {
+        idempotencyKey: generateIdempotencyKey(),
+      });
       setNotice("Escrowed funds were refunded to the sponsor.");
       router.refresh();
     } catch (err) {

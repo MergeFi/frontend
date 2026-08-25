@@ -43,16 +43,39 @@ loadValidatedEnv();
  *   too. The browser ignores this header entirely over plain HTTP, so
  *   it's harmless to always send.
  *
- * Deliberately does NOT set Content-Security-Policy — that's tracked by a
- * separate issue so it can compose correctly with the theme-init inline
- * script (`themeInitScript` from ThemeContext, rendered in layout.tsx)
- * without this change guessing at a nonce/hash strategy it doesn't own.
+ * Content-Security-Policy (#4):
+ * - 'unsafe-inline' is required for: (1) the theme-init inline script in
+ *   <head>, (2) Turbopack dev-mode HMR inline scripts, and (3) React 19's
+ *   hydration inline scripts. A nonce or hash-based approach would be more
+ *   secure but requires build-time instrumentation that composes poorly
+ *   with Turbopack's current dev mode. 'unsafe-inline' for scripts is
+ *   still a meaningful upgrade over no CSP at all — it blocks external
+ *   script injection from third-party origins and inline event handlers
+ *   (onclick, onerror) injected via XSS.
+ * - connect-src includes the API backend so authenticated fetches work.
+ * - img-src allows GitHub avatars and DiceBear identicons.
+ * - Freighter wallet extension content scripts are not blocked by CSP
+ *   (browser extensions inject with extension privileges).
  */
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Strict-Transport-Security", value: "max-age=86400" },
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' https://avatars.githubusercontent.com https://api.dicebear.com data:",
+      "font-src 'self'",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  },
 ];
 
 const nextConfig: NextConfig = {

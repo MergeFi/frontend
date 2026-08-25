@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { getToken, setToken as persistToken, clearToken, TOKEN_KEY } from "@/lib/auth";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, ApiRequestError } from "@/lib/api";
 import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 import type { AuthUser } from "@/types";
 
@@ -33,18 +33,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    try {
-      const session = await apiRequest<{ userId: string; username: string }>(
-        "/auth/me",
-      );
-      const profile = await apiRequest<AuthUser>(`/users/${session.userId}`);
-      setUser(profile);
-    } catch {
-      clearToken();
-      setUser(null);
-    } finally {
-      setLoading(false);
+    const MAX_RETRIES = 3;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        const session = await apiRequest<{ userId: string; username: string }>(
+          "/auth/me",
+        );
+        const profile = await apiRequest<AuthUser>(`/users/${session.userId}`);
+        setUser(profile);
+        setLoading(false);
+        return;
+      } catch (err) {
+        // Only clear the token on genuine auth failures (401/403).
+        // Network errors, timeouts, and transient server errors should
+        // retry — silently logging the user out on a flaky connection
+        // was a significant UX issue (#4).
+        if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
+          clearToken();
+          setUser(null);
+          return;
+        }
+        if (attempt < MAX_RETRIES - 1) {
+          await new Promise((r) => setTimeout(r, 2 ** attempt * 200));
+        }
+      }
     }
+    // All retries exhausted — keep the existing session alive rather than
+    // logging the user out on repeated network failures. The next
+    // navigation or cross-tab event will re-trigger refresh.
+    setLoading(false);
   }, []);
 
   useEffect(() => {

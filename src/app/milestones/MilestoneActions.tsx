@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useWallet } from "@/context/WalletContext";
 import { apiPost, ApiRequestError } from "@/lib/api";
-import { parseMoneyInput } from "@/lib/utils";
+import { parseMoneyInput, generateIdempotencyKey } from "@/lib/utils";
 
 export function MilestoneFundButton({
   milestoneId,
@@ -42,6 +42,7 @@ export function MilestoneFundButton({
       }
       await apiPost(`/milestones/${milestoneId}/fund`, {
         funderAddress: walletAddress,
+        idempotencyKey: generateIdempotencyKey(),
       });
       router.refresh();
     } catch (err) {
@@ -120,6 +121,7 @@ export function PoolDepositButton({
       await apiPost(`/maintenance-pools/${poolId}/deposit`, {
         amount: result.normalized,
         funderAddress: walletAddress,
+        idempotencyKey: generateIdempotencyKey(),
       });
       router.refresh();
     } catch (err) {

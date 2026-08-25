@@ -12,10 +12,14 @@ export default async function ReputationPage({
   params: Promise<{ handle: string }>;
 }) {
   const { handle } = await params;
-  const profile = await fetchReputationByUsername(
-    handle,
-    mockReputationProfiles[handle] ?? null,
-  );
+  // mockReputationProfiles is keyed by exact-case username; look it up
+  // case-insensitively too, matching fetchReputationByUsername's own fix
+  // for the same "GitHub usernames are case-insensitive" issue (#245).
+  const mockFallback =
+    Object.values(mockReputationProfiles).find(
+      (p) => p.handle.toLowerCase() === handle.toLowerCase(),
+    ) ?? null;
+  const profile = await fetchReputationByUsername(handle, mockFallback);
 
   if (!profile) notFound();
 

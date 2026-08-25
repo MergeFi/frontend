@@ -144,7 +144,12 @@ export async function fetchReputationByUsername(
 ): Promise<ReputationProfile | null> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    const user = users.find((u) => u.username === username);
+    // GitHub usernames are canonically case-insensitive (torvalds and
+    // Torvalds resolve to the same account) — a strict === comparison
+    // 404s a profile that genuinely exists under different letter casing
+    // (#245).
+    const target = username.toLowerCase();
+    const user = users.find((u) => u.username.toLowerCase() === target);
     if (!user) return fallback;
     const snapshot = await request<RawReputationSnapshot | null>(
       `/reputation/${user.id}`,

@@ -10,6 +10,7 @@ import {
   coerceDecimal,
   coerceNonNegative,
   coercePercentage,
+  coerceStatus,
   validateTeamSplits,
 } from "./utils";
 
@@ -111,7 +112,7 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
     reward: coerceNonNegative(raw.amount),
     asset: raw.asset,
     difficulty: raw.difficulty,
-    status: raw.status,
+    status: coerceStatus(raw.status),
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
     // timestamp that would make daysUntil() render it as already expired

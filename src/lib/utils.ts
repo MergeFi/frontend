@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { BountyStatus } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -70,6 +71,26 @@ export function formatDaysUntil(days: number | null): string {
   if (days === null) return "No deadline";
   if (days > 0) return `${days} day${days === 1 ? "" : "s"} left`;
   return "Deadline passed";
+}
+
+const VALID_STATUSES: ReadonlySet<string> = new Set<BountyStatus>([
+  "open",
+  "funded",
+  "claimed",
+  "in_review",
+  "merged",
+  "paid",
+  "refunded",
+  "expired",
+]);
+
+/**
+ * Validate that a raw status string is a known BountyStatus. Returns the
+ * validated status or falls back to "open" for unrecognized values (#279).
+ */
+export function coerceStatus(value: string | null | undefined): BountyStatus {
+  if (value && VALID_STATUSES.has(value)) return value as BountyStatus;
+  return "open";
 }
 
 export function validateTeamSplits(

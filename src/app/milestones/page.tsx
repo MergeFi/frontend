@@ -74,7 +74,7 @@ export default async function MilestonesPage() {
               <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                 {m.completedCount} of {m.issueCount} issues complete
               </p>
-              <MilestoneFundButton milestoneId={m.id} />
+              <MilestoneFundButton milestoneId={m.id} milestoneName={m.name} />
             </div>
           );
         })}
@@ -106,7 +106,7 @@ export default async function MilestonesPage() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {formatCurrency(pool.monthlyDeposit, pool.asset)} deposited monthly
             </p>
-            <PoolDepositButton poolId={pool.id} />
+            <PoolDepositButton poolId={pool.id} poolRepo={pool.repo} />
           </div>
         ))}
       </div>

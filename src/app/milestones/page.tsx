@@ -54,7 +54,9 @@ export default async function MilestonesPage() {
             description="Milestones will appear here once sponsors create them for open source releases."
           />
         ) : milestones.map((m) => {
-          const pct = m.distributed / m.budget;
+          const isUnfunded = m.budget <= 0;
+          const rawPct = isUnfunded ? 0 : m.distributed / m.budget;
+          const pct = Math.min(rawPct, 1);
           return (
             <div
               key={m.id}
@@ -65,7 +67,7 @@ export default async function MilestonesPage() {
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
                   className="h-full bg-indigo-600"
-                  style={{ width: `${Math.min(pct * 100, 100)}%` }}
+                  style={{ width: `${pct * 100}%` }}
                 />
               </div>
               <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
@@ -73,7 +75,13 @@ export default async function MilestonesPage() {
                   {formatCurrency(m.distributed, m.asset)} of{" "}
                   {formatCurrency(m.budget, m.asset)}
                 </span>
-                <span>{formatPercent(pct)}</span>
+                <span>
+                  {isUnfunded
+                    ? "Not yet funded"
+                    : rawPct > 1
+                    ? "Over-funded"
+                    : formatPercent(rawPct)}
+                </span>
               </div>
               <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                 {m.completedCount} of {m.issueCount} issues complete
@@ -110,7 +118,7 @@ export default async function MilestonesPage() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {formatCurrency(pool.monthlyDeposit, pool.asset)} deposited monthly
             </p>
-            <PoolDepositButton poolId={pool.id} poolRepo={pool.repo} />
+            <PoolDepositButton poolId={pool.id} poolRepo={pool.repo} asset={pool.asset} />
           </div>
         ))}
       </div>

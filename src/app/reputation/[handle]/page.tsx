@@ -1,10 +1,45 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { fetchReputationByUsername } from "@/lib/api";
 import { mockReputationProfiles } from "@/lib/mock-data";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}): Promise<Metadata> {
+  const { handle } = await params;
+  const mockFallback =
+    Object.values(mockReputationProfiles).find(
+      (p) => p.handle.toLowerCase() === handle.toLowerCase(),
+    ) ?? null;
+  const profile = await fetchReputationByUsername(handle, mockFallback);
+
+  if (!profile) {
+    return { title: "Profile not found | MergeFi" };
+  }
+
+  const title = `@${profile.handle} | MergeFi`;
+  const description = `${profile.mergedPRs} merged PRs · ${profile.languages.slice(0, 3).join(", ")}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/reputation/${handle}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 export default async function ReputationPage({
   params,
@@ -47,16 +82,23 @@ export default async function ReputationPage({
       <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           label="Lifetime earnings"
-          value={formatCurrency(profile.lifetimeEarnings)}
+          value={profile.lifetimeEarnings}
+          format="currency"
         />
-        <StatCard label="Merged PRs" value={String(profile.mergedPRs)} />
+        <StatCard
+          label="Merged PRs"
+          value={profile.mergedPRs}
+          format="count"
+        />
         <StatCard
           label="Completion rate"
-          value={formatPercent(profile.completionRate)}
+          value={profile.completionRate}
+          format="percent"
         />
         <StatCard
           label="On-time delivery"
-          value={formatPercent(profile.onTimeDeliveryRate)}
+          value={profile.onTimeDeliveryRate}
+          format="percent"
         />
       </div>
 

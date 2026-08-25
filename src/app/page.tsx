@@ -160,16 +160,21 @@ export default function HomePage() {
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard
             label="Total paid out"
-            value={formatCurrency(platformStats.totalPaidOut)}
+            value={platformStats.totalPaidOut}
+            format="currency"
           />
           <StatCard
             label="Bounties completed"
-            value={platformStats.bountiesCompleted.toLocaleString()}
+            value={platformStats.bountiesCompleted}
+            format="count"
           />
           <StatCard
             label="Active contributors"
-            value={platformStats.activeContributors.toLocaleString()}
+            value={platformStats.activeContributors}
+            format="count"
           />
+          {/* Avg. payout time is a duration (minutes), not a currency/count/percent —
+              no existing StatCardFormat covers it, so keep as pre-formatted string. */}
           <StatCard
             label="Avg. payout time"
             value={`${platformStats.avgPayoutTimeMinutes} min`}

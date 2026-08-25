@@ -14,12 +14,20 @@ export function MilestoneFundButton({
   milestoneName?: string;
 }) {
   const router = useRouter();
-  const { address, connect, connecting, getError: getWalletError } = useWallet();
+  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleFund() {
     setError(null);
+
+    if (addressMismatch) {
+      setError(
+        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
+      );
+      return;
+    }
+
     setPending(true);
     try {
       const walletAddress = address ?? (await connect());
@@ -70,13 +78,21 @@ export function PoolDepositButton({
   poolRepo?: string;
 }) {
   const router = useRouter();
-  const { address, connect, connecting, getError: getWalletError } = useWallet();
+  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleDeposit() {
     setError(null);
+
+    if (addressMismatch) {
+      setError(
+        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
+      );
+      return;
+    }
+
     setPending(true);
     try {
       const walletAddress = address ?? (await connect());

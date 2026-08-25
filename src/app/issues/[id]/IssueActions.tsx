@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { useWallet } from "@/context/WalletContext";
 import { apiPost, ApiRequestError } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 import type { Bounty } from "@/types";
 
 export function IssueActions({ bounty }: { bounty: Bounty }) {
@@ -67,6 +68,11 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
   }
 
   async function handleRefund() {
+    const confirmed = window.confirm(
+      `Are you sure you want to refund this bounty? This will return ${formatCurrency(bounty.reward, bounty.asset)} to the sponsor and cannot be undone.`,
+    );
+    if (!confirmed) return;
+
     setError(null);
     setNotice(null);
     setPending(true);
@@ -107,7 +113,9 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
               ? "Payout complete"
               : bounty.status === "in_review"
                 ? "Awaiting PR merge"
-                : "No action available"}
+                : bounty.status === "merged"
+                  ? "Payout pending"
+                  : "No action available"}
           </Button>
         )}
       </div>

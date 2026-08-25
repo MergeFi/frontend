@@ -4,7 +4,7 @@ import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { BountyDescription } from "@/components/bounty/BountyDescription";
-import { formatCurrency, daysUntil } from "@/lib/utils";
+import { formatCurrency, daysUntil, formatDaysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
 
 export default async function IssueDetailPage({
@@ -59,7 +59,7 @@ export default async function IssueDetailPage({
             <span className="text-sm">Deadline</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
-            {days === null ? "No deadline" : days > 0 ? `${days} days left` : "Passed"}
+            {formatDaysUntil(days)}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

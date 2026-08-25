@@ -19,6 +19,7 @@ export class ApiRequestError extends Error {
   constructor(
     message: string,
     public status: number,
+    public retryAfter?: number,
   ) {
     super(message);
   }
@@ -63,6 +64,30 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const REQUEST_TIMEOUT_MS = 20_000;
 
+// ---------------------------------------------------------------------------
+// In-flight request deduplication (#44)
+// ---------------------------------------------------------------------------
+// Maps a request signature (method + path + body hash) to the in-flight
+// Promise so rapid double-clicks on the same mutation coalesce into one
+// network request instead of two.
+
+const inflight = new Map<string, Promise<unknown>>();
+
+function requestKey(method: string, path: string, body?: string): string {
+  return `${method}:${path}:${body ?? ""}`;
+}
+
+async function dedupedFetch<T>(
+  key: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const existing = inflight.get(key);
+  if (existing) return existing as Promise<T>;
+  const promise = fn().finally(() => inflight.delete(key));
+  inflight.set(key, promise);
+  return promise;
+}
+
 /**
  * Client-side call that attaches the signed-in user's JWT (if any) and
  * surfaces backend error bodies instead of silently falling back — used for
@@ -73,41 +98,61 @@ export async function apiRequest<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const token = getToken();
-  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...init?.headers,
-      },
-      signal: init?.signal ?? timeout,
-    });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "TimeoutError") {
-      throw new ApiRequestError("Request timed out — please try again.", 0);
-    }
-    throw err;
-  }
-  if (!res.ok) {
-    const body = await res.text();
-    let message = body;
+  const bodyStr = init?.body != null ? String(init.body) : undefined;
+  const key = requestKey(init?.method ?? "GET", path, bodyStr);
+
+  return dedupedFetch(key, async () => {
+    const token = getToken();
+    const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    let res: Response;
     try {
-      const parsed = JSON.parse(body);
-      // A JSON body without a `.message` (e.g. a NestJS validation error
-      // shaped like `{statusCode,error,details}`) must not fall back to the
-      // raw JSON text — that would get rendered verbatim in the UI (#187).
-      message = parsed.message ?? `Request failed (${res.status})`;
-    } catch {
-      // plain-text error body, use as-is
+      res = await fetch(`${API_BASE_URL}${path}`, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...init?.headers,
+        },
+        signal: init?.signal ?? timeout,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "TimeoutError") {
+        throw new ApiRequestError("Request timed out — please try again.", 0);
+      }
+      throw err;
     }
-    throw new ApiRequestError(message || `Request failed (${res.status})`, res.status);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+
+    // --- Rate-limit handling (#44) ---
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("Retry-After");
+      const seconds = retryAfter ? parseInt(retryAfter, 10) : NaN;
+      const waitMsg = Number.isFinite(seconds)
+        ? ` Please wait ${seconds} second${seconds === 1 ? "" : "s"} before trying again.`
+        : "";
+      throw new ApiRequestError(
+        `You're doing that too fast.${waitMsg}` || `Rate limited. Please try again later.`,
+        429,
+        Number.isFinite(seconds) ? seconds : undefined,
+      );
+    }
+
+    if (!res.ok) {
+      const body = await res.text();
+      let message = body;
+      try {
+        const parsed = JSON.parse(body);
+        // A JSON body without a `.message` (e.g. a NestJS validation error
+        // shaped like `{statusCode,error,details}`) must not fall back to the
+        // raw JSON text — that would get rendered verbatim in the UI (#187).
+        message = parsed.message ?? `Request failed (${res.status})`;
+      } catch {
+        // plain-text error body, use as-is
+      }
+      throw new ApiRequestError(message || `Request failed (${res.status})`, res.status);
+    }
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
+  });
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {

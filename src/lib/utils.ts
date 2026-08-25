@@ -133,9 +133,18 @@ export function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+/**
+ * DST-safe calendar-day difference between a deadline and now.
+ * Uses UTC date arithmetic (not wall-clock ms division) so results are
+ * consistent regardless of the viewer's timezone or DST state.
+ */
 export function daysUntil(dateIso: string) {
-  const diffMs = new Date(dateIso).getTime() - Date.now();
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const deadline = new Date(dateIso);
+  const now = new Date();
+  // Compare UTC calendar dates to avoid DST/off-by-one issues
+  const deadlineUtc = Date.UTC(deadline.getUTCFullYear(), deadline.getUTCMonth(), deadline.getUTCDate());
+  const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.ceil((deadlineUtc - nowUtc) / (1000 * 60 * 60 * 24));
 }
 
 export function formatDaysUntil(days: number | null): string {

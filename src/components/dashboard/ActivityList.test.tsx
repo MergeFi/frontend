@@ -12,13 +12,17 @@ import { render, screen } from "@testing-library/react";
 import { ActivityList } from "./ActivityList";
 import type { ActivityEvent } from "@/lib/mock-data";
 
+function agoIso(minutes: number): string {
+  return new Date(Date.now() - minutes * 60_000).toISOString();
+}
+
 function makeEvent(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
   return {
     id: "a1",
     handle: "devrel_ana",
     action: "was paid",
     target: "core-indexer#288",
-    minutesAgo: 6,
+    occurredAt: agoIso(6),
     ...overrides,
   };
 }
@@ -54,37 +58,46 @@ describe("ActivityList — amount rendering", () => {
 
 describe("ActivityList — relative time (#217)", () => {
   it("renders the minutes branch for a value under 60", () => {
-    render(<ActivityList events={[makeEvent({ minutesAgo: 6 })]} />);
+    render(<ActivityList events={[makeEvent({ occurredAt: agoIso(6) })]} />);
     expect(screen.getByText("6m ago")).toBeInTheDocument();
   });
 
   it("renders the minutes branch at the 59-minute boundary", () => {
-    render(<ActivityList events={[makeEvent({ minutesAgo: 59 })]} />);
+    render(<ActivityList events={[makeEvent({ occurredAt: agoIso(59) })]} />);
     expect(screen.getByText("59m ago")).toBeInTheDocument();
   });
 
   it("renders the hours branch at the 60-minute boundary", () => {
-    render(<ActivityList events={[makeEvent({ minutesAgo: 60 })]} />);
+    render(<ActivityList events={[makeEvent({ occurredAt: agoIso(60) })]} />);
     expect(screen.getByText("1h ago")).toBeInTheDocument();
   });
 
   it("renders the hours branch for a mid-range value", () => {
-    render(<ActivityList events={[makeEvent({ minutesAgo: 300 })]} />);
+    render(<ActivityList events={[makeEvent({ occurredAt: agoIso(300) })]} />);
     expect(screen.getByText("5h ago")).toBeInTheDocument();
   });
 
   it("renders the hours branch at the 23-hour boundary", () => {
-    render(<ActivityList events={[makeEvent({ minutesAgo: 23 * 60 })]} />);
+    render(<ActivityList events={[makeEvent({ occurredAt: agoIso(23 * 60) })]} />);
     expect(screen.getByText("23h ago")).toBeInTheDocument();
   });
 
   it("renders the days branch at the 24-hour boundary", () => {
-    render(<ActivityList events={[makeEvent({ minutesAgo: 24 * 60 })]} />);
+    render(<ActivityList events={[makeEvent({ occurredAt: agoIso(24 * 60) })]} />);
     expect(screen.getByText("1d ago")).toBeInTheDocument();
   });
 
   it("renders the days branch for a multi-day value", () => {
-    render(<ActivityList events={[makeEvent({ minutesAgo: 3 * 24 * 60 })]} />);
+    render(<ActivityList events={[makeEvent({ occurredAt: agoIso(3 * 24 * 60) })]} />);
     expect(screen.getByText("3d ago")).toBeInTheDocument();
+  });
+
+  it("derives the relative time from occurredAt rather than a static value (#201)", () => {
+    // Two renders 0 minutes apart with the same occurredAt should agree —
+    // this just documents that the value comes from Date.now() - occurredAt
+    // at render time, not from a field baked into the mock data.
+    const occurredAt = agoIso(90);
+    render(<ActivityList events={[makeEvent({ occurredAt })]} />);
+    expect(screen.getByText("1h ago")).toBeInTheDocument();
   });
 });

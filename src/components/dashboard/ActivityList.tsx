@@ -9,6 +9,13 @@ function timeAgo(minutes: number) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+// Derived at render time from the event's real timestamp (rather than a
+// static minutesAgo literal) so the "Live on the platform" feed's relative
+// time actually advances instead of showing the same age forever (#201).
+function minutesSince(occurredAt: string) {
+  return Math.max(0, Math.round((Date.now() - new Date(occurredAt).getTime()) / 60_000));
+}
+
 export function ActivityList({ events }: { events: ActivityEvent[] }) {
   return (
     <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
@@ -34,7 +41,7 @@ export function ActivityList({ events }: { events: ActivityEvent[] }) {
                 {formatCurrency(event.amount, event.asset)}
               </span>
             )}
-            {timeAgo(event.minutesAgo)}
+            {timeAgo(minutesSince(event.occurredAt))}
           </div>
         </div>
       ))}

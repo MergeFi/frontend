@@ -11,7 +11,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { formatCurrency } from "@/lib/utils";
-import { apiPost, fetchBounties } from "@/lib/api";
+import { apiRequest, fetchBounties } from "@/lib/api";
 import {
   mockReputationProfiles,
   mockBounties,
@@ -73,13 +73,20 @@ export default function ContributorDashboardPage() {
 
     setFetchStatus("loading");
 
-    apiPost<ReputationSnapshot>(`/reputation/${user.id}/recompute`)
+    // GET, not the /recompute mutation: that endpoint's name indicates it
+    // triggers real backend recomputation, not a cached read — firing it
+    // unconditionally on every mount (and every AuthContext#refresh(),
+    // including unrelated cross-tab token pings) forced avoidable backend
+    // load on every dashboard visit. This mirrors the same read-only
+    // GET /reputation/:id endpoint fetchReputationByUsername already uses
+    // for *other* users' profiles (#242).
+    apiRequest<ReputationSnapshot | null>(`/reputation/${user.id}`)
       .then((snapshot) => {
         setStats({
           handle: user.username,
-          lifetimeEarnings: Number(snapshot.totalEarnings),
-          mergedPRs: snapshot.mergedPrCount,
-          completionRate: Number(snapshot.completionRate) / 100,
+          lifetimeEarnings: snapshot ? Number(snapshot.totalEarnings) : 0,
+          mergedPRs: snapshot ? snapshot.mergedPrCount : 0,
+          completionRate: snapshot ? Number(snapshot.completionRate) / 100 : 0,
         });
         setFetchStatus("loaded");
         setIsLive(true);

@@ -116,7 +116,10 @@ Both variables are validated at build time (`next.config.ts` / `src/lib/env.ts`,
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint (flat config, `eslint-config-next`) |
+| `npm test` | Runs the Jest test suite |
+| `npm run test:watch` | Runs the Jest test suite in watch mode |
 | `npm run verify:headers` | Boots the production build and asserts security headers are present on real responses (run `npm run build` first) |
+| `npm run verify:env` | Asserts `next build` succeeds/fails correctly across missing, invalid, and valid `NEXT_PUBLIC_*` env var scenarios (runs in CI) |
 
 ## Security headers
 

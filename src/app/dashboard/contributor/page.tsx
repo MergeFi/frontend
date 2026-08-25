@@ -217,8 +217,12 @@ export default function ContributorDashboardPage() {
         />
       )}
 
+      {/* "available" is every open bounty in whatever order the backend/mock
+          data returns, sliced to the first 4 — no relevance scoring against
+          this contributor's history/languages/orgs. "Open bounties" is the
+          honest label until real personalization exists (#239). */}
       <h2 className="mt-12 text-xl font-semibold text-slate-900 dark:text-white">
-        Recommended for you
+        Open bounties
       </h2>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {available.slice(0, 4).map((bounty) => (

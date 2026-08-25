@@ -13,6 +13,7 @@ import {
   coerceNonNegative,
   coerceFraction,
   coercePercentage,
+  coerceStatus,
   validateTeamSplits,
   generateIdempotencyKey,
   toCents,
@@ -208,6 +209,36 @@ describe("coercePercentage", () => {
 
   it("clamps values above 100 to 100", () => {
     expect(coercePercentage("150")).toBe(100);
+  });
+});
+
+// ─── coerceStatus ─────────────────────────────────────────────────────────
+
+describe("coerceStatus", () => {
+  it("accepts all valid BountyStatus values", () => {
+    const statuses = [
+      "open", "funded", "claimed", "in_review",
+      "merged", "paid", "refunded", "expired",
+    ] as const;
+    for (const s of statuses) {
+      expect(coerceStatus(s)).toBe(s);
+    }
+  });
+
+  it("falls back to 'open' for an unrecognized string", () => {
+    expect(coerceStatus("banana")).toBe("open");
+  });
+
+  it("falls back to 'open' for null", () => {
+    expect(coerceStatus(null)).toBe("open");
+  });
+
+  it("falls back to 'open' for undefined", () => {
+    expect(coerceStatus(undefined)).toBe("open");
+  });
+
+  it("falls back to 'open' for empty string", () => {
+    expect(coerceStatus("")).toBe("open");
   });
 });
 

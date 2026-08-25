@@ -85,17 +85,17 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     <div className="mt-10">
       <div className="flex flex-wrap gap-3">
         {bounty.status === "open" && (
-          <Button size="lg" onClick={handleFund} disabled={pending || connecting}>
+          <Button size="lg" onClick={handleFund} loading={pending || connecting}>
             {pending || connecting ? "Confirming in wallet..." : "Fund this bounty"}
           </Button>
         )}
         {bounty.status === "funded" && (
-          <Button size="lg" onClick={handleClaim} disabled={pending}>
+          <Button size="lg" onClick={handleClaim} loading={pending}>
             {pending ? "Claiming..." : "Claim this issue"}
           </Button>
         )}
         {(bounty.status === "funded" || bounty.status === "claimed") && (
-          <Button size="lg" variant="outline" onClick={handleRefund} disabled={pending}>
+          <Button size="lg" variant="outline" onClick={handleRefund} loading={pending}>
             Refund sponsor
           </Button>
         )}

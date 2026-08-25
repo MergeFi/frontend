@@ -38,7 +38,7 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
 
   return (
     <div className="mt-4">
-      <Button size="sm" variant="outline" onClick={handleFund} disabled={pending || connecting}>
+      <Button size="sm" variant="outline" onClick={handleFund} loading={pending || connecting}>
         {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
       </Button>
       {error && (
@@ -97,7 +97,7 @@ export function PoolDepositButton({ poolId }: { poolId: string }) {
         onChange={(e) => setAmount(e.target.value)}
         className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
       />
-      <Button size="sm" variant="outline" onClick={handleDeposit} disabled={pending || connecting}>
+      <Button size="sm" variant="outline" onClick={handleDeposit} loading={pending || connecting}>
         {pending || connecting ? "Confirming..." : "Deposit"}
       </Button>
       {error && (

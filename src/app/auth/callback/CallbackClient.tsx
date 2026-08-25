@@ -33,10 +33,13 @@ export function CallbackClient() {
       setError("No token was returned by GitHub sign-in.");
       return;
     }
+
+    // Strip the JWT from the URL immediately so it doesn't persist in
+    // browser history, referrer headers, or server logs (#9).
+    window.history.replaceState({}, "", window.location.pathname);
+
     login(token)
       .then(() => {
-        // user is populated by refresh() inside login(); if refresh() failed
-        // internally, user may still be null — fall back to contributor.
         router.replace(redirectForRoles(user?.roles));
       })
       .catch(() => setError("Could not complete sign-in. Please try again."));

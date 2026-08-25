@@ -6,13 +6,13 @@ const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mergefi.app";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = ["", "/issues", "/milestones", "/connect"];
-  const [bounties, reputationHandles] = await Promise.all([
+  const [bountiesRes, handlesRes] = await Promise.all([
     fetchBounties(mockBounties),
     fetchReputationHandles(Object.keys(mockReputationProfiles)),
   ]);
 
-  const issueRoutes = bounties.map((bounty) => `/issues/${encodeURIComponent(bounty.id)}`);
-  const reputationRoutes = reputationHandles.map(
+  const issueRoutes = bountiesRes.data.map((bounty) => `/issues/${encodeURIComponent(bounty.id)}`);
+  const reputationRoutes = handlesRes.data.map(
     (handle) => `/reputation/${encodeURIComponent(handle)}`,
   );
 

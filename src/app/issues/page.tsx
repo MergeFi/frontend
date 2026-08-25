@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export default async function IssuesPage() {
-  const bounties = await fetchBounties(mockBounties);
+  const { data: bounties } = await fetchBounties(mockBounties);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">

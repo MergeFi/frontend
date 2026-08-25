@@ -26,8 +26,8 @@ export default async function MaintainerDashboardPage() {
   // fetch, so this reliably distinguishes "live data" from "backend down,
   // showing mockBounties" without changing fetchBounties' shared contract
   // (#240).
-  const bounties = await fetchBounties(mockBounties);
-  const statStatus: "loaded" | "error" = bounties === mockBounties ? "error" : "loaded";
+  const { data: bounties, source } = await fetchBounties(mockBounties);
+  const statStatus: "loaded" | "error" = source === "live" ? "loaded" : "error";
 
   const needsReview = bounties.filter((b) => b.status === "in_review");
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
@@ -140,7 +140,7 @@ export default async function MaintainerDashboardPage() {
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
               Recent activity
             </h2>
-            {statStatus === "loaded" && (
+            {source === "mock" && (
               <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
                 Sample data
               </span>

@@ -16,13 +16,21 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  // Lazy initializer reads the class themeInitScript already applied to
+  // <html> synchronously, at mount/hydration time — not hardcoded to
+  // "light" and corrected a render later, which made ThemeToggle briefly
+  // show the wrong icon (backwards relative to the real theme) on every
+  // page load in dark mode (#208). Guarded for SSR, where this Client
+  // Component still executes once with no `document` available; the
+  // client's own hydration render is what actually matters here and always
+  // has `document` by then, since the inline script runs before React.
+  const [theme, setTheme] = useState<Theme>(() =>
+    typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light",
+  );
 
   useEffect(() => {
-    // Reflects the class the no-flash init script already applied to <html>.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
-
     // Listen for system color scheme changes when no explicit preference is set.
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemThemeChange = (e: MediaQueryListEvent) => {

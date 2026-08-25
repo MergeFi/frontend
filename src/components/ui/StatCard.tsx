@@ -266,7 +266,11 @@ export function StatCard({
           </p>
         )}
       </div>
-      {sparkline && (
+      {/* Sparkline itself renders nothing for < 2 points (can't draw a line
+          through one point) — checking length here too, not just presence,
+          avoids rendering an empty wrapper that leaves an unexplained gap
+          in this row (#207). */}
+      {sparkline && sparkline.length >= 2 && (
         <div data-testid="statcard-sparkline" className="text-indigo-500 dark:text-indigo-400">
           <Sparkline data={sparkline} />
         </div>

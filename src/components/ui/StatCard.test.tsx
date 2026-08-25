@@ -304,20 +304,17 @@ describe("StatCard — sparkline", () => {
     expect(screen.queryByTestId("statcard-sparkline")).not.toBeInTheDocument();
   });
 
-  it("renders no sparkline wrapper for an empty array (falsy-length guard)", () => {
+  it("renders no sparkline wrapper for an empty array, avoiding an empty layout gap (#207)", () => {
     render(<StatCard label="Earnings history" status="loaded" value={100} sparkline={[]} />);
-    // [] is truthy, so the wrapper currently still renders even though
-    // Sparkline itself draws nothing for < 2 points — documents the
-    // existing empty-gap behavior described in #218.
-    const wrapper = screen.queryByTestId("statcard-sparkline");
-    expect(wrapper).toBeInTheDocument();
-    expect(wrapper?.querySelector("svg")).toBeNull();
+    // [] is truthy, but Sparkline itself draws nothing for < 2 points, so
+    // StatCard must check length too — not just presence — or it leaves an
+    // empty, unexplained gap in the row.
+    expect(screen.queryByTestId("statcard-sparkline")).not.toBeInTheDocument();
   });
 
-  it("renders no chart (but still the wrapper) for a single-element array", () => {
+  it("renders no sparkline wrapper for a single-element array (#207)", () => {
     render(<StatCard label="Earnings history" status="loaded" value={100} sparkline={[42]} />);
-    const wrapper = screen.getByTestId("statcard-sparkline");
-    expect(wrapper.querySelector("svg")).toBeNull();
+    expect(screen.queryByTestId("statcard-sparkline")).not.toBeInTheDocument();
   });
 
   it("renders the chart for a multi-element array", () => {

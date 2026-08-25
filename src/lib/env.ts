@@ -72,12 +72,27 @@ const DEFAULT_API_BASE_URL = "http://localhost:4000/api";
 export function validateApiUrl(raw: string | undefined): string {
   const value = raw === undefined || raw === "" ? DEFAULT_API_BASE_URL : raw;
 
+  let parsed: URL;
   try {
-    new URL(value);
+    parsed = new URL(value);
   } catch {
     throw new EnvValidationError(
       `NEXT_PUBLIC_API_URL is set to "${value}", which is not a valid URL. It must be a ` +
         'full URL including protocol, e.g. "http://localhost:4000/api" or ' +
+        '"https://api.example.com".',
+    );
+  }
+
+  // new URL() alone doesn't restrict the scheme — "javascript:alert(1)",
+  // "file:///etc/passwd", and "ftp://example.com" all parse successfully
+  // despite none being meaningful as an HTTP API base URL. A misconfigured
+  // deployment with a stray non-http(s) scheme would otherwise pass this
+  // check and only fail much later, at the actual fetch() call site, with
+  // a far less clear error than this function exists to provide (#204).
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new EnvValidationError(
+      `NEXT_PUBLIC_API_URL is set to "${value}", which uses the "${parsed.protocol}" ` +
+        'scheme. It must use "http:" or "https:" — e.g. "http://localhost:4000/api" or ' +
         '"https://api.example.com".',
     );
   }

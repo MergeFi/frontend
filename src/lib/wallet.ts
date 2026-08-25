@@ -17,6 +17,26 @@ export async function isFreighterInstalled(): Promise<boolean> {
   return !result.error && result.isConnected;
 }
 
+/**
+ * Passively read the currently-active Freighter address without prompting
+ * the user for permission. Returns null if Freighter is not installed,
+ * not connected, or not allowed — this is a read-only check, not a connect
+ * action. Used by WalletContext to reconcile a cached localStorage address
+ * against the extension's actual active account (#71).
+ */
+export async function getActiveFreighterAddress(): Promise<string | null> {
+  try {
+    if (!(await isFreighterInstalled())) return null;
+    const allowed = await isAllowed();
+    if (!allowed.isAllowed) return null;
+    const { address, error } = await getAddress();
+    if (error || !address) return null;
+    return address;
+  } catch {
+    return null;
+  }
+}
+
 export async function connectWallet(): Promise<WalletConnection> {
   if (!(await isFreighterInstalled())) {
     throw new Error("Install the Freighter wallet extension to continue.");

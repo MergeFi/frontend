@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ShieldCheck, Clock, GitBranch, Milestone as MilestoneIcon } from "lucide-react";
 import { fetchBounty } from "@/lib/api";
@@ -6,6 +7,40 @@ import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { formatCurrency, daysUntil, formatDaysUntil } from "@/lib/utils";
 import { IssueActions } from "./IssueActions";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const bounty = await fetchBounty(
+    id,
+    mockBounties.find((b) => b.id === id),
+  );
+
+  if (!bounty) {
+    return { title: "Issue not found | MergeFi" };
+  }
+
+  const title = `${bounty.title} — ${formatCurrency(bounty.reward, bounty.asset)} | MergeFi`;
+  const description = bounty.description || `Fund or claim this bounty on MergeFi.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/issues/${id}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 export default async function IssueDetailPage({
   params,

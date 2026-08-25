@@ -8,7 +8,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { connectWallet as freighterConnect } from "@/lib/wallet";
+import {
+  connectWallet as freighterConnect,
+  getActiveFreighterAddress,
+} from "@/lib/wallet";
 import { apiRequest } from "@/lib/api";
 import { STELLAR_NETWORK } from "@/lib/config";
 import { useAuth } from "@/context/AuthContext";
@@ -21,6 +24,8 @@ interface WalletContextValue {
   network: string | null;
   connecting: boolean;
   error: string | null;
+  /** True when Freighter's active account differs from the cached address. */
+  addressMismatch: boolean;
   connect: () => Promise<string | null>;
   disconnect: () => void;
   /**
@@ -43,6 +48,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [network, setNetwork] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addressMismatch, setAddressMismatch] = useState(false);
   const errorRef = useRef<string | null>(null);
   const updateError = useCallback((message: string | null) => {
     errorRef.current = message;
@@ -64,6 +70,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         // so a restored address always comes with that network (#228) —
         // no need to persist a separate network key.
         setNetwork(STELLAR_NETWORK);
+
+        // Reconcile the cached address against Freighter's actual active
+        // account. If the user switched accounts inside the extension
+        // without touching MergeFi, the cached address is stale (#71).
+        getActiveFreighterAddress().then((live) => {
+          if (live && live !== stored) {
+            setAddressMismatch(true);
+          }
+        });
       }
     }, 0);
     return () => window.clearTimeout(id);
@@ -99,6 +114,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const connection = await freighterConnect();
       setAddress(connection.address);
       setNetwork(connection.network);
+      setAddressMismatch(false);
       window.localStorage.setItem(WALLET_KEY, connection.address);
 
       if (user) {
@@ -154,7 +170,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ address, network, connecting, error, connect, disconnect, getError }}
+      value={{ address, network, connecting, error, addressMismatch, connect, disconnect, getError }}
     >
       {children}
     </WalletContext.Provider>

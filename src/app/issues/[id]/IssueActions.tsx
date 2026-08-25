@@ -12,7 +12,7 @@ import type { Bounty } from "@/types";
 export function IssueActions({ bounty }: { bounty: Bounty }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { address, connect, connecting, getError: getWalletError } = useWallet();
+  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -20,6 +20,16 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
   async function withWallet(action: (walletAddress: string) => Promise<void>) {
     setError(null);
     setNotice(null);
+
+    // Block if Freighter's active account has drifted from the cached address.
+    // The user must reconnect to re-sync before any signing action (#71).
+    if (addressMismatch) {
+      setError(
+        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
+      );
+      return;
+    }
+
     setPending(true);
     try {
       const walletAddress = address ?? (await connect());

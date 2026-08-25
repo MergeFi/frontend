@@ -136,9 +136,16 @@ export default async function MaintainerDashboardPage() {
           </div>
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-            Recent activity
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+              Recent activity
+            </h2>
+            {statStatus === "loaded" && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+                Sample data
+              </span>
+            )}
+          </div>
           <div className="mt-4">
             <ActivityList events={recentActivity.slice(0, 5)} />
           </div>

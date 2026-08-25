@@ -34,6 +34,7 @@ export function Avatar({
 export function AvatarStack({ seeds, max = 5 }: { seeds: string[]; max?: number }) {
   const shown = seeds.slice(0, max);
   const rest = seeds.length - shown.length;
+  const hidden = seeds.slice(max);
   return (
     <div className="flex items-center">
       {shown.map((seed, i) => (
@@ -45,7 +46,11 @@ export function AvatarStack({ seeds, max = 5 }: { seeds: string[]; max?: number 
         />
       ))}
       {rest > 0 && (
-        <span className="-ml-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[11px] font-medium text-slate-600 ring-2 ring-white dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-950">
+        <span
+          aria-label={`+${rest} more contributors`}
+          title={hidden.join(", ")}
+          className="-ml-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[11px] font-medium text-slate-600 ring-2 ring-white dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-950"
+        >
           +{rest}
         </span>
       )}

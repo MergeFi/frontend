@@ -71,7 +71,7 @@ export function ConnectPanel() {
             className="mt-4 w-full"
             variant="outline"
             onClick={connect}
-            disabled={connecting}
+            loading={connecting}
           >
             {connecting ? "Connecting..." : "Connect Freighter"}
           </Button>

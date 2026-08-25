@@ -1,9 +1,24 @@
+import type { Metadata } from "next";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { BountyCard } from "@/components/bounty/BountyCard";
 
-export const metadata = {
+const issuesDescription =
+  "Browse paid, escrow-backed GitHub issues funded through MergeFi and ready for contributors.";
+
+export const metadata: Metadata = {
   title: "Paid Issues | MergeFi",
+  description: issuesDescription,
+  openGraph: {
+    title: "Paid Issues | MergeFi",
+    description: issuesDescription,
+    url: "/issues",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Paid Issues | MergeFi",
+    description: issuesDescription,
+  },
 };
 
 export default async function IssuesPage() {

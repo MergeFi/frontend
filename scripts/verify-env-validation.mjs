@@ -52,6 +52,19 @@ const CASES = [
     env: { NEXT_PUBLIC_STELLAR_NETWORK: "TESTNET" },
     expectSuccess: true,
   },
+  {
+    // The case above only exercises validateApiUrl's empty/undefined ->
+    // DEFAULT_API_BASE_URL fallback path, never its actual URL-parsing
+    // success path — a regression that broke validation for any
+    // explicitly-set, valid URL while leaving the default path untouched
+    // would pass every case above undetected (#205).
+    name: "valid custom NEXT_PUBLIC_API_URL builds successfully",
+    env: {
+      NEXT_PUBLIC_STELLAR_NETWORK: "TESTNET",
+      NEXT_PUBLIC_API_URL: "https://api.example.com",
+    },
+    expectSuccess: true,
+  },
 ];
 
 function runBuild(envOverrides) {

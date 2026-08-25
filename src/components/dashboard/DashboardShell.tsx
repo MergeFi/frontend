@@ -71,7 +71,16 @@ export function DashboardShell({
           </p>
           <nav className="mt-3 space-y-1">
             {items.map((item) => {
-              const active = pathname === item.href;
+              // Overview links (/dashboard/*) use exact matching so they
+              // don't stay highlighted while browsing unrelated sections.
+              // Every other item (e.g. /issues, /milestones) also matches
+              // its nested routes (/issues/abc123), so drilling into a
+              // specific bounty/milestone keeps its parent section
+              // highlighted instead of the sidebar appearing to have
+              // nothing selected (#220).
+              const active =
+                pathname === item.href ||
+                (!item.href.startsWith("/dashboard/") && pathname.startsWith(`${item.href}/`));
               return (
                 <Link
                   key={item.label}

@@ -8,7 +8,7 @@ import { apiPost, ApiRequestError } from "@/lib/api";
 
 export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
   const router = useRouter();
-  const { address, connect, connecting } = useWallet();
+  const { address, connect, connecting, getError: getWalletError } = useWallet();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +18,11 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
     try {
       const walletAddress = address ?? (await connect());
       if (!walletAddress) {
-        setError("Connect a Stellar wallet to fund this milestone.");
+        // getError() reads WalletContext's specific failure reason off a
+        // ref, always current the instant connect() settles — unlike the
+        // `error` context value, which may still reflect a pre-await
+        // render (#235).
+        setError(getWalletError() ?? "Connect a Stellar wallet to fund this milestone.");
         return;
       }
       await apiPost(`/milestones/${milestoneId}/fund`, {
@@ -37,14 +41,18 @@ export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
       <Button size="sm" variant="outline" onClick={handleFund} disabled={pending || connecting}>
         {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
       </Button>
-      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-rose-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
 export function PoolDepositButton({ poolId }: { poolId: string }) {
   const router = useRouter();
-  const { address, connect, connecting } = useWallet();
+  const { address, connect, connecting, getError: getWalletError } = useWallet();
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +63,11 @@ export function PoolDepositButton({ poolId }: { poolId: string }) {
     try {
       const walletAddress = address ?? (await connect());
       if (!walletAddress) {
-        setError("Connect a Stellar wallet to deposit.");
+        // getError() reads WalletContext's specific failure reason off a
+        // ref, always current the instant connect() settles — unlike the
+        // `error` context value, which may still reflect a pre-await
+        // render (#235).
+        setError(getWalletError() ?? "Connect a Stellar wallet to deposit.");
         return;
       }
       await apiPost(`/maintenance-pools/${poolId}/deposit`, {
@@ -70,9 +82,15 @@ export function PoolDepositButton({ poolId }: { poolId: string }) {
     }
   }
 
+  const inputId = `pool-deposit-${poolId}`;
+
   return (
     <div className="mt-4 flex items-center gap-2">
+      <label htmlFor={inputId} className="sr-only">
+        Deposit amount
+      </label>
       <input
+        id={inputId}
         type="number"
         min="1"
         value={amount}
@@ -82,7 +100,11 @@ export function PoolDepositButton({ poolId }: { poolId: string }) {
       <Button size="sm" variant="outline" onClick={handleDeposit} disabled={pending || connecting}>
         {pending || connecting ? "Confirming..." : "Deposit"}
       </Button>
-      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-rose-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

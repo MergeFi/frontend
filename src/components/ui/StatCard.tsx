@@ -270,10 +270,11 @@ export function StatCard({
       {/* Sparkline itself renders nothing for < 2 points (can't draw a line
           through one point) — checking length here too, not just presence,
           avoids rendering an empty wrapper that leaves an unexplained gap
-          in this row (#207). */}
+          in this row (#207). It's decorative here: the trend line above
+          already announces the same movement as text (#15). */}
       {sparkline && sparkline.length >= 2 && (
         <div data-testid="statcard-sparkline" className="text-indigo-500 dark:text-indigo-400">
-          <Sparkline data={sparkline} />
+          <Sparkline data={sparkline} decorative />
         </div>
       )}
     </div>,

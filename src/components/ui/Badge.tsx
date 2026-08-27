@@ -1,3 +1,14 @@
+import {
+  Banknote,
+  Circle,
+  Clock,
+  Eye,
+  GitMerge,
+  Lock,
+  Undo2,
+  UserCheck,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BountyStatus, Difficulty } from "@/types";
 
@@ -17,6 +28,22 @@ const difficultyStyles: Record<Difficulty, string> = {
   intermediate: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30",
   advanced: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
   expert: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:ring-fuchsia-500/30",
+};
+
+// Hue alone can't safely carry eight financial states — funded and paid are
+// both "green-ish good" but mean escrowed vs. released, and refunded/open
+// share near-identical slate tones. Each status gets a fixed glyph as a
+// non-color cue (#49); icons are decorative since the label text is
+// already rendered.
+const statusIcons: Record<BountyStatus, LucideIcon> = {
+  open: Circle,
+  funded: Lock,
+  claimed: UserCheck,
+  in_review: Eye,
+  merged: GitMerge,
+  paid: Banknote,
+  refunded: Undo2,
+  expired: Clock,
 };
 
 function BaseBadge({
@@ -39,8 +66,10 @@ function BaseBadge({
 }
 
 export function StatusBadge({ status }: { status: BountyStatus }) {
+  const Icon = statusIcons[status];
   return (
     <BaseBadge className={statusStyles[status]}>
+      <Icon aria-hidden="true" className="mr-1 h-3 w-3" data-testid={`status-icon-${status}`} />
       {status.replace("_", " ")}
     </BaseBadge>
   );

@@ -39,6 +39,7 @@ export interface Bounty {
   /** Stable id of the claimer, for building profile links that survive a GitHub rename (#203). */
   claimedById?: string;
   teamSplits?: TeamSplit[];
+  teamSplitsValid?: { valid: boolean; sum: number; message?: string };
   milestoneId?: string;
   escrowId?: string;
 }

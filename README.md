@@ -15,7 +15,7 @@ contributors, maintainers, and sponsors.
 Related repositories:
 - [`mergefi/backend`](https://github.com/MergeFi/backend) — NestJS API: GitHub sync, webhooks, bounty/escrow orchestration, reputation, analytics.
 - [`mergefi/contracts`](https://github.com/MergeFi/contracts) — Soroban smart contracts: escrow, milestone funding, maintenance pools, team splits.
-- 
+
 <img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/c019b457-90a0-4f2e-94d9-ab927de326dd" />
 
 ## Why Stellar and Soroban?
@@ -71,19 +71,30 @@ Next.js (App Router)                 this repo
 
 ```
 src/
-  app/                 App Router routes (one folder per route above)
+  app/                   App Router routes (one folder per route above)
   components/
-    ui/                Button, Badge, StatCard — small reusable primitives
-    layout/            Navbar, Footer
-    bounty/            BountyCard
+    ui/                  Button, Badge, StatCard, Avatar, Tabs, ThemeToggle — small reusable primitives
+    layout/              Navbar, Footer, CopyrightYear
+    bounty/              BountyCard, BountyDescription
+    dashboard/           ActivityList, DashboardShell
+  context/
+    AuthContext.tsx       current-user session state
+    ThemeContext.tsx       dark/light theme toggle
+    WalletContext.tsx      Stellar wallet connection state
+  hooks/
+    useCrossTabStorage.ts  cross-tab localStorage sync
   lib/
-    api.ts             fetch wrapper + mock-data fallback
-    config.ts           env-driven API base URL, OAuth URL, Stellar network
-    mock-data.ts        realistic sample bounties/milestones/profiles for demos
-    utils.ts            cn(), currency/percent/date formatting
-    wallet.ts            Freighter connect/sign helpers
+    adapters.ts           raw-backend-to-UI-shape translation layer
+    api.ts                fetch wrapper + mock-data fallback
+    auth.ts               token storage
+    config.ts             env-driven API base URL, OAuth URL, Stellar network
+    env.ts                build-time env-var validation
+    markdown.ts           markdown rendering helpers
+    mock-data.ts          realistic sample bounties/milestones/profiles for demos
+    utils.ts              cn(), currency/percent/date formatting
+    wallet.ts             Freighter connect/sign helpers
   types/
-    index.ts             shared domain types (Bounty, Milestone, ReputationProfile, ...)
+    index.ts              shared domain types (Bounty, Milestone, ReputationProfile, ...)
 ```
 
 ## Getting started
@@ -101,12 +112,13 @@ useful for frontend-only development or a quick demo. Point
 
 ### Environment variables
 
-Both variables are validated at build time (`next.config.ts` / `src/lib/env.ts`, #26) — an unset or invalid value fails `next build`/`next dev`/`next start` immediately with a clear error, rather than silently falling back and only surfacing as a confusing on-chain failure later. `.env.example` sets both explicitly, so the quickstart above needs no manual edits.
+Both `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_STELLAR_NETWORK` are validated at build time (`next.config.ts` / `src/lib/env.ts`, #26) — an unset or invalid value fails `next build`/`next dev`/`next start` immediately with a clear error, rather than silently falling back and only surfacing as a confusing on-chain failure later. `NEXT_PUBLIC_SITE_URL` is not build-time validated — it falls back to `https://mergefi.app` if unset. `.env.example` sets all three explicitly, so the quickstart above needs no manual edits.
 
 | Variable | Purpose | Default |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | Base URL of the `mergefi-backend` API. Must be a well-formed URL. | `http://localhost:4000/api` |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | Must be exactly `TESTNET` or `PUBLIC` (case-sensitive) — selects the Freighter network passphrase used to sign transactions. | **None.** Network selection is too consequential to guess a default for — the wrong value signs transactions with the wrong passphrase. Set it explicitly (`.env.example` does this for local dev). |
+| `NEXT_PUBLIC_SITE_URL` | Base URL used by `src/app/sitemap.ts` to generate absolute sitemap URLs. Set this when deploying to a domain other than `mergefi.app` (staging, forks, etc.). | `https://mergefi.app` |
 
 ### Scripts
 

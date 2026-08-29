@@ -71,19 +71,30 @@ Next.js (App Router)                 this repo
 
 ```
 src/
-  app/                 App Router routes (one folder per route above)
+  app/                   App Router routes (one folder per route above)
   components/
-    ui/                Button, Badge, StatCard — small reusable primitives
-    layout/            Navbar, Footer
-    bounty/            BountyCard
+    ui/                  Button, Badge, StatCard, Avatar, Tabs, ThemeToggle — small reusable primitives
+    layout/              Navbar, Footer, CopyrightYear
+    bounty/              BountyCard, BountyDescription
+    dashboard/           ActivityList, DashboardShell
+  context/
+    AuthContext.tsx       current-user session state
+    ThemeContext.tsx       dark/light theme toggle
+    WalletContext.tsx      Stellar wallet connection state
+  hooks/
+    useCrossTabStorage.ts  cross-tab localStorage sync
   lib/
-    api.ts             fetch wrapper + mock-data fallback
-    config.ts           env-driven API base URL, OAuth URL, Stellar network
-    mock-data.ts        realistic sample bounties/milestones/profiles for demos
-    utils.ts            cn(), currency/percent/date formatting
-    wallet.ts            Freighter connect/sign helpers
+    adapters.ts           raw-backend-to-UI-shape translation layer
+    api.ts                fetch wrapper + mock-data fallback
+    auth.ts               token storage
+    config.ts             env-driven API base URL, OAuth URL, Stellar network
+    env.ts                build-time env-var validation
+    markdown.ts           markdown rendering helpers
+    mock-data.ts          realistic sample bounties/milestones/profiles for demos
+    utils.ts              cn(), currency/percent/date formatting
+    wallet.ts             Freighter connect/sign helpers
   types/
-    index.ts             shared domain types (Bounty, Milestone, ReputationProfile, ...)
+    index.ts              shared domain types (Bounty, Milestone, ReputationProfile, ...)
 ```
 
 ## Getting started

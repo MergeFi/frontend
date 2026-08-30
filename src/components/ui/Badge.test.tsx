@@ -44,6 +44,27 @@ describe("StatusBadge", () => {
     const el = screen.getByText(status.replace("_", " "));
     expect(el.className).toMatch(/ring-/);
   });
+
+  // Hue alone can't carry eight financial states (funded/paid read as the
+  // same "good green" at a glance; refunded/open share near-identical
+  // slate), so every status also carries a fixed glyph as a non-color cue
+  // (#49).
+  it.each(ALL_STATUSES)("renders a non-color icon cue for status %s", (status) => {
+    render(<StatusBadge status={status} />);
+    const icon = screen.getByTestId(`status-icon-${status}`);
+    expect(icon).toBeInTheDocument();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("renders different icon cues for the confusable funded/paid pair", () => {
+    const { container } = render(<StatusBadge status="funded" />);
+    const fundedIcon = container.querySelector("[data-testid='status-icon-funded']");
+    const { container: container2 } = render(<StatusBadge status="paid" />);
+    const paidIcon = container2.querySelector("[data-testid='status-icon-paid']");
+    // Lucide icons all render as <svg>; the glyph differs, so the inner
+    // markup must differ too.
+    expect(fundedIcon?.innerHTML).not.toBe(paidIcon?.innerHTML);
+  });
 });
 
 describe("DifficultyBadge", () => {

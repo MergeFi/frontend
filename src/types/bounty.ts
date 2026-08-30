@@ -1,24 +1,32 @@
-export type BountyStatus = 
-  | 'open' 
-  | 'in-progress' 
-  | 'claimed' 
-  | 'completed' 
-  | 'cancelled';
+export type BountyStatus =
+  | 'open'
+  | 'funded'
+  | 'claimed'
+  | 'in_review'
+  | 'merged'
+  | 'paid'
+  | 'refunded'
+  | 'expired';
 
 export interface Bounty {
   id: string;
   title: string;
   description: string;
-  amount: number;
+  reward: number;
+  asset: "USDC" | "XLM";
+  difficulty: string;
   status: BountyStatus;
-  claimedBy?: string;
-  claimedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  repository: string;
+  org: string;
+  repo: string;
   issueNumber: number;
-  maintainer?: string;
-  assignee?: string;
+  labels: string[];
+  deadline: string | null;
+  claimedBy?: string;
+  claimedById?: string;
+  milestoneId?: string;
+  escrowId?: string;
+  teamSplits?: { role: string; percentage: number; contributor?: string }[];
+  teamSplitsValid?: { valid: boolean; sum: number; message?: string };
 }
 
 export interface BountyStatusUpdate {

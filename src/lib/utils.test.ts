@@ -186,11 +186,31 @@ describe("coerceFraction", () => {
 
   it("clamps values below 0 to 0", () => {
     expect(coerceFraction("-0.5")).toBe(0);
+    expect(coerceFraction("-100")).toBe(0);
   });
 
   it("clamps values above 1 to 1", () => {
     expect(coerceFraction("1.5")).toBe(1);
     expect(coerceFraction("100")).toBe(1);
+  });
+
+  it("handles custom divisor for percentage strings (e.g. divisor = 100)", () => {
+    expect(coerceFraction("94", 0, 100)).toBe(0.94);
+    expect(coerceFraction("100", 0, 100)).toBe(1);
+    expect(coerceFraction("0", 0, 100)).toBe(0);
+    expect(coerceFraction("50", 0, 100)).toBe(0.5);
+    expect(coerceFraction("150", 0, 100)).toBe(1);
+    expect(coerceFraction("-20", 0, 100)).toBe(0);
+  });
+
+  it("handles null, undefined, and non-numeric inputs using clamped fallback", () => {
+    expect(coerceFraction(null)).toBe(0);
+    expect(coerceFraction(undefined)).toBe(0);
+    expect(coerceFraction("not-a-number")).toBe(0);
+    expect(coerceFraction(null, 0.5)).toBe(0.5);
+    expect(coerceFraction("invalid", 0.8)).toBe(0.8);
+    expect(coerceFraction(null, 1.5)).toBe(1);
+    expect(coerceFraction(null, -0.5)).toBe(0);
   });
 });
 

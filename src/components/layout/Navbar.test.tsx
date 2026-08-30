@@ -34,7 +34,7 @@ jest.mock("@/components/ui/Button", () => ({
 
 const { useAuth } = require("@/context/AuthContext");
 
-function mockAuth(overrides: Partial<{ user: any; loading: boolean; logout: jest.fn }>) {
+function mockAuth(overrides: Partial<{ user: any; loading: boolean; logout: jest.Mock }>) {
   useAuth.mockReturnValue({
     user: null,
     loading: false,

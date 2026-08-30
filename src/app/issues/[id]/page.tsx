@@ -42,6 +42,26 @@ export async function generateMetadata({
   };
 }
 
+function getEscrowStatusLabel(status: string): string {
+  switch (status) {
+    case "open":
+      return "Awaiting funding";
+    case "funded":
+    case "claimed":
+    case "in_review":
+    case "merged":
+      return "Funds locked";
+    case "paid":
+      return "Paid out";
+    case "refunded":
+      return "Refunded to sponsor";
+    case "expired":
+      return "Expired, unclaimed";
+    default:
+      return "Unknown";
+  }
+}
+
 export default async function IssueDetailPage({
   params,
 }: {
@@ -85,7 +105,7 @@ export default async function IssueDetailPage({
             <span className="text-sm">Escrow status</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
-            {bounty.status === "open" ? "Awaiting funding" : "Funds locked"}
+            {getEscrowStatusLabel(bounty.status)}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DollarSign, GitMerge, TrendingUp, ListChecks, GitPullRequest } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
@@ -42,10 +43,14 @@ const earningsChartData = contributorEarningsHistory.map((value, i) => ({
 
 export default function ContributorDashboardClient() {
   const { user, loading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [bounties, setBounties] = useState<Bounty[]>(mockBounties);
   const [isLive, setIsLive] = useState(false);
-  const [tab, setTab] = useState<"active" | "completed">("active");
+  const [tab, setTabState] = useState<"active" | "completed">(
+    (searchParams.get("tab") as "active" | "completed") || "active"
+  );
   // Explicit fetch status: starts "loading" so cards shimmer rather than
   // flashing zeroes while the auth check + API call are in flight.
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
@@ -107,6 +112,16 @@ export default function ContributorDashboardClient() {
   const completedClaims = mine.filter((b) => b.status === "paid");
   const available = bounties.filter((b) => b.status === "open");
   const shownClaims = tab === "active" ? activeClaims : completedClaims;
+
+  const setTab = useCallback(
+    (newTab: "active" | "completed") => {
+      setTabState(newTab);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", newTab);
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   return (
     <DashboardShell

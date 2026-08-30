@@ -128,11 +128,14 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
             {pending ? "Claiming..." : "Claim this issue"}
           </Button>
         )}
-        {(bounty.status === "funded" || bounty.status === "claimed") && (
-          <Button size="lg" variant="outline" onClick={handleRefund} loading={pending}>
-            Refund sponsor
-          </Button>
-        )}
+        {(bounty.status === "funded" || bounty.status === "claimed") &&
+          address &&
+          bounty.sponsorAddress &&
+          address.toLowerCase() === bounty.sponsorAddress.toLowerCase() && (
+            <Button size="lg" variant="outline" onClick={handleRefund} loading={pending}>
+              Refund sponsor
+            </Button>
+          )}
         {["in_review", "merged", "paid", "refunded", "expired"].includes(
           bounty.status,
         ) && (

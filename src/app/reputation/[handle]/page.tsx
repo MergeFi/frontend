@@ -19,7 +19,7 @@ export async function generateMetadata({
   const { data: profile } = await fetchReputationByUsername(handle, mockFallback);
 
   if (!profile) {
-    return { title: "Profile not found | MergeFi" };
+    return { title: "Profile not found | MergeFi", robots: { index: false, follow: false } };
   }
 
   const title = `@${profile.handle} | MergeFi`;
@@ -28,6 +28,13 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // Profiles are opt-in only as far as search engines go (#19): they
+    // render real GitHub identities next to lifetime earnings, so until a
+    // per-user public-profile flag exists in the backend, every profile
+    // page — not just its absence from the sitemap — tells crawlers not to
+    // index it. Links still flow (follow) so the bounty board keeps its
+    // graph value.
+    robots: { index: false, follow: true },
     openGraph: {
       title,
       description,

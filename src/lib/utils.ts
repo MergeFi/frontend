@@ -58,8 +58,8 @@ const SANITY_CEILING = 1_000_000_000; // 1 billion
  * - Deltas or changes (e.g., budget remaining after overspending)
  *
  * This behavior matches StatCard's internal currency formatter, ensuring
- * consistency across the app. The same negative input will now render
- * identically whether formatted by formatCurrency() or StatCard.
+ * consistency across the app. StatCard's currency format uses this function
+ * directly.
  */
 export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   if (!Number.isFinite(amount)) return `0 ${asset}`;

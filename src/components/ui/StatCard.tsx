@@ -22,7 +22,7 @@
  * always available via the title attribute (keyboard-navigable, hover tooltip).
  */
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sparkline } from "./Sparkline";
@@ -79,10 +79,7 @@ function formatValue(
   switch (format) {
     case "currency": {
       const maxDecimals = asset === "XLM" ? 7 : 2;
-      const formatted = value.toLocaleString("en-US", {
-        maximumFractionDigits: maxDecimals,
-      });
-      const display = `${formatted} ${asset}`;
+      const display = formatCurrency(value, asset);
       // Exact value for tooltip shows full asset-specific precision
       const exact = `${value.toLocaleString("en-US", { maximumFractionDigits: maxDecimals })} ${asset}`;
       return { display, exact };

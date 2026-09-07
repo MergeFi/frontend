@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
           clearToken();
           setUser(null);
+          setLoading(false);
           return;
         }
         if (attempt < MAX_RETRIES - 1) {

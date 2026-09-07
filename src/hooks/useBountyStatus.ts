@@ -35,7 +35,7 @@ export function useBountyStatus({
     refetch,
     isPolling,
     isBackingOff,
-  } = useSmartPolling<{ data: Bounty; source: 'live' | 'mock' }>({
+  } = useSmartPolling<{ data: Bounty | undefined; source: 'live' | 'mock' }>({
     fetchFn: async () => {
       const result = await fetchBounty(bountyId, fallbackBounty);
       return result;

@@ -24,7 +24,7 @@ describe("Tabs — onChange", () => {
     const onChange = jest.fn();
     render(<Tabs tabs={sampleTabs} active="active" onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Completed" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Completed" }));
     expect(onChange).toHaveBeenCalledWith("completed");
   });
 
@@ -32,7 +32,7 @@ describe("Tabs — onChange", () => {
     const onChange = jest.fn();
     render(<Tabs tabs={sampleTabs} active="active" onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Active" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Active" }));
     // onChange still fires — the parent decides whether to ignore duplicates
     expect(onChange).toHaveBeenCalledWith("active");
   });
@@ -41,22 +41,22 @@ describe("Tabs — onChange", () => {
 describe("Tabs — active styling", () => {
   it("applies bg-white and shadow-sm to the active tab", () => {
     render(<Tabs tabs={sampleTabs} active="active" onChange={() => {}} />);
-    const activeBtn = screen.getByRole("button", { name: "Active" });
+    const activeBtn = screen.getByRole("tab", { name: "Active" });
     expect(activeBtn.className).toContain("bg-white");
     expect(activeBtn.className).toContain("shadow-sm");
   });
 
   it("applies muted text styling to inactive tabs", () => {
     render(<Tabs tabs={sampleTabs} active="active" onChange={() => {}} />);
-    const inactiveBtn = screen.getByRole("button", { name: "Completed" });
+    const inactiveBtn = screen.getByRole("tab", { name: "Completed" });
     expect(inactiveBtn.className).toContain("text-slate-500");
     expect(inactiveBtn.className).not.toContain("bg-white");
   });
 
   it("switches active styling when a different tab becomes active", () => {
     render(<Tabs tabs={sampleTabs} active="completed" onChange={() => {}} />);
-    const completedBtn = screen.getByRole("button", { name: "Completed" });
-    const activeBtn = screen.getByRole("button", { name: "Active" });
+    const completedBtn = screen.getByRole("tab", { name: "Completed" });
+    const activeBtn = screen.getByRole("tab", { name: "Active" });
     expect(completedBtn.className).toContain("bg-white");
     expect(activeBtn.className).toContain("text-slate-500");
   });

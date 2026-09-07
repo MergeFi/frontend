@@ -1,13 +1,13 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CallbackClient } from "./CallbackClient";
 import { useAuth } from "@/context/AuthContext";
 import type { AuthUser } from "@/types";
 
 jest.mock("next/navigation", () => ({
   useSearchParams: jest.fn(),
-  useRouter: () => ({ replace: jest.fn() }),
+  useRouter: jest.fn(() => ({ replace: jest.fn() })),
 }));
 
 jest.mock("@/context/AuthContext", () => ({
@@ -20,6 +20,7 @@ const mockReplace = jest.fn();
 const mockedUseAuth = useAuth as jest.MockedFunction<any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockedUseSearchParams = useSearchParams as jest.MockedFunction<any>;
+const mockedUseRouter = useRouter as jest.Mock;
 
 function makeUser(roles: string[]): AuthUser {
   return {
@@ -35,8 +36,7 @@ function makeUser(roles: string[]): AuthUser {
 describe("CallbackClient — role-based redirect (issue #77)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (require("next/navigation").useRouter = () => ({ replace: mockReplace }));
+    mockedUseRouter.mockReturnValue({ replace: mockReplace });
     mockedUseSearchParams.mockReturnValue(new URLSearchParams({ token: "jwt-token" }));
   });
 

@@ -7,27 +7,39 @@
  * and the role-switcher section rendering the correct active role.
  */
 
+import React from "react";
 import { render, screen } from "@testing-library/react";
+import { usePathname } from "next/navigation";
 import { DashboardShell } from "./DashboardShell";
 
 jest.mock("next/navigation", () => ({
   usePathname: jest.fn(),
 }));
 
-const { usePathname } = require("next/navigation");
+const mockedUsePathname = usePathname as jest.Mock;
 
-// Stub next/link to render a plain <a> so queries work in jsdom
+// Stub next/link to render a plain <a> so queries work in jsdom.
+// `require("react")` (rather than a top-level import reference) is
+// necessary here: jest.mock() factories are hoisted above imports and may
+// only reference out-of-scope variables prefixed "mock", so this can't be
+// rewritten as a normal ES import without breaking that hoisting contract.
 jest.mock("next/link", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");
-  return React.forwardRef(function Link({ href, children, ...rest }: any, ref: any) {
+  return React.forwardRef(function Link(
+    { href, children, ...rest }: { href: string; children?: React.ReactNode } & Record<string, unknown>,
+    ref: React.Ref<HTMLAnchorElement>,
+  ) {
     return <a href={href} ref={ref} {...rest}>{children}</a>;
   });
 });
 
-function shell(role: string, pathname: string) {
-  usePathname.mockReturnValue(pathname);
+type Role = "contributor" | "maintainer" | "sponsor";
+
+function shell(role: Role, pathname: string) {
+  mockedUsePathname.mockReturnValue(pathname);
   return render(
-    <DashboardShell role={role as any} title="Test Dashboard">
+    <DashboardShell role={role} title="Test Dashboard">
       <p>child content</p>
     </DashboardShell>,
   );
@@ -124,7 +136,7 @@ describe("DashboardShell — content rendering", () => {
   });
 
   it("renders the subtitle when provided", () => {
-    usePathname.mockReturnValue("/dashboard/contributor");
+    mockedUsePathname.mockReturnValue("/dashboard/contributor");
     render(
       <DashboardShell role="contributor" title="Dashboard" subtitle="Welcome back">
         <p>child</p>

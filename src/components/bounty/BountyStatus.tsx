@@ -13,18 +13,24 @@ interface BountyStatusProps {
 
 const statusColors: Record<BountyStatus, string> = {
   open: 'text-green-600 bg-green-50 border-green-200',
-  'in-progress': 'text-yellow-600 bg-yellow-50 border-yellow-200',
+  funded: 'text-teal-600 bg-teal-50 border-teal-200',
   claimed: 'text-blue-600 bg-blue-50 border-blue-200',
-  completed: 'text-purple-600 bg-purple-50 border-purple-200',
-  cancelled: 'text-red-600 bg-red-50 border-red-200',
+  in_review: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+  merged: 'text-purple-600 bg-purple-50 border-purple-200',
+  paid: 'text-purple-600 bg-purple-50 border-purple-200',
+  refunded: 'text-red-600 bg-red-50 border-red-200',
+  expired: 'text-red-600 bg-red-50 border-red-200',
 };
 
 const statusLabels: Record<BountyStatus, string> = {
   open: 'Open',
-  'in-progress': 'In Progress',
+  funded: 'Funded',
   claimed: 'Claimed',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
+  in_review: 'In Review',
+  merged: 'Merged',
+  paid: 'Paid',
+  refunded: 'Refunded',
+  expired: 'Expired',
 };
 
 export function BountyStatus({ 
@@ -109,10 +115,6 @@ export function BountyStatus({
           Claimed by: <span className="font-medium">{bounty.claimedBy}</span>
         </div>
       )}
-
-      <div className="mt-1 text-xs text-gray-400">
-        Updated: {new Date(bounty.updatedAt).toLocaleTimeString()}
-      </div>
     </div>
   );
 }

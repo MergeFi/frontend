@@ -1,3 +1,5 @@
+import type { Difficulty, TeamSplit } from './shared';
+
 export type BountyStatus =
   | 'open'
   | 'funded'
@@ -14,7 +16,7 @@ export interface Bounty {
   description: string;
   reward: number;
   asset: "USDC" | "XLM";
-  difficulty: string;
+  difficulty: Difficulty;
   status: BountyStatus;
   org: string;
   repo: string;
@@ -25,7 +27,7 @@ export interface Bounty {
   claimedById?: string;
   milestoneId?: string;
   escrowId?: string;
-  teamSplits?: { role: string; percentage: number; contributor?: string }[];
+  teamSplits?: TeamSplit[];
   teamSplitsValid?: { valid: boolean; sum: number; message?: string };
 }
 

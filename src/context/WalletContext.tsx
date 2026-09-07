@@ -102,17 +102,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
   useCrossTabStorage(WALLET_KEY, handleWalletKeyChangedElsewhere);
 
+  // Tracks the latest `address` for the logout-clearing effect below
+  // without making that effect depend on (and therefore re-run on) every
+  // address change — only an actual `user` transition should trigger a
+  // clear. Kept current after every render rather than read via a
+  // `setAddress(prev => ...)` functional updater, which is exactly the
+  // "peek at previous state inside an effect" shape
+  // react-hooks/set-state-in-effect flags.
+  const addressRef = useRef(address);
+  useEffect(() => {
+    addressRef.current = address;
+  });
+
   // #270: When AuthContext logs the user out (cross-tab or otherwise),
   // clear the wallet connection too so a stale address is never usable
   // in a tab where the session has ended.
   useEffect(() => {
-    if (user === null) {
-      setAddress((prev) => {
-        if (prev === null) return prev;
-        window.localStorage.removeItem(WALLET_KEY);
-        setNetwork(null);
-        return null;
-      });
+    if (user === null && addressRef.current !== null) {
+      window.localStorage.removeItem(WALLET_KEY);
+      setNetwork(null);
+      setAddress(null);
     }
   }, [user]);
 

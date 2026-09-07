@@ -8,7 +8,9 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "./Navbar";
+import type { AuthUser } from "@/types";
 
 jest.mock("@/context/AuthContext", () => ({
   useAuth: jest.fn(),
@@ -32,10 +34,10 @@ jest.mock("@/components/ui/Button", () => ({
   ),
 }));
 
-const { useAuth } = require("@/context/AuthContext");
+const mockedUseAuth = useAuth as jest.Mock;
 
-function mockAuth(overrides: Partial<{ user: any; loading: boolean; logout: jest.fn }>) {
-  useAuth.mockReturnValue({
+function mockAuth(overrides: Partial<{ user: AuthUser | null; loading: boolean; logout: () => void }>) {
+  mockedUseAuth.mockReturnValue({
     user: null,
     loading: false,
     logout: jest.fn(),
@@ -75,7 +77,7 @@ describe("Navbar — signed out", () => {
 });
 
 describe("Navbar — signed in", () => {
-  const fakeUser = {
+  const fakeUser: AuthUser = {
     id: "u1",
     username: "octocat",
     displayName: "The Octocat",

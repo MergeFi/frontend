@@ -13,6 +13,14 @@ jest.mock("@/context/AuthContext", () => ({
 
 jest.mock("@/lib/wallet", () => ({
   connectWallet: jest.fn(),
+  // Added for #71/#2 (reconciling a restored address/network against
+  // Freighter's live state on mount) — this mock predated both and was
+  // missing them entirely, so any test path that reaches the deferred
+  // mount-hydration effect threw `is not a function`. Default to "nothing
+  // to reconcile" (no live address, no network mismatch); tests that care
+  // about the mismatch paths specifically override these.
+  getActiveFreighterAddress: jest.fn().mockResolvedValue(null),
+  checkNetworkMismatch: jest.fn().mockResolvedValue(null),
 }));
 
 // WalletContext imports apiRequest for profile linking on connect(), which

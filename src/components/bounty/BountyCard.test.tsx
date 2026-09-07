@@ -66,10 +66,14 @@ describe("BountyCard — description preview", () => {
 });
 
 describe("BountyCard — deadline countdown (#216)", () => {
-  it('shows "Xd left" for a future deadline', () => {
+  it('shows "X days left" for a future deadline', () => {
+    // formatDaysUntil (src/lib/utils.ts) is the actual, deliberate
+    // implementation this renders through — properly pluralized ("1 day
+    // left" vs "N days left"), not the abbreviated "Xd left" this test
+    // previously (and incorrectly) expected.
     const deadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
     render(<BountyCard bounty={makeBounty({ deadline })} />);
-    expect(screen.getByText("5d left")).toBeInTheDocument();
+    expect(screen.getByText("5 days left")).toBeInTheDocument();
   });
 
   it('shows "Deadline passed" for a past deadline', () => {

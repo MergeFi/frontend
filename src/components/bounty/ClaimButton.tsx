@@ -103,9 +103,9 @@ export function ClaimButton({
     await claim();
   };
 
-  const isDisabled = isClaiming || status === 'claimed' || status === 'completed';
+  const isDisabled = isClaiming || status === 'claimed';
 
-  if (status === 'claimed' || status === 'completed') {
+  if (status === 'claimed') {
     return (
       <div className={`p-4 bg-gray-50 border border-gray-200 rounded-lg ${className}`}>
         <p className="text-gray-600">

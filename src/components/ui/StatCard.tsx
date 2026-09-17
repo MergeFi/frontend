@@ -149,7 +149,7 @@ export function StatCard({
             data-testid="statcard-icon"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-500/10"
           >
-            <Icon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <Icon aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           </span>
         )}
       </div>

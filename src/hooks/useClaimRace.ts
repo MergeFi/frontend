@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiPost, fetchBounty } from '@/lib/api';
 import type { Bounty, ClaimResult } from '@/types/bounty';
 
@@ -10,9 +10,19 @@ interface ApiError {
 export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty) => void) {
   const [isClaiming, setIsClaiming] = useState(false);
   const [lastResult, setLastResult] = useState<ClaimResult | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const claim = useCallback(async (): Promise<ClaimResult> => {
-    setIsClaiming(true);
+    if (isMountedRef.current) {
+      setIsClaiming(true);
+    }
     
     try {
       const response = await apiPost<{ data: Bounty }>(`/bounties/${bountyId}/claim`, {});
@@ -21,7 +31,9 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
         success: true,
         bounty: response.data,
       };
-      setLastResult(result);
+      if (isMountedRef.current) {
+        setLastResult(result);
+      }
       onClaimSuccess?.(response.data);
       return result;
     } catch (error) {
@@ -39,14 +51,18 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
             error: 'ALREADY_CLAIMED',
             bounty: updatedResult?.data,
           };
-          setLastResult(result);
+          if (isMountedRef.current) {
+            setLastResult(result);
+          }
           return result;
         } catch {
           const result: ClaimResult = {
             success: false,
             error: 'ALREADY_CLAIMED',
           };
-          setLastResult(result);
+          if (isMountedRef.current) {
+            setLastResult(result);
+          }
           return result;
         }
       }
@@ -56,15 +72,21 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
         error: 'NETWORK_ERROR',
         message: apiError?.message || 'Network error occurred',
       };
-      setLastResult(result);
+      if (isMountedRef.current) {
+        setLastResult(result);
+      }
       return result;
     } finally {
-      setIsClaiming(false);
+      if (isMountedRef.current) {
+        setIsClaiming(false);
+      }
     }
   }, [bountyId, onClaimSuccess]);
 
   const reset = useCallback(() => {
-    setLastResult(null);
+    if (isMountedRef.current) {
+      setLastResult(null);
+    }
   }, []);
 
   return {

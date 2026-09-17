@@ -173,3 +173,46 @@ describe("ConnectPanel — the four connection-state combinations", () => {
     expect(screen.queryByText("Connect Freighter")).not.toBeInTheDocument();
   });
 });
+
+describe("ConnectPanel — wallet-address-mismatch warning banner (#283, #419)", () => {
+  const onFileAddress = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+  const connectedAddress = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWHF";
+
+  it("renders a warning alert when user.stellarAddress differs from connected wallet address", () => {
+    setAuth({ ...USER, stellarAddress: onFileAddress });
+    setWallet({ address: connectedAddress, network: "TESTNET" });
+    render(<ConnectPanel />);
+
+    expect(screen.getByText("Wallet address mismatch")).toBeInTheDocument();
+    expect(
+      screen.getByText(/The connected wallet .* differs from the payout address on file/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Payouts will be sent to the address on file/),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the warning alert when addresses match", () => {
+    setAuth({ ...USER, stellarAddress: onFileAddress });
+    setWallet({ address: onFileAddress, network: "TESTNET" });
+    render(<ConnectPanel />);
+
+    expect(screen.queryByText("Wallet address mismatch")).not.toBeInTheDocument();
+  });
+
+  it("does not render the warning alert when user has no stellarAddress on file", () => {
+    setAuth({ ...USER, stellarAddress: null });
+    setWallet({ address: connectedAddress, network: "TESTNET" });
+    render(<ConnectPanel />);
+
+    expect(screen.queryByText("Wallet address mismatch")).not.toBeInTheDocument();
+  });
+
+  it("does not render the warning alert when no wallet is connected", () => {
+    setAuth({ ...USER, stellarAddress: onFileAddress });
+    setWallet({ address: null });
+    render(<ConnectPanel />);
+
+    expect(screen.queryByText("Wallet address mismatch")).not.toBeInTheDocument();
+  });
+});

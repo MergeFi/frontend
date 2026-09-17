@@ -79,3 +79,82 @@ describe("Tabs — count badge", () => {
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 });
+describe("Tabs - keyboard navigation (#24, #442)", () => {
+  const threeTabs = [
+    { key: "first", label: "First" },
+    { key: "second", label: "Second" },
+    { key: "third", label: "Third" },
+  ];
+
+  it("navigates to next tab on ArrowRight and moves focus", () => {
+    const onChange = jest.fn();
+    render(<Tabs tabs={threeTabs} active="first" onChange={onChange} />);
+
+    const firstTab = screen.getByRole("tab", { name: "First" });
+    const secondTab = screen.getByRole("tab", { name: "Second" });
+
+    fireEvent.keyDown(firstTab, { key: "ArrowRight" });
+    expect(onChange).toHaveBeenCalledWith("second");
+    expect(secondTab).toHaveFocus();
+  });
+
+  it("wraps around to the first tab on ArrowRight from the last tab", () => {
+    const onChange = jest.fn();
+    render(<Tabs tabs={threeTabs} active="third" onChange={onChange} />);
+
+    const thirdTab = screen.getByRole("tab", { name: "Third" });
+    const firstTab = screen.getByRole("tab", { name: "First" });
+
+    fireEvent.keyDown(thirdTab, { key: "ArrowRight" });
+    expect(onChange).toHaveBeenCalledWith("first");
+    expect(firstTab).toHaveFocus();
+  });
+
+  it("navigates to previous tab on ArrowLeft and moves focus", () => {
+    const onChange = jest.fn();
+    render(<Tabs tabs={threeTabs} active="second" onChange={onChange} />);
+
+    const secondTab = screen.getByRole("tab", { name: "Second" });
+    const firstTab = screen.getByRole("tab", { name: "First" });
+
+    fireEvent.keyDown(secondTab, { key: "ArrowLeft" });
+    expect(onChange).toHaveBeenCalledWith("first");
+    expect(firstTab).toHaveFocus();
+  });
+
+  it("wraps around to the last tab on ArrowLeft from the first tab", () => {
+    const onChange = jest.fn();
+    render(<Tabs tabs={threeTabs} active="first" onChange={onChange} />);
+
+    const firstTab = screen.getByRole("tab", { name: "First" });
+    const thirdTab = screen.getByRole("tab", { name: "Third" });
+
+    fireEvent.keyDown(firstTab, { key: "ArrowLeft" });
+    expect(onChange).toHaveBeenCalledWith("third");
+    expect(thirdTab).toHaveFocus();
+  });
+
+  it("jumps to the first tab on Home key", () => {
+    const onChange = jest.fn();
+    render(<Tabs tabs={threeTabs} active="third" onChange={onChange} />);
+
+    const thirdTab = screen.getByRole("tab", { name: "Third" });
+    const firstTab = screen.getByRole("tab", { name: "First" });
+
+    fireEvent.keyDown(thirdTab, { key: "Home" });
+    expect(onChange).toHaveBeenCalledWith("first");
+    expect(firstTab).toHaveFocus();
+  });
+
+  it("jumps to the last tab on End key", () => {
+    const onChange = jest.fn();
+    render(<Tabs tabs={threeTabs} active="first" onChange={onChange} />);
+
+    const firstTab = screen.getByRole("tab", { name: "First" });
+    const thirdTab = screen.getByRole("tab", { name: "Third" });
+
+    fireEvent.keyDown(firstTab, { key: "End" });
+    expect(onChange).toHaveBeenCalledWith("third");
+    expect(thirdTab).toHaveFocus();
+  });
+});

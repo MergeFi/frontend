@@ -128,6 +128,11 @@ export function parseMoneyInput(
   return { valid: true, normalized };
 }
 
+export function formatHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours < 0) return "0.0h";
+  return `${hours.toFixed(1)}h`;
+}
+
 export function formatPercent(value: number) {
   if (!Number.isFinite(value)) return "0%";
   return `${Math.round(value * 100)}%`;

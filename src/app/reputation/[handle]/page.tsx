@@ -5,6 +5,7 @@ import { mockReputationProfiles } from "@/lib/mock-data";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
+import { formatHours } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -117,7 +118,7 @@ export default async function ReputationPage({
       </div>
 
       <p className="mt-8 text-sm text-slate-500 dark:text-slate-400">
-        Average review time: {profile.avgReviewTimeHours.toFixed(1)}h
+        Average review time: {formatHours(profile.avgReviewTimeHours)}
       </p>
     </div>
   );

@@ -119,3 +119,11 @@ describe("Navbar — signed in", () => {
     expect(screen.queryByRole("button", { name: /sign in$/i })).not.toBeInTheDocument();
   });
 });
+describe("Navbar - accessibility navigation landmark (#447)", () => {
+  it("provides an aria-label='Main' on the top navigation landmark", () => {
+    mockAuth({ user: null, loading: false });
+    render(<Navbar />);
+    const mainNav = screen.getByRole("navigation", { name: "Main" });
+    expect(mainNav).toBeInTheDocument();
+  });
+});

@@ -145,3 +145,13 @@ describe("DashboardShell — content rendering", () => {
     expect(screen.getByText("Welcome back")).toBeInTheDocument();
   });
 });
+describe("DashboardShell - accessibility navigation landmarks (#447)", () => {
+  it("provides distinct aria-labels for dashboard sections and switch role landmarks", () => {
+    shell("contributor", "/dashboard/contributor");
+    const sectionsNav = screen.getByRole("navigation", { name: "Dashboard sections" });
+    const switchRoleNav = screen.getByRole("navigation", { name: "Switch role" });
+
+    expect(sectionsNav).toBeInTheDocument();
+    expect(switchRoleNav).toBeInTheDocument();
+  });
+});

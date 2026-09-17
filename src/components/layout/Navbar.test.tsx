@@ -119,3 +119,22 @@ describe("Navbar — signed in", () => {
     expect(screen.queryByRole("button", { name: /sign in$/i })).not.toBeInTheDocument();
   });
 });
+describe("Navbar - keyboard focus-visible accessibility (#431)", () => {
+  it("includes focus-visible outline classes on Dashboards dropdown trigger", () => {
+    mockAuth({ user: null, loading: false });
+    render(<Navbar />);
+    const dropdownBtn = screen.getByRole("button", { name: /dashboards/i });
+    expect(dropdownBtn.className).toContain("focus-visible:outline-2");
+    expect(dropdownBtn.className).toContain("focus-visible:outline-offset-2");
+    expect(dropdownBtn.className).toContain("focus-visible:outline-indigo-500");
+  });
+
+  it("includes focus-visible outline classes on sign-out button", () => {
+    mockAuth({ user: fakeUser, loading: false });
+    render(<Navbar />);
+    const logoutBtn = screen.getByTitle("Sign out");
+    expect(logoutBtn.className).toContain("focus-visible:outline-2");
+    expect(logoutBtn.className).toContain("focus-visible:outline-offset-2");
+    expect(logoutBtn.className).toContain("focus-visible:outline-indigo-500");
+  });
+});

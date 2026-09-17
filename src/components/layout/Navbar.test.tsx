@@ -119,3 +119,13 @@ describe("Navbar — signed in", () => {
     expect(screen.queryByRole("button", { name: /sign in$/i })).not.toBeInTheDocument();
   });
 });
+describe("Navbar - dropdown accessibility indicator (#434)", () => {
+  it("marks Dashboards ChevronDown icon with aria-hidden='true'", () => {
+    mockAuth({ user: null, loading: false });
+    render(<Navbar />);
+    const dashboardsButton = screen.getByRole("button", { name: /dashboards/i });
+    const svg = dashboardsButton.querySelector("svg");
+    expect(svg).not.toBeNull();
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+  });
+});

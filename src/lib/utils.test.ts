@@ -8,6 +8,7 @@
 import {
   formatCurrency,
   formatPercent,
+  formatHours,
   parseMoneyInput,
   coerceDecimal,
   coerceNonNegative,
@@ -107,6 +108,33 @@ describe("formatCurrency", () => {
 });
 
 // ─── formatPercent ───────────────────────────────────────────────────────────
+
+// ── formatHours ─────────────────────────────────────────────────────────────
+
+describe("formatHours", () => {
+  it("formats positive numbers with 1 decimal place and 'h' suffix", () => {
+    expect(formatHours(4.2)).toBe("4.2h");
+    expect(formatHours(10)).toBe("10.0h");
+    expect(formatHours(0.12)).toBe("0.1h");
+  });
+
+  it("handles zero", () => {
+    expect(formatHours(0)).toBe("0.0h");
+  });
+
+  it("handles NaN by returning 0.0h", () => {
+    expect(formatHours(NaN)).toBe("0.0h");
+  });
+
+  it("handles Infinity by returning 0.0h", () => {
+    expect(formatHours(Infinity)).toBe("0.0h");
+    expect(formatHours(-Infinity)).toBe("0.0h");
+  });
+
+  it("handles negative values by returning 0.0h", () => {
+    expect(formatHours(-5)).toBe("0.0h");
+  });
+});
 
 describe("formatPercent", () => {
   it("converts a fraction to a percentage", () => {

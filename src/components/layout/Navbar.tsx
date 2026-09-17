@@ -44,7 +44,7 @@ export function Navbar() {
                 className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white"
               >
                 Dashboards
-                <ChevronDown className="h-3.5 w-3.5" />
+                <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
               </button>
               {/* group-focus-within alongside group-hover: the submenu was
                   only reachable via mouse hover — a keyboard user tabbing

@@ -130,7 +130,8 @@ export function parseMoneyInput(
 
 export function formatPercent(value: number) {
   if (!Number.isFinite(value)) return "0%";
-  return `${Math.round(value * 100)}%`;
+  const clamped = Math.min(Math.max(value, 0), 1);
+  return `${Math.round(clamped * 100)}%`;
 }
 
 /**

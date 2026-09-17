@@ -131,6 +131,16 @@ describe("formatPercent", () => {
   it("handles Infinity", () => {
     expect(formatPercent(Infinity)).toBe("0%");
   });
+
+  it("clamps negative values to 0%", () => {
+    expect(formatPercent(-0.5)).toBe("0%");
+    expect(formatPercent(-2)).toBe("0%");
+  });
+
+  it("clamps values greater than 1 to 100%", () => {
+    expect(formatPercent(1.5)).toBe("100%");
+    expect(formatPercent(150)).toBe("100%");
+  });
 });
 
 // ─── coerceDecimal ───────────────────────────────────────────────────────────

@@ -107,7 +107,7 @@ export default function HomePage() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/issues">
               <Button size="lg" className="gap-2">
-                Browse paid issues <ArrowRight className="h-4 w-4" />
+                Browse paid issues <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="/connect">
@@ -148,7 +148,7 @@ export default function HomePage() {
                 key={label}
                 className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
-                <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Icon aria-hidden="true" className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 {label}
               </span>
             ))}
@@ -197,7 +197,7 @@ export default function HomePage() {
                 className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900">
-                  <Icon className="h-5 w-5 text-white" />
+                  <Icon aria-hidden="true" className="h-5 w-5 text-white" />
                 </span>
                 <h3 className="mt-4 font-medium text-slate-900 dark:text-white">{title}</h3>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</p>
@@ -225,7 +225,7 @@ export default function HomePage() {
 
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-500" />
+              <Trophy aria-hidden="true" className="h-5 w-5 text-amber-500" />
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                 Top contributors this month
               </h2>
@@ -263,7 +263,7 @@ export default function HomePage() {
 
         <section className="mt-24">
           <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-emerald-500" />
+            <Activity aria-hidden="true" className="h-5 w-5 text-emerald-500" />
             <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
               Live on the platform
             </h2>

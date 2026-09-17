@@ -18,9 +18,11 @@ export function MilestoneFundButton({
   const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function handleFund() {
     setError(null);
+    setNotice(null);
 
     if (addressMismatch) {
       setError(
@@ -44,6 +46,11 @@ export function MilestoneFundButton({
         funderAddress: walletAddress,
         idempotencyKey: generateIdempotencyKey(),
       });
+      setNotice(
+        milestoneName
+          ? `Milestone "${milestoneName}" funded on-chain successfully.`
+          : "Milestone funded on-chain successfully.",
+      );
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
@@ -63,6 +70,11 @@ export function MilestoneFundButton({
       >
         {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
       </Button>
+      {notice && (
+        <p role="status" aria-live="polite" className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+          {notice}
+        </p>
+      )}
       {error && (
         <p role="alert" className="mt-2 text-xs text-rose-600">
           {error}
@@ -86,6 +98,7 @@ export function PoolDepositButton({
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const validation = parseMoneyInput(amount, asset);
   const inputValid = validation.valid;
@@ -93,10 +106,12 @@ export function PoolDepositButton({
   function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
     setAmount(e.target.value);
     setError(null);
+    setNotice(null);
   }
 
   async function handleDeposit() {
     setError(null);
+    setNotice(null);
     // Re-validate at submit time in case state drifted
     const result = parseMoneyInput(amount, asset);
     if (!result.valid) {
@@ -123,6 +138,7 @@ export function PoolDepositButton({
         funderAddress: walletAddress,
         idempotencyKey: generateIdempotencyKey(),
       });
+      setNotice(`Deposited ${result.normalized} ${asset} to maintenance pool successfully.`);
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
@@ -134,29 +150,36 @@ export function PoolDepositButton({
   const inputId = `pool-deposit-${poolId}`;
 
   return (
-    <div className="mt-4 flex items-center gap-2">
-      <label htmlFor={inputId} className="sr-only">
-        Deposit amount
-      </label>
-      <input
-        id={inputId}
-        type="number"
-        min="0.01"
-        step="0.01"
-        value={amount}
-        onChange={handleAmountChange}
-        className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
-      />
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={handleDeposit}
-        loading={pending || connecting}
-        disabled={!inputValid}
-        aria-label={poolRepo ? `Deposit to pool: ${poolRepo}` : "Deposit to pool"}
-      >
-        {pending || connecting ? "Confirming..." : "Deposit"}
-      </Button>
+    <div className="mt-4 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <label htmlFor={inputId} className="sr-only">
+          Deposit amount
+        </label>
+        <input
+          id={inputId}
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={amount}
+          onChange={handleAmountChange}
+          className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleDeposit}
+          loading={pending || connecting}
+          disabled={!inputValid}
+          aria-label={poolRepo ? `Deposit to pool: ${poolRepo}` : "Deposit to pool"}
+        >
+          {pending || connecting ? "Confirming..." : "Deposit"}
+        </Button>
+      </div>
+      {notice && (
+        <p role="status" aria-live="polite" className="text-xs text-emerald-600 dark:text-emerald-400">
+          {notice}
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-xs text-rose-600">
           {error}

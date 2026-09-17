@@ -42,3 +42,12 @@ describe("Button — loading prop", () => {
     expect(button).not.toHaveAttribute("aria-busy");
   });
 });
+describe("Button - focus-visible keyboard accessibility (#430)", () => {
+  it("includes focus-visible outline classes in className", () => {
+    render(<Button>Click me</Button>);
+    const button = screen.getByRole("button", { name: "Click me" });
+    expect(button.className).toContain("focus-visible:outline-2");
+    expect(button.className).toContain("focus-visible:outline-offset-2");
+    expect(button.className).toContain("focus-visible:outline-indigo-500");
+  });
+});

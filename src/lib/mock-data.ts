@@ -45,8 +45,8 @@ export const mockBounties: Bounty[] = [
     title: "Document Soroban escrow contract API reference",
     description:
       "Write reference docs for fund/release/refund functions including auth requirements and error codes.",
-    reward: 60,
-    asset: "USDC",
+    reward: 500,
+    asset: "XLM",
     difficulty: "beginner",
     status: "open",
     deadline: new Date(Date.now() + 10 * 86400000).toISOString(),
@@ -104,9 +104,9 @@ export const mockMilestones: Milestone[] = [
     id: "m2",
     name: "v1.4: Indexer performance pass",
     repo: "core-indexer",
-    budget: 6000,
-    distributed: 2100,
-    asset: "USDC",
+    budget: 50000,
+    distributed: 18000,
+    asset: "XLM",
     issueCount: 8,
     completedCount: 3,
   },
@@ -119,6 +119,13 @@ export const mockMaintenancePools: MaintenancePool[] = [
     monthlyDeposit: 500,
     balance: 1240,
     asset: "USDC",
+  },
+  {
+    id: "p2",
+    repo: "docs-site",
+    monthlyDeposit: 2500,
+    balance: 6200,
+    asset: "XLM",
   },
 ];
 

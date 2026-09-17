@@ -173,3 +173,26 @@ describe("ConnectPanel — the four connection-state combinations", () => {
     expect(screen.queryByText("Connect Freighter")).not.toBeInTheDocument();
   });
 });
+describe("ConnectPanel - decorative icon accessibility (#436)", () => {
+  it("renders Code2 and WalletIcon with aria-hidden='true'", () => {
+    setAuth(null);
+    setWallet();
+    const { container } = render(<ConnectPanel />);
+    const svgs = container.querySelectorAll("svg");
+    expect(svgs.length).toBeGreaterThanOrEqual(2);
+    svgs.forEach((svg) => {
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+    });
+  });
+
+  it("renders CheckCircle2 icons with aria-hidden='true' when connected", () => {
+    setAuth(USER);
+    setWallet({ address: "GABCDEFGH1234567890WXYZ", network: "TESTNET" });
+    const { container } = render(<ConnectPanel />);
+    const svgs = container.querySelectorAll("svg");
+    expect(svgs.length).toBeGreaterThanOrEqual(4);
+    svgs.forEach((svg) => {
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+    });
+  });
+});

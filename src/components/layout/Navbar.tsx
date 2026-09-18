@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { GitMerge, ChevronDown, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -20,6 +22,7 @@ const dashboardLinks = [
 ];
 
 export function Navbar() {
+  const pathname = usePathname();
   const { user, loading, logout } = useAuth();
 
   return (
@@ -33,11 +36,25 @@ export function Navbar() {
             MergeFi
           </Link>
           <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400 md:flex">
-            {links.map((link) => (
-              <Link key={link.href} href={link.href} className="hover:text-slate-900 dark:hover:text-white">
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) => {
+              const active =
+                pathname === link.href || pathname.startsWith(`${link.href}/`);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "transition-colors hover:text-slate-900 dark:hover:text-white",
+                    active
+                      ? "font-semibold text-slate-900 dark:text-white"
+                      : "text-slate-600 dark:text-slate-400",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             <div className="group relative">
               <button
                 aria-haspopup="menu"

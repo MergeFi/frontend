@@ -78,17 +78,24 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         // Reconcile the cached address against Freighter's actual active
         // account. If the user switched accounts inside the extension
         // without touching MergeFi, the cached address is stale (#71).
-        getActiveFreighterAddress().then((live) => {
-          if (live && live !== stored) {
-            setAddressMismatch(true);
-          }
-        });
+        getActiveFreighterAddress()
+          .then((live) => {
+            if (live && live !== stored) {
+              setAddressMismatch(true);
+            }
+          })
+          .catch((err) => {
+            console.error("Failed to reconcile live Freighter address (#71):", err);
+          });
 
         // Also verify the extension's network matches the app's (#2).
-        checkNetworkMismatch().then((msg) => {
-          if (msg) setNetworkMismatch(true);
-        });
-      }
+        checkNetworkMismatch()
+          .then((msg) => {
+            if (msg) setNetworkMismatch(true);
+          })
+          .catch((err) => {
+            console.error("Failed to verify Freighter network alignment (#2):", err);
+          });
     }, 0);
     return () => window.clearTimeout(id);
   }, []);

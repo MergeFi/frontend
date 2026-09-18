@@ -12,7 +12,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { formatCurrency } from "@/lib/utils";
-import { apiRequest, fetchBounties, type FetchResult } from "@/lib/api";
+import { apiRequest, fetchBounties } from "@/lib/api";
 import {
   mockReputationProfiles,
   mockBounties,

@@ -290,4 +290,37 @@ describe("AuthContext — session hydration (#232)", () => {
     expect(screen.getByTestId("state")).toHaveTextContent("signed-out");
     expect(window.localStorage.getItem(TOKEN_KEY)).toBeNull();
   });
+
+  it("login() returns the resolved AuthUser (#413)", async () => {
+    let loginResult: AuthUser | null = null;
+    function LoginTestConsumer() {
+      const { login } = useAuth();
+      return (
+        <button
+          onClick={async () => {
+            loginResult = await login("valid-token");
+          }}
+        >
+          do-login
+        </button>
+      );
+    }
+
+    mockApiRequest.mockImplementation(async (path: string) => {
+      if (path === "/auth/me") return { userId: "user-1", username: "alice" };
+      return PROFILE;
+    });
+
+    render(
+      <AuthProvider>
+        <LoginTestConsumer />
+      </AuthProvider>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("do-login"));
+    });
+
+    expect(loginResult).toEqual(PROFILE);
+  });
 });

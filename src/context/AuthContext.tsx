@@ -15,9 +15,9 @@ import type { AuthUser } from "@/types";
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (token: string) => Promise<void>;
+  login: (token: string) => Promise<AuthUser | null>;
   logout: () => void;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<AuthUser | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -26,12 +26,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<AuthUser | null> => {
     const token = getToken();
     if (!token) {
       setUser(null);
       setLoading(false);
-      return;
+      return null;
     }
     const MAX_RETRIES = 3;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profile = await apiRequest<AuthUser>(`/users/${session.userId}`);
         setUser(profile);
         setLoading(false);
-        return;
+        return profile;
       } catch (err) {
         // Only clear the token on genuine auth failures (401/403).
         // Network errors, timeouts, and transient server errors should
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearToken();
           setUser(null);
           setLoading(false);
-          return;
+          return null;
         }
         if (attempt < MAX_RETRIES - 1) {
           await new Promise((r) => setTimeout(r, 2 ** attempt * 200));
@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // logging the user out on repeated network failures. The next
     // navigation or cross-tab event will re-trigger refresh.
     setLoading(false);
+    return null;
   }, []);
 
   useEffect(() => {
@@ -93,9 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useCrossTabStorage(TOKEN_KEY, handleTokenChangedElsewhere);
 
   const login = useCallback(
-    async (token: string) => {
+    async (token: string): Promise<AuthUser | null> => {
       persistToken(token);
-      await refresh();
+      return refresh();
     },
     [refresh],
   );

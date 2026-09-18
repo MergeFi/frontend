@@ -40,10 +40,10 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
     mockedUseSearchParams.mockReturnValue(new URLSearchParams({ token: "jwt-token" }));
   });
 
-  it("redirects maintainer to /dashboard/maintainer", async () => {
+  it("redirects maintainer to /dashboard/maintainer even when initial user state is null (fixes stale closure #413)", async () => {
     mockedUseAuth.mockReturnValue({
-      login: jest.fn().mockResolvedValue(undefined),
-      user: makeUser(["maintainer"]),
+      login: jest.fn().mockResolvedValue(makeUser(["maintainer"])),
+      user: null,
     });
     render(<CallbackClient />);
     await waitFor(() => {
@@ -53,8 +53,8 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
 
   it("redirects sponsor to /dashboard/sponsor", async () => {
     mockedUseAuth.mockReturnValue({
-      login: jest.fn().mockResolvedValue(undefined),
-      user: makeUser(["sponsor"]),
+      login: jest.fn().mockResolvedValue(makeUser(["sponsor"])),
+      user: null,
     });
     render(<CallbackClient />);
     await waitFor(() => {
@@ -64,8 +64,8 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
 
   it("redirects contributor to /dashboard/contributor", async () => {
     mockedUseAuth.mockReturnValue({
-      login: jest.fn().mockResolvedValue(undefined),
-      user: makeUser(["contributor"]),
+      login: jest.fn().mockResolvedValue(makeUser(["contributor"])),
+      user: null,
     });
     render(<CallbackClient />);
     await waitFor(() => {
@@ -75,8 +75,8 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
 
   it("prefers maintainer over sponsor when user has multiple roles", async () => {
     mockedUseAuth.mockReturnValue({
-      login: jest.fn().mockResolvedValue(undefined),
-      user: makeUser(["sponsor", "maintainer"]),
+      login: jest.fn().mockResolvedValue(makeUser(["sponsor", "maintainer"])),
+      user: null,
     });
     render(<CallbackClient />);
     await waitFor(() => {
@@ -86,8 +86,8 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
 
   it("falls back to contributor when roles array is empty", async () => {
     mockedUseAuth.mockReturnValue({
-      login: jest.fn().mockResolvedValue(undefined),
-      user: makeUser([]),
+      login: jest.fn().mockResolvedValue(makeUser([])),
+      user: null,
     });
     render(<CallbackClient />);
     await waitFor(() => {
@@ -95,9 +95,9 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
     });
   });
 
-  it("falls back to contributor when user is null", async () => {
+  it("falls back to contributor when resolved user is null", async () => {
     mockedUseAuth.mockReturnValue({
-      login: jest.fn().mockResolvedValue(undefined),
+      login: jest.fn().mockResolvedValue(null),
       user: null,
     });
     render(<CallbackClient />);

@@ -15,10 +15,7 @@ function renderWithEnv(nodeEnv: string, network: "TESTNET" | "PUBLIC") {
   jest.resetModules();
   jest.doMock("@/lib/config", () => ({ STELLAR_NETWORK: network }));
   const originalNodeEnv = process.env.NODE_ENV;
-  Object.defineProperty(process.env, "NODE_ENV", {
-    value: nodeEnv,
-    configurable: true,
-  });
+  (process.env as Record<string, string | undefined>).NODE_ENV = nodeEnv;
 
   // Imported after mocking so the module picks up the mocked config and
   // reads process.env.NODE_ENV at call time (inside the component body).
@@ -26,10 +23,7 @@ function renderWithEnv(nodeEnv: string, network: "TESTNET" | "PUBLIC") {
   const { NetworkBadge } = require("./NetworkBadge");
   const result = render(<NetworkBadge />);
 
-  Object.defineProperty(process.env, "NODE_ENV", {
-    value: originalNodeEnv,
-    configurable: true,
-  });
+  (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
   jest.dontMock("@/lib/config");
 
   return result;

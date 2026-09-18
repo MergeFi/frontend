@@ -39,3 +39,22 @@ describe("validateApiUrl — scheme restriction", () => {
     expect(() => validateApiUrl("not-a-url")).toThrow(/is not a valid URL/);
   });
 });
+
+describe("validateStellarNetwork (#474)", () => {
+  const { validateStellarNetwork } = require("./env");
+
+  it("accepts valid TESTNET and PUBLIC networks", () => {
+    expect(validateStellarNetwork("TESTNET")).toBe("TESTNET");
+    expect(validateStellarNetwork("PUBLIC")).toBe("PUBLIC");
+  });
+
+  it("rejects undefined or empty network", () => {
+    expect(() => validateStellarNetwork(undefined)).toThrow(EnvValidationError);
+    expect(() => validateStellarNetwork("")).toThrow(EnvValidationError);
+  });
+
+  it("rejects invalid network values", () => {
+    expect(() => validateStellarNetwork("MAINNET")).toThrow(EnvValidationError);
+    expect(() => validateStellarNetwork("public")).toThrow(EnvValidationError);
+  });
+});

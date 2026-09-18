@@ -108,7 +108,7 @@ export function parseMoneyInput(
   }
 
   const maxDecimals = asset === "XLM" ? 7 : 2;
-  const decimalPart = trimmed.includes(".") ? trimmed.split(".")[1] : "";
+  const decimalPart = (trimmed.includes(".") ? trimmed.split(".")[1] : "") ?? "";
 
   if (decimalPart.length > maxDecimals) {
     return {

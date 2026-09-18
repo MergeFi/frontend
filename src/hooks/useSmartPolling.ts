@@ -140,7 +140,7 @@ export function useSmartPolling<T>({
         dispatch({ type: 'STOP_POLLING' });
       } else if (enabled) {
         dispatch({ type: 'START_POLLING' });
-        fetchData();
+        void fetchData();
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }
@@ -168,7 +168,7 @@ export function useSmartPolling<T>({
     if (!hasInitialized.current) {
       hasInitialized.current = true;
       dispatch({ type: 'START_POLLING' });
-      fetchData();
+      void fetchData();
       intervalRef.current = setInterval(fetchData, currentIntervalRef.current);
     }
 

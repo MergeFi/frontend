@@ -48,16 +48,22 @@ export function CallbackClient() {
   return (
     <div className="mx-auto max-w-md px-6 py-24 text-center">
       {error ? (
-        <>
+        <div role="alert">
           <p className="font-medium text-rose-600">{error}</p>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             {error === "No token was returned by GitHub sign-in."
               ? "GitHub did not return an authentication token. Please try signing in again."
               : "Make sure the mergefi-backend is running and reachable."}
           </p>
-        </>
+        </div>
       ) : (
-        <p className="text-slate-500 dark:text-slate-400">Finishing sign-in…</p>
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-slate-500 dark:text-slate-400"
+        >
+          Finishing sign-in…
+        </p>
       )}
     </div>
   );

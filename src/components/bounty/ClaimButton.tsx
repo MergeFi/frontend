@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useReducer } from 'react';
+import React, { useEffect, useRef, useReducer } from 'react';
 import { useClaimRace } from '@/hooks/useClaimRace';
 import { useBountyStatus } from '@/hooks/useBountyStatus';
 import type { Bounty } from '@/types/bounty';

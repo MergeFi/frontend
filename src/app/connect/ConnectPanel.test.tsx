@@ -92,7 +92,18 @@ describe("ConnectPanel — wallet card", () => {
     render(<ConnectPanel />);
 
     expect(screen.getByText("Connected: GABC...WXYZ (TESTNET)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Disconnect" })).toBeInTheDocument();
     expect(screen.queryByText("Connect Freighter")).not.toBeInTheDocument();
+  });
+
+  it("calls disconnect when the Disconnect button is clicked", () => {
+    const disconnect = jest.fn();
+    setAuth(null);
+    setWallet({ address: "GABCDEFGH1234567890WXYZ", network: "TESTNET", disconnect });
+    render(<ConnectPanel />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(disconnect).toHaveBeenCalledTimes(1);
   });
 
   it("disables the button and shows the connecting label while connecting", () => {

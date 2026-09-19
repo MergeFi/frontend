@@ -65,7 +65,10 @@ export default async function IssueDetailPage({
     mockBounties.find((b) => b.id === id),
   );
 
-  if (!bounty) notFound();
+  if (!bounty) {
+    notFound();
+    return null;
+  }
 
   const days = bounty.deadline ? daysUntil(bounty.deadline) : null;
 

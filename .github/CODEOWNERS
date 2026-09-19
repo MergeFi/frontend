@@ -1,0 +1,21 @@
+# Lines starting with '#' are comments.
+# Each line is a file pattern followed by one or more owners.
+
+# Global default owners for everything in the repository
+* @MergeFi/maintainers
+
+# CI / CD workflows & GitHub configuration
+/.github/ @MergeFi/maintainers
+
+# Build configuration and environment validation
+/next.config.ts @MergeFi/maintainers
+/tsconfig.json @MergeFi/maintainers
+/src/lib/env.ts @MergeFi/maintainers
+/src/lib/config.ts @MergeFi/maintainers
+
+# Core Web3 / Stellar Wallet integrations
+/src/lib/wallet.ts @MergeFi/maintainers
+/src/context/WalletContext.tsx @MergeFi/maintainers
+
+# Dashboard views and role-based clients
+/src/app/dashboard/ @MergeFi/maintainers

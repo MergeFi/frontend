@@ -8,7 +8,7 @@ import { useWallet } from "@/context/WalletContext";
 
 export function ConnectPanel() {
   const { user } = useAuth();
-  const { address, network, connecting, error, connect } = useWallet();
+  const { address, network, connecting, error, connect, disconnect } = useWallet();
 
   return (
     <div className="mx-auto max-w-lg space-y-6 px-6 py-16">
@@ -63,9 +63,19 @@ export function ConnectPanel() {
         </div>
         {address ? (
           <>
-            <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">
-              <CheckCircle2 className="h-4 w-4" />
-              Connected: {address.slice(0, 4)}...{address.slice(-4)} ({network})
+            <div className="mt-4 flex items-center justify-between rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Connected: {address.slice(0, 4)}...{address.slice(-4)} ({network})</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={disconnect}
+              >
+                Disconnect
+              </Button>
             </div>
             {user?.stellarAddress && user.stellarAddress !== address && (
               <div role="alert" className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-amber-200">

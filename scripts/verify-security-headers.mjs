@@ -32,6 +32,7 @@ const EXPECTED_HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
   "strict-transport-security": "max-age=86400",
+  "permissions-policy": "camera=(), microphone=(), geolocation=(), browsing-topics=()",
 };
 
 // A representative spread: the static homepage, a dynamic route, the OAuth
@@ -99,7 +100,7 @@ async function main() {
   const server = spawn(NEXT_BIN, ["start", "-p", String(PORT)], {
     cwd: PROJECT_ROOT,
     stdio: ["ignore", "pipe", "pipe"],
-    detached: process.platform !== "win32",
+    detached: true,
   });
 
   let serverOutput = "";

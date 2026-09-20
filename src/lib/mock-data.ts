@@ -87,6 +87,37 @@ export const mockBounties: Bounty[] = [
     labels: ["maintenance"],
     claimedBy: "devrel_ana",
   },
+  {
+    id: "b6",
+    repo: "stellar-anchor-tests",
+    org: "stellar-labs",
+    issueNumber: 114,
+    title: "Implement SEP-38 quote validation test suite in Rust",
+    description:
+      "Anchor test runner needs automated verification for indicative and firm quote responses across varied asset pairs.",
+    reward: 1500,
+    asset: "XLM",
+    difficulty: "intermediate",
+    status: "open",
+    deadline: new Date(Date.now() + 8 * 86400000).toISOString(),
+    labels: ["sep-38", "anchors", "rust"],
+  },
+  {
+    id: "b7",
+    repo: "soroban-contracts",
+    org: "mergefi",
+    issueNumber: 42,
+    title: "Add reentrancy guard macro to token swap adapter",
+    description:
+      "Hardens the cross-pool routing path against reentrancy callbacks during multi-hop asset liquidations.",
+    reward: 3500,
+    asset: "XLM",
+    difficulty: "advanced",
+    status: "claimed",
+    deadline: new Date(Date.now() + 4 * 86400000).toISOString(),
+    labels: ["security", "soroban"],
+    claimedBy: "priyaeth",
+  },
 ];
 
 export const mockMilestones: Milestone[] = [
@@ -110,6 +141,16 @@ export const mockMilestones: Milestone[] = [
     issueCount: 8,
     completedCount: 3,
   },
+  {
+    id: "m3",
+    name: "v0.8: Core Protocol Bridge",
+    repo: "stellar-anchor-tests",
+    budget: 50000,
+    distributed: 18500,
+    asset: "XLM",
+    issueCount: 10,
+    completedCount: 4,
+  },
 ];
 
 export const mockMaintenancePools: MaintenancePool[] = [
@@ -119,6 +160,13 @@ export const mockMaintenancePools: MaintenancePool[] = [
     monthlyDeposit: 500,
     balance: 1240,
     asset: "USDC",
+  },
+  {
+    id: "p2",
+    repo: "stellar-anchor-tests",
+    monthlyDeposit: 4000,
+    balance: 12800,
+    asset: "XLM",
   },
 ];
 

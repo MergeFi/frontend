@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { GitMerge, ChevronDown, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -21,6 +22,7 @@ const dashboardLinks = [
 
 export function Navbar() {
   const { user, loading, logout } = useAuth();
+  const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
@@ -33,11 +35,23 @@ export function Navbar() {
             MergeFi
           </Link>
           <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400 md:flex">
-            {links.map((link) => (
-              <Link key={link.href} href={link.href} className="hover:text-slate-900 dark:hover:text-white">
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) => {
+              const isActive = pathname === link.href || pathname?.startsWith(link.href + "/");
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={
+                    isActive
+                      ? "font-semibold text-slate-900 dark:text-white"
+                      : "hover:text-slate-900 dark:hover:text-white"
+                  }
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             <div className="group relative">
               <button
                 aria-haspopup="menu"
@@ -56,20 +70,36 @@ export function Navbar() {
                   themselves. */}
               <div className="invisible absolute left-0 top-full pt-3 opacity-0 transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                 <div className="w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900">
-                  {dashboardLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
+                  {dashboardLinks.map((link) => {
+                    const isActive = pathname === link.href || pathname?.startsWith(link.href + "/");
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`block rounded-lg px-3 py-2 text-sm ${
+                          isActive
+                            ? "bg-slate-50 font-semibold text-slate-900 dark:bg-slate-800 dark:text-white"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             </div>
             {user && (
-              <Link href={`/reputation/${user.username}`} className="hover:text-slate-900 dark:hover:text-white">
+              <Link
+                href={`/reputation/${user.username}`}
+                aria-current={pathname === `/reputation/${user.username}` ? "page" : undefined}
+                className={
+                  pathname === `/reputation/${user.username}`
+                    ? "font-semibold text-slate-900 dark:text-white"
+                    : "hover:text-slate-900 dark:hover:text-white"
+                }
+              >
                 Reputation
               </Link>
             )}

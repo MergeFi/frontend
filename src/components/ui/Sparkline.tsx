@@ -28,6 +28,7 @@ export function Sparkline({
       viewBox={`0 0 ${width} ${height}`}
       className={className}
       preserveAspectRatio="none"
+      aria-hidden="true"
     >
       <polyline
         points={areaPoints}

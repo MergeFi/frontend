@@ -87,6 +87,7 @@ export function PoolDepositButton({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const step = asset === "XLM" ? "0.0000001" : "0.01";
   const validation = parseMoneyInput(amount, asset);
   const inputValid = validation.valid;
 
@@ -141,8 +142,8 @@ export function PoolDepositButton({
       <input
         id={inputId}
         type="number"
-        min="0.01"
-        step="0.01"
+        min={step}
+        step={step}
         value={amount}
         onChange={handleAmountChange}
         className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"

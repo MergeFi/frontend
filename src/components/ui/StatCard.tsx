@@ -117,6 +117,7 @@ function valueFontClass(str: string): string {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
+// Normalized StatCard supporting string or numeric metrics with standard fallback
 export function StatCard({
   label,
   value,

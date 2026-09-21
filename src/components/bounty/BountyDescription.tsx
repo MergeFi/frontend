@@ -51,20 +51,25 @@ const markdownComponents: Components = {
     <h6 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">{children}</h6>
   ),
   h6: ({ children }) => (
-    <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">{children}</p>
+    <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-white">{children}</p>
   ),
   // Issue bodies embed screenshots from arbitrary GitHub-hosted URLs, not
   // just the hostnames next.config.ts allowlists for next/image (#215) — a
   // plain <img>, sanitized the same way as every other element here (see
   // the doc comment below), is what actually works for that content.
+  // Wrapped in a block container with h-auto and min-h reservation to prevent
+  // Cumulative Layout Shift (CLS) on dynamic image loads (#396).
   img: ({ src, alt }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={typeof src === "string" ? src : undefined}
-      alt={alt ?? ""}
-      loading="lazy"
-      className="max-w-full rounded-xl border border-slate-200 dark:border-slate-700"
-    />
+    <span className="my-2 block max-w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100/50 dark:border-slate-700 dark:bg-slate-800/50">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={typeof src === "string" ? src : undefined}
+        alt={alt ?? ""}
+        loading="lazy"
+        decoding="async"
+        className="block h-auto max-w-full rounded-xl"
+      />
+    </span>
   ),
   blockquote: ({ children }) => (
     <blockquote className="border-l-2 border-slate-300 pl-4 text-slate-500 italic dark:border-slate-700 dark:text-slate-400">
@@ -95,7 +100,7 @@ const markdownComponents: Components = {
   ),
 };
 
-/**
+*/*
  * Renders a bounty's description — raw GitHub issue Markdown, i.e.
  * untrusted, third-party, attacker-reachable content with no backend
  * sanitization guaranteed anywhere in this pipeline (see #89) — as safely

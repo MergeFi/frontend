@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CallbackClient } from "./CallbackClient";
+
+export const metadata: Metadata = {
+  title: "Signing in… | MergeFi",
+  description: "Completing GitHub authentication for MergeFi.",
+};
 
 export default function AuthCallbackPage() {
   return (

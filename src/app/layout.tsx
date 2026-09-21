@@ -17,10 +17,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mergefi.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "MergeFi | Merge code. Earn instantly.",
   description:
     "MergeFi is the financial infrastructure for open source: fund GitHub issues, escrow payment with Soroban smart contracts on Stellar, and pay contributors automatically when work is merged.",
+  openGraph: {
+    title: "MergeFi | Merge code. Earn instantly.",
+    description:
+      "MergeFi is the financial infrastructure for open source: fund GitHub issues, escrow payment with Soroban smart contracts on Stellar, and pay contributors automatically when work is merged.",
+    url: SITE_URL,
+    siteName: "MergeFi",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MergeFi | Merge code. Earn instantly.",
+    description:
+      "MergeFi is the financial infrastructure for open source: fund GitHub issues, escrow payment with Soroban smart contracts on Stellar, and pay contributors automatically when work is merged.",
+  },
 };
 
 export const viewport: Viewport = {

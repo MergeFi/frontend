@@ -12,7 +12,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { formatCurrency } from "@/lib/utils";
-import { apiRequest, fetchBounties, type FetchResult } from "@/lib/api";
+import { apiRequest, fetchBounties } from "@/lib/api";
 import {
   mockReputationProfiles,
   mockBounties,
@@ -43,6 +43,8 @@ const earningsChartData = contributorEarningsHistory.map((value, i) => ({
 
 export default function ContributorDashboardClient() {
   const { user, loading } = useAuth();
+  const userId = user?.id;
+  const username = user?.username;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -58,7 +60,7 @@ export default function ContributorDashboardClient() {
   useEffect(() => {
     if (loading) return;
 
-    if (!user) {
+    if (!userId || !username) {
       const demo = mockReputationProfiles.priyaeth;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStats({
@@ -72,16 +74,20 @@ export default function ContributorDashboardClient() {
       return;
     }
 
+    const controller = new AbortController();
     setFetchStatus("loading");
 
     // Parallelize independent fetches: bounties and reputation are unrelated
     // resources — no reason to waterfall them (#8).
-    const bountiesResult = fetchBounties(mockBounties);
+    const bountiesResult = fetchBounties(mockBounties, {
+      signal: controller.signal,
+    });
     const reputationResult = apiRequest<ReputationSnapshot | null>(
-      `/reputation/${user.id}`,
+      `/reputation/${userId}`,
+      { signal: controller.signal },
     ).then(
       (snapshot) => ({
-        handle: user.username,
+        handle: username,
         lifetimeEarnings: snapshot ? Number(snapshot.totalEarnings) : 0,
         mergedPRs: snapshot ? snapshot.mergedPrCount : 0,
         completionRate: snapshot ? Number(snapshot.completionRate) / 100 : 0,
@@ -91,6 +97,7 @@ export default function ContributorDashboardClient() {
 
     void Promise.all([bountiesResult, reputationResult]).then(
       ([bountiesRes, statsResult]) => {
+        if (controller.signal.aborted) return;
         setBounties(bountiesRes.data);
         if (statsResult) {
           setStats(statsResult);
@@ -102,7 +109,11 @@ export default function ContributorDashboardClient() {
         setIsLive(true);
       },
     );
-  }, [user, loading]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [userId, username, loading]);
 
   // Derive display handle: show username if live, else demo handle.
   const handle = stats?.handle ?? (user?.username ?? "you");

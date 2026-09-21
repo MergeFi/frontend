@@ -13,7 +13,7 @@ export interface WalletConnection {
   network: string;
 }
 
-const NETWORK_PASSPHRASES: Record<string, string> = {
+export const NETWORK_PASSPHRASES: Record<string, string> = {
   PUBLIC: "Public Global Stellar Network ; September 2015",
   TESTNET: "Test SDF Network ; September 2015",
 };
@@ -101,8 +101,7 @@ export async function signTransaction(xdr: string, address: string) {
   return freighterSignTransaction(xdr, {
     address,
     networkPassphrase:
-      STELLAR_NETWORK === "PUBLIC"
-        ? "Public Global Stellar Network ; September 2015"
-        : "Test SDF Network ; September 2015",
+      NETWORK_PASSPHRASES[STELLAR_NETWORK] ?? NETWORK_PASSPHRASES.TESTNET,
   });
 }
+

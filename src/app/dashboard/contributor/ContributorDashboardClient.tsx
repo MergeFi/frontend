@@ -56,6 +56,7 @@ export default function ContributorDashboardClient() {
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
 
   useEffect(() => {
+    let canceled = false;
     if (loading) return;
 
     if (!user) {
@@ -91,6 +92,7 @@ export default function ContributorDashboardClient() {
 
     void Promise.all([bountiesResult, reputationResult]).then(
       ([bountiesRes, statsResult]) => {
+        if (canceled) return;
         setBounties(bountiesRes.data);
         if (statsResult) {
           setStats(statsResult);
@@ -102,6 +104,9 @@ export default function ContributorDashboardClient() {
         setIsLive(true);
       },
     );
+    return () => {
+      canceled = true;
+    };
   }, [user, loading]);
 
   // Derive display handle: show username if live, else demo handle.

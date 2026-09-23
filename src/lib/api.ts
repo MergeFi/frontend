@@ -34,21 +34,35 @@ export interface FetchResult<T> {
   source: "live" | "mock";
 }
 
+export const REQUEST_TIMEOUT_MS = 20_000;
+
 function logFetchError(path: string, kind: "network" | "http" | "parse", detail: string) {
   console.error(`[api] ${kind} error on ${path}: ${detail}`);
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const signal = init?.signal ?? timeout;
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
       cache: "no-store",
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
+      signal,
     });
   } catch (err) {
-    logFetchError(path, "network", err instanceof Error ? err.message : String(err));
-    throw new ApiUnavailableError(`Network error on ${path}`);
+    const isTimeout =
+      (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "TimeoutError") ||
+      (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError"));
+    logFetchError(
+      path,
+      "network",
+      isTimeout ? "Request timed out" : err instanceof Error ? err.message : String(err),
+    );
+    throw new ApiUnavailableError(
+      isTimeout ? `Request timed out on ${path}` : `Network error on ${path}`,
+    );
   }
   if (!res.ok) {
     logFetchError(path, "http", `${res.status} ${res.statusText}`);
@@ -61,8 +75,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiUnavailableError(`Invalid JSON from ${path}`);
   }
 }
-
-const REQUEST_TIMEOUT_MS = 20_000;
 
 // ---------------------------------------------------------------------------
 // In-flight request deduplication (#44)

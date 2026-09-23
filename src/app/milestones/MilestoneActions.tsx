@@ -86,6 +86,7 @@ export function PoolDepositButton({
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const validation = parseMoneyInput(amount, asset);
   const inputValid = validation.valid;
@@ -93,10 +94,12 @@ export function PoolDepositButton({
   function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
     setAmount(e.target.value);
     setError(null);
+    setSuccess(false);
   }
 
   async function handleDeposit() {
     setError(null);
+    setSuccess(false);
     // Re-validate at submit time in case state drifted
     const result = parseMoneyInput(amount, asset);
     if (!result.valid) {
@@ -123,6 +126,7 @@ export function PoolDepositButton({
         funderAddress: walletAddress,
         idempotencyKey: generateIdempotencyKey(),
       });
+      setSuccess(true);
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");

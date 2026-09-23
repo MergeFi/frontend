@@ -41,10 +41,10 @@ export function Navbar() {
             <div className="group relative">
               <button
                 aria-haspopup="menu"
-                className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white"
+                className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
               >
                 Dashboards
-                <ChevronDown className="h-3.5 w-3.5" />
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
               {/* group-focus-within alongside group-hover: the submenu was
                   only reachable via mouse hover — a keyboard user tabbing
@@ -89,10 +89,10 @@ export function Navbar() {
               </Link>
               <button
                 onClick={logout}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                 title="Sign out"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           ) : (

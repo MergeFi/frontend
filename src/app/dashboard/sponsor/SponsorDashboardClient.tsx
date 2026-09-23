@@ -9,6 +9,7 @@ import { StatCard, type StatCardStatus } from "@/components/ui/StatCard";
 import { BarChart } from "@/components/ui/BarChart";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
+import { Card } from "@/components/ui/Card";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
 import { adaptBounty, type RawBounty, type RawMilestone } from "@/lib/adapters";
@@ -175,7 +176,7 @@ export default function SponsorDashboardClient() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card>
           <div className="flex items-center gap-2">
             <h2 className="font-medium text-slate-900 dark:text-white">Spend, last 8 weeks</h2>
             {isLive && (
@@ -187,8 +188,8 @@ export default function SponsorDashboardClient() {
           <div className="mt-6">
             <BarChart data={spendChartData} formatValue={(v) => formatCurrency(v)} />
           </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        </Card>
+        <Card>
           <div className="flex items-center gap-2">
             <h2 className="font-medium text-slate-900 dark:text-white">Spend by repository</h2>
             {isLive && (
@@ -215,7 +216,7 @@ export default function SponsorDashboardClient() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
 
       <h2 className="mt-10 text-xl font-semibold text-slate-900 dark:text-white">Active bounties</h2>

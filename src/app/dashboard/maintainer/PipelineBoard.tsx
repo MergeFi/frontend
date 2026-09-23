@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
+import { Card } from "@/components/ui/Card";
 import type { Bounty, BountyStatus } from "@/types";
 
 // Statuses shown as a pipeline column, in left-to-right order.
@@ -102,7 +103,7 @@ function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[]
  */
 export function PipelineBoard({ bounties }: { bounties: Bounty[] }) {
   return (
-    <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <Card className="mt-8">
       <h2 className="font-medium text-slate-900 dark:text-white">Pipeline</h2>
       <div className="mt-5 flex gap-4 overflow-x-auto">
         {pipelineStages.map((stage) => (
@@ -113,6 +114,6 @@ export function PipelineBoard({ bounties }: { bounties: Bounty[] }) {
           />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }

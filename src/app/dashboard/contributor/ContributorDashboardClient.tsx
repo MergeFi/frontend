@@ -246,6 +246,13 @@ export default function ContributorDashboardClient() {
               ? "Claim a bounty from the list below to get started."
               : "Completed and paid-out bounties will show up here."
           }
+          action={
+            tab === "active" ? (
+              <a href="#open-bounties" className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                Browse open bounties
+              </a>
+            ) : undefined
+          }
         />
       )}
 

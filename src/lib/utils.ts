@@ -128,9 +128,17 @@ export function parseMoneyInput(
   return { valid: true, normalized };
 }
 
+/**
+ * Format a fraction (0–1) as a rounded percentage string.
+ *
+ * Clamps the input to [0, 1] before converting, matching the defensive
+ * pattern established by {@link formatCurrency}'s SANITY_CEILING.
+ * Values outside this range are almost certainly data bugs (see #91).
+ */
 export function formatPercent(value: number) {
   if (!Number.isFinite(value)) return "0%";
-  return `${Math.round(value * 100)}%`;
+  const clamped = Math.min(1, Math.max(0, value));
+  return `${Math.round(clamped * 100)}%`;
 }
 
 /**

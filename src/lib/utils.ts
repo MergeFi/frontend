@@ -142,6 +142,15 @@ export function formatPercent(value: number) {
 }
 
 /**
+ * Format a numeric hour value with one decimal place and an "h" suffix.
+ * Used for avgReviewTimeHours and similar duration metrics (#437).
+ */
+export function formatHours(value: number) {
+  if (!Number.isFinite(value)) return "0h";
+  return `${value.toFixed(1)}h`;
+}
+
+/**
  * DST-safe calendar-day difference between a deadline and now.
  * Uses UTC date arithmetic (not wall-clock ms division) so results are
  * consistent regardless of the viewer's timezone or DST state.

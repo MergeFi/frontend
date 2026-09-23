@@ -19,7 +19,7 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
     <Link
       href={`/issues/${bounty.id}`}
       prefetch={false}
-      className={`relative block overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all before:absolute before:inset-y-0 before:left-0 before:w-1 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 ${accentByDifficulty[bounty.difficulty]}`}
+      className={`relative block overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all before:absolute before:inset-y-0 before:left-0 before:w-1 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900 ${accentByDifficulty[bounty.difficulty]}`}
     >
       <div className="flex items-start justify-between gap-4 pl-2">
         <div className="flex items-start gap-3">

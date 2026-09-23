@@ -93,7 +93,7 @@ export default async function IssueDetailPage({
       <div className={`mt-8 grid gap-4 ${bounty.milestoneId ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <ShieldCheck aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             <span className="text-sm">Escrow status</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
@@ -102,7 +102,7 @@ export default async function IssueDetailPage({
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <Clock aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             <span className="text-sm">Deadline</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
@@ -111,7 +111,7 @@ export default async function IssueDetailPage({
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <GitBranch className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <GitBranch aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             <span className="text-sm">Claimed by</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
@@ -121,7 +121,7 @@ export default async function IssueDetailPage({
         {bounty.milestoneId && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-              <MilestoneIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <MilestoneIcon aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               <span className="text-sm">Milestone</span>
             </div>
             <p className="mt-2 font-medium text-slate-900 dark:text-white">

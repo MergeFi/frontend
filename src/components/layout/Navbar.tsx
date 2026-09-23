@@ -32,7 +32,7 @@ export function Navbar() {
             </span>
             MergeFi
           </Link>
-          <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400 md:flex">
+          <nav aria-label="Main" className="hidden items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400 md:flex">
             {links.map((link) => (
               <Link key={link.href} href={link.href} className="hover:text-slate-900 dark:hover:text-white">
                 {link.label}

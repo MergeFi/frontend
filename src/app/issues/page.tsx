@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { GitPullRequest } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 
 const issuesDescription =
   "Browse paid, escrow-backed GitHub issues funded through MergeFi and ready for contributors.";
@@ -46,6 +48,11 @@ export default async function IssuesPage() {
           icon={GitPullRequest}
           title="No bounties yet"
           description="Check back soon — funded issues appear here once sponsors lock them in escrow."
+          action={
+            <Link href="/connect">
+              <Button size="sm">Fund a bounty</Button>
+            </Link>
+          }
         />
       ) : (
         <>

@@ -69,7 +69,7 @@ export function DashboardShell({
           <p className="px-3 text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
             Dashboard
           </p>
-          <nav className="mt-3 space-y-1">
+          <nav aria-label="Dashboard sections" className="mt-3 space-y-1">
             {items.map((item) => {
               // Overview links (/dashboard/*) use exact matching so they
               // don't stay highlighted while browsing unrelated sections.
@@ -102,7 +102,7 @@ export function DashboardShell({
           <p className="mt-8 px-3 text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
             Switch role
           </p>
-          <nav className="mt-3 space-y-1">
+          <nav aria-label="Switch role" className="mt-3 space-y-1">
             {roleSwitcher.map((r) => (
               <Link
                 key={r.role}

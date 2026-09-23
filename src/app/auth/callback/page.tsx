@@ -6,7 +6,7 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p role="status" aria-live="polite" className="text-sm text-slate-500 dark:text-slate-400">
             Finishing sign-in…
           </p>
         </div>

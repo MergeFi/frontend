@@ -85,6 +85,7 @@ export function DashboardShell({
                 <Link
                   key={item.label}
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     active
@@ -107,6 +108,7 @@ export function DashboardShell({
               <Link
                 key={r.role}
                 href={r.href}
+                aria-current={r.role === role ? "page" : undefined}
                 className={cn(
                   "block rounded-lg px-3 py-2 text-sm transition-colors",
                   r.role === role

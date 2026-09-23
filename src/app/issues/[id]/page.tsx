@@ -90,7 +90,7 @@ export default async function IssueDetailPage({
 
       <BountyDescription description={bounty.description} />
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+      <div className={`mt-8 grid gap-4 ${bounty.milestoneId ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />

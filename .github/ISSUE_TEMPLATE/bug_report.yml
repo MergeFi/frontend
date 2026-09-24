@@ -1,0 +1,63 @@
+name: Bug Report
+description: File a structured bug report to help us improve MergeFi Frontend
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue! Please provide as much detail as possible to help us reproduce and fix the bug quickly.
+  - type: input
+    id: affected-area
+    attributes:
+      label: Affected Area / Route
+      description: Which route, page, or component is affected? (e.g. `/issues/[id]`, `MilestoneActions.tsx`, `Navbar`)
+      placeholder: e.g. /milestones
+    validations:
+      required: true
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Problem Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps To Reproduce
+      description: How can maintainers or contributors reproduce this behavior?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A concise description of what you expected to happen.
+      placeholder: What should have happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Suggested Difficulty Level
+      description: Suggested difficulty label for contribution triage.
+      options:
+        - "good first issue"
+        - "difficulty: easy"
+        - "difficulty: medium"
+        - "difficulty: hard"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checkboxes
+    attributes:
+      label: Pre-submission Checks
+      options:
+        - label: I have searched existing issues and confirmed this is not a duplicate.
+          required: true

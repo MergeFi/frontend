@@ -1,0 +1,52 @@
+name: Feature Request
+description: Suggest an idea, enhancement, or new user experience for MergeFi
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please describe your idea and how it benefits MergeFi contributors, sponsors, or maintainers.
+  - type: textarea
+    id: problem-motivation
+    attributes:
+      label: Problem / Motivation
+      description: Is your feature related to a problem or limitation? (e.g. I'm always frustrated when...)
+      placeholder: Describe the problem...
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: A clear and concise description of what you want to happen.
+      placeholder: Describe your solution...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions, mockups, or workarounds you've considered.
+      placeholder: Describe alternatives...
+    validations:
+      required: false
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - "Web3 / Wallet Integration"
+        - "Dashboard & UX"
+        - "Accessibility (a11y)"
+        - "Performance & SEO"
+        - "Developer Experience"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checkboxes
+    attributes:
+      label: Pre-submission Checks
+      options:
+        - label: I have searched existing issues to ensure this feature hasn't been proposed already.
+          required: true

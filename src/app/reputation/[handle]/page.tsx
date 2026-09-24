@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { fetchReputationByUsername } from "@/lib/api";
 import { mockReputationProfiles } from "@/lib/mock-data";
+import { formatHours } from "@/lib/utils";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
+import { Card } from "@/components/ui/Card";
 
 export async function generateMetadata({
   params,
@@ -103,7 +105,7 @@ export default async function ReputationPage({
       </div>
 
       <div className="mt-8">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card>
           <h2 className="font-medium text-slate-900 dark:text-white">Languages</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {profile.languages.map((lang) => (
@@ -113,11 +115,11 @@ export default async function ReputationPage({
               <span className="text-sm text-slate-400 dark:text-slate-500">No data yet.</span>
             )}
           </div>
-        </div>
+        </Card>
       </div>
 
       <p className="mt-8 text-sm text-slate-500 dark:text-slate-400">
-        Average review time: {profile.avgReviewTimeHours.toFixed(1)}h
+        Average review time: {formatHours(profile.avgReviewTimeHours)}
       </p>
     </div>
   );

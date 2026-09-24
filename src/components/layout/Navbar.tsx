@@ -45,6 +45,7 @@ export function Navbar() {
                 className="flex items-center gap-1 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:hover:text-white"
               >
                 Dashboards
+                <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
               {/* group-focus-within alongside group-hover: the submenu was

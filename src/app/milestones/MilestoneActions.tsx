@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { useWallet } from "@/context/WalletContext";
-import { apiPost, ApiRequestError } from "@/lib/api";
+import { useWalletAction } from "@/hooks/useWalletAction";
+import { apiPost } from "@/lib/api";
 import { parseMoneyInput, generateIdempotencyKey } from "@/lib/utils";
 
 export function MilestoneFundButton({
@@ -14,42 +13,17 @@ export function MilestoneFundButton({
   milestoneId: string;
   milestoneName?: string;
 }) {
-  const router = useRouter();
-  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { execute: withWallet, pending, connecting, error } = useWalletAction({
+    defaultConnectError: "Connect a Stellar wallet to fund this milestone.",
+  });
 
   async function handleFund() {
-    setError(null);
-
-    if (addressMismatch) {
-      setError(
-        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
-      );
-      return;
-    }
-
-    setPending(true);
-    try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        // getError() reads WalletContext's specific failure reason off a
-        // ref, always current the instant connect() settles — unlike the
-        // `error` context value, which may still reflect a pre-await
-        // render (#235).
-        setError(getWalletError() ?? "Connect a Stellar wallet to fund this milestone.");
-        return;
-      }
+    await withWallet(async (walletAddress) => {
       await apiPost(`/milestones/${milestoneId}/fund`, {
         funderAddress: walletAddress,
         idempotencyKey: generateIdempotencyKey(),
       });
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
-    } finally {
-      setPending(false);
-    }
+    });
   }
 
   return (
@@ -81,58 +55,46 @@ export function PoolDepositButton({
   poolRepo?: string;
   asset?: "USDC" | "XLM";
 }) {
-  const router = useRouter();
-  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
   const [amount, setAmount] = useState("100");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [inputError, setInputError] = useState<string | null>(null);
+
+  const {
+    execute: withWallet,
+    pending,
+    connecting,
+    error: walletError,
+    setError: setWalletError,
+  } = useWalletAction({
+    defaultConnectError: "Connect a Stellar wallet to deposit.",
+  });
+
+  const error = inputError ?? walletError;
 
   const validation = parseMoneyInput(amount, asset);
   const inputValid = validation.valid;
 
   function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
     setAmount(e.target.value);
-    setError(null);
-    setSuccess(false);
+    setInputError(null);
+    setWalletError(null);
   }
 
   async function handleDeposit() {
-    setError(null);
-    setSuccess(false);
+    setInputError(null);
     // Re-validate at submit time in case state drifted
     const result = parseMoneyInput(amount, asset);
     if (!result.valid) {
-      setError(result.error ?? "Invalid amount.");
+      setInputError(result.error ?? "Invalid amount.");
       return;
     }
 
-    if (addressMismatch) {
-      setError(
-        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
-      );
-      return;
-    }
-
-    setPending(true);
-    try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        setError(getWalletError() ?? "Connect a Stellar wallet to deposit.");
-        return;
-      }
+    await withWallet(async (walletAddress) => {
       await apiPost(`/maintenance-pools/${poolId}/deposit`, {
         amount: result.normalized,
         funderAddress: walletAddress,
         idempotencyKey: generateIdempotencyKey(),
       });
-      setSuccess(true);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
-    } finally {
-      setPending(false);
-    }
+    });
   }
 
   const inputId = `pool-deposit-${poolId}`;

@@ -4,6 +4,7 @@ import { ShieldCheck, Clock, GitBranch, Milestone as MilestoneIcon } from "lucid
 import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { StatusBadge, DifficultyBadge, Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { formatCurrency, daysUntil, formatDaysUntil } from "@/lib/utils";
 import type { BountyStatus } from "@/types";
@@ -91,43 +92,47 @@ export default async function IssueDetailPage({
       <BountyDescription description={bounty.description} />
 
       <div className={`mt-8 grid gap-4 ${bounty.milestoneId ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card padding="sm">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <ShieldCheck aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
             <span className="text-sm">Escrow status</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
             {ESCROW_STATUS_LABELS[bounty.status]}
           </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        </Card>
+        <Card padding="sm">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <Clock aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
             <span className="text-sm">Deadline</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
             {formatDaysUntil(days)}
           </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        </Card>
+        <Card padding="sm">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <GitBranch aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <GitBranch className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
             <span className="text-sm">Claimed by</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
             {bounty.claimedBy ?? "Unclaimed"}
           </p>
-        </div>
+        </Card>
         {bounty.milestoneId && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Card padding="sm">
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <MilestoneIcon aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <MilestoneIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
               <span className="text-sm">Milestone</span>
             </div>
             <p className="mt-2 font-medium text-slate-900 dark:text-white">
               Part of a funded milestone
             </p>
-          </div>
+          </Card>
         )}
       </div>
 

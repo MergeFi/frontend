@@ -8,6 +8,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
+import { Card } from "@/components/ui/Card";
 import { formatCurrency } from "@/lib/utils";
 import { PipelineBoard, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
 
@@ -100,9 +101,10 @@ export default async function MaintainerDashboardPage() {
           </h2>
           <div className="mt-4 space-y-3">
             {needsReview.map((bounty) => (
-              <div
+              <Card
                 key={bounty.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                padding="sm"
+                className="flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3">
                   <Avatar seed={`${bounty.org}/${bounty.repo}`} size={36} className="rounded-xl" />
@@ -124,7 +126,7 @@ export default async function MaintainerDashboardPage() {
                     {formatCurrency(bounty.reward, bounty.asset)}
                   </span>
                 </div>
-              </div>
+              </Card>
             ))}
             {needsReview.length === 0 && (
               <EmptyState

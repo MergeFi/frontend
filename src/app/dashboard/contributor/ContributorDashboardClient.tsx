@@ -11,6 +11,7 @@ import { BarChart } from "@/components/ui/BarChart";
 import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
+import { Card } from "@/components/ui/Card";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, fetchBounties } from "@/lib/api";
 import {
@@ -193,7 +194,7 @@ export default function ContributorDashboardClient() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card>
           <div className="flex items-center gap-2">
             <h2 className="font-medium text-slate-900 dark:text-white">Earnings, last 8 weeks</h2>
             {isLive && (
@@ -205,7 +206,7 @@ export default function ContributorDashboardClient() {
           <div className="mt-6">
             <BarChart data={earningsChartData} formatValue={(v) => formatCurrency(v)} />
           </div>
-        </div>
+        </Card>
         <div>
           <div className="flex items-center gap-2">
             <h2 className="font-medium text-slate-900 dark:text-white">Recent activity</h2>

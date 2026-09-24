@@ -26,6 +26,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sparkline } from "./Sparkline";
+import { Card } from "./Card";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -133,13 +134,11 @@ export function StatCard({
 
   // ── Shared card shell ────────────────────────────────────────────────────
   const shell = (children: React.ReactNode, ariaLabel?: string) => (
-    <div
+    <Card
       role="region"
       aria-label={ariaLabel ?? label}
-      className={cn(
-        "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900",
-        className,
-      )}
+      padding="md"
+      className={className}
     >
       {/* Header row: label + icon */}
       <div className="flex items-center justify-between">
@@ -150,11 +149,12 @@ export function StatCard({
             className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-500/10"
           >
             <Icon aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <Icon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
           </span>
         )}
       </div>
       {children}
-    </div>
+    </Card>
   );
 
   // ── LOADING state ────────────────────────────────────────────────────────

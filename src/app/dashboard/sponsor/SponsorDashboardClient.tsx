@@ -65,6 +65,7 @@ export default function SponsorDashboardClient() {
       return;
     }
 
+    const controller = new AbortController();
     setFetchStatus("loading");
 
     apiRequest<{
@@ -72,8 +73,9 @@ export default function SponsorDashboardClient() {
       totalSpent: number;
       budgetLocked: number;
       activeMilestones: RawMilestone[];
-    }>(`/sponsors/${user.id}/dashboard`)
+    }>(`/sponsors/${user.id}/dashboard`, { signal: controller.signal })
       .then((raw) => {
+        if (controller.signal.aborted) return;
         const activeBounties = raw.activeBounties.map(adaptBounty);
         const repoCount = new Set(activeBounties.map((b) => `${b.org}/${b.repo}`)).size;
         setData({
@@ -86,6 +88,7 @@ export default function SponsorDashboardClient() {
         setIsLive(true);
       })
       .catch(() => {
+        if (controller.signal.aborted) return;
         // On error: keep data null so cards can show their error state.
         // Do NOT set values to 0 — that would be indistinguishable from a
         // real zero balance, which is a trust-eroding false signal for a sponsor.
@@ -98,6 +101,9 @@ export default function SponsorDashboardClient() {
     // cross-tab token-storage pings — so a reference-based dependency
     // re-ran this fetch even when the signed-in sponsor's identity hadn't
     // actually changed (#243).
+    return () => {
+      controller.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, loading]);
 

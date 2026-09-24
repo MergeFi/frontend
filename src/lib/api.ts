@@ -167,9 +167,12 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
  * into the flat shapes the UI renders, falling back to mock data (already in
  * the target shape) when the backend is unreachable.
  */
-export async function fetchBounties(fallback: Bounty[]): Promise<FetchResult<Bounty[]>> {
+export async function fetchBounties(
+  fallback: Bounty[],
+  init?: RequestInit,
+): Promise<FetchResult<Bounty[]>> {
   try {
-    const raw = await request<RawBounty[]>("/bounties");
+    const raw = await request<RawBounty[]>("/bounties", init);
     return { data: raw.map(adaptBounty), source: "live" };
   } catch {
     return { data: fallback, source: "mock" };

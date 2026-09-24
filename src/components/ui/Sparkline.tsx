@@ -27,6 +27,7 @@ export function Sparkline({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       className={className}
+      aria-hidden="true"
       preserveAspectRatio="none"
     >
       <polyline

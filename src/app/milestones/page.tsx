@@ -4,6 +4,7 @@ import { mockMilestones, mockMaintenancePools } from "@/lib/mock-data";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { MilestoneFundButton, PoolDepositButton } from "./MilestoneActions";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Card } from "@/components/ui/Card";
 import { Target, Droplets } from "lucide-react";
 
 const milestonesDescription =
@@ -62,10 +63,7 @@ export default async function MilestonesPage() {
           const rawPct = isUnfunded ? 0 : m.distributed / m.budget;
           const pct = Math.min(rawPct, 1);
           return (
-            <div
-              key={m.id}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-            >
+            <Card key={m.id}>
               <p className="text-xs text-slate-500 dark:text-slate-400">{m.repo}</p>
               <h3 className="mt-1 font-medium text-slate-900 dark:text-white">{m.name}</h3>
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
@@ -91,7 +89,7 @@ export default async function MilestonesPage() {
                 {m.completedCount} of {m.issueCount} issues complete
               </p>
               <MilestoneFundButton milestoneId={m.id} milestoneName={m.name} />
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -111,10 +109,7 @@ export default async function MilestonesPage() {
             description="Maintenance pools will appear here once sponsors set them up for ongoing upkeep."
           />
         ) : pools.map((pool) => (
-          <div
-            key={pool.id}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-          >
+          <Card key={pool.id}>
             <p className="text-xs text-slate-500 dark:text-slate-400">{pool.repo}</p>
             <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">
               {formatCurrency(pool.balance, pool.asset)} balance
@@ -123,7 +118,7 @@ export default async function MilestonesPage() {
               {formatCurrency(pool.monthlyDeposit, pool.asset)} deposited monthly
             </p>
             <PoolDepositButton poolId={pool.id} poolRepo={pool.repo} asset={pool.asset} />
-          </div>
+          </Card>
         ))}
       </div>
     </div>

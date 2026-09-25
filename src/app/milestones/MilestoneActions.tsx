@@ -18,9 +18,11 @@ export function MilestoneFundButton({
   const { runWithWallet, connecting } = useWalletAction();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function handleFund() {
     setError(null);
+    setNotice(null);
     setPending(true);
     try {
       const result = await runWithWallet(
@@ -35,6 +37,7 @@ export function MilestoneFundButton({
         setError(result.error);
         return;
       }
+      setNotice("Milestone funded successfully. The funds are now locked in escrow.");
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
@@ -57,6 +60,11 @@ export function MilestoneFundButton({
       {error && (
         <p role="alert" className="mt-2 text-xs text-rose-600">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" aria-live="polite" className="mt-2 text-xs text-emerald-600">
+          {notice}
         </p>
       )}
     </div>
@@ -151,6 +159,11 @@ export function PoolDepositButton({
       {error && (
         <p role="alert" className="text-xs text-rose-600">
           {error}
+        </p>
+      )}
+      {success && (
+        <p role="status" aria-live="polite" className="text-xs text-emerald-600">
+          Deposit successful.
         </p>
       )}
     </div>

@@ -116,6 +116,31 @@ describe("BountyDescription — content fidelity", () => {
     expect(img).toHaveAttribute("alt", "a screenshot");
     expect(img?.className).toContain("max-w-full");
   });
+
+  it("renders a GFM table as real <table>/<thead>/<tbody>/<tr>/<th>/<td> elements with styling", () => {
+    const description = "| Token | Amount |\n|-------|--------|\n| USDC  | 100    |\n| XLM   | 500    |";
+    const { container } = render(<BountyDescription description={description} />);
+
+    const table = container.querySelector("table");
+    expect(table).toBeInTheDocument();
+    expect(table?.className).toContain("w-full");
+
+    const thead = container.querySelector("thead");
+    expect(thead).toBeInTheDocument();
+
+    const tbody = container.querySelector("tbody");
+    expect(tbody).toBeInTheDocument();
+
+    const ths = container.querySelectorAll("th");
+    expect(ths.length).toBe(2);
+    expect(ths[0].textContent).toBe("Token");
+    expect(ths[1].textContent).toBe("Amount");
+
+    const tds = container.querySelectorAll("td");
+    expect(tds.length).toBe(4);
+    expect(tds[0].textContent).toBe("USDC");
+    expect(tds[1].textContent).toBe("100");
+  });
 });
 
 describe("BountyDescription — untrusted-content hardening", () => {

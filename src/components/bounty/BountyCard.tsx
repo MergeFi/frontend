@@ -19,6 +19,7 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
     <Link
       href={`/issues/${bounty.id}`}
       prefetch={false}
+      aria-label={`${bounty.title}, ${formatCurrency(bounty.reward, bounty.asset)}`}
       className={`relative block overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all before:absolute before:inset-y-0 before:left-0 before:w-1 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900 ${accentByDifficulty[bounty.difficulty]}`}
     >
       <div className="flex items-start justify-between gap-4 pl-2">
@@ -43,9 +44,13 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
       <div className="mt-4 flex flex-wrap items-center gap-2 pl-2">
         <StatusBadge status={bounty.status} />
         <DifficultyBadge difficulty={bounty.difficulty} />
-        {bounty.labels.map((label) => (
-          <Badge key={label}>{label}</Badge>
-        ))}
+        <ul role="list" className="contents">
+          {bounty.labels.map((label) => (
+            <li key={label}>
+              <Badge>{label}</Badge>
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="mt-4 flex items-center gap-4 pl-2 text-xs text-slate-400 dark:text-slate-500">
         <span className="flex items-center gap-1">

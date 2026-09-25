@@ -84,9 +84,13 @@ export default async function IssueDetailPage({
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <StatusBadge status={bounty.status} />
         <DifficultyBadge difficulty={bounty.difficulty} />
-        {bounty.labels.map((label) => (
-          <Badge key={label}>{label}</Badge>
-        ))}
+        <ul role="list" className="contents">
+          {bounty.labels.map((label) => (
+            <li key={label}>
+              <Badge>{label}</Badge>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <BountyDescription description={bounty.description} />

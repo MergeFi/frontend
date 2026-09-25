@@ -13,6 +13,7 @@ financial layer. This repo is the Next.js frontend that ties both together for
 contributors, maintainers, and sponsors.
 
 Related repositories:
+
 - [`mergefi/backend`](https://github.com/MergeFi/backend) — NestJS API: GitHub sync, webhooks, bounty/escrow orchestration, reputation, analytics.
 - [`mergefi/contracts`](https://github.com/MergeFi/contracts) — Soroban smart contracts: escrow, milestone funding, maintenance pools, team splits.
 
@@ -24,29 +25,33 @@ Related repositories:
 - Fast settlement means contributors get paid in minutes, not weeks.
 - Soroban smart contracts implement escrow, payment release, refunds, and split logic natively on-chain, so no one — including MergeFi — can touch funds outside the rules encoded in the contract.
 
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
 ## Core users
 
-| Role | What they do |
-|---|---|
-| **Contributors** | Discover paid issues, build a public reputation, earn USDC/XLM, track earnings. |
-| **Maintainers** | Create projects, attach rewards to issues, approve completed work, manage permissions. |
-| **Sponsors** | Fund repositories or specific issues/milestones, track spend, measure impact. |
+| Role             | What they do                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| **Contributors** | Discover paid issues, build a public reputation, earn USDC/XLM, track earnings.        |
+| **Maintainers**  | Create projects, attach rewards to issues, approve completed work, manage permissions. |
+| **Sponsors**     | Fund repositories or specific issues/milestones, track spend, measure impact.          |
 
 <img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/cb9a65c7-4c09-44a1-8d9b-b912a4ffe179" />
 
 ## Feature map → routes
 
-| Feature | Route |
-|---|---|
-| Landing page / product pitch | `/` |
-| Browse paid issues (bounties) | `/issues` |
-| Bounty detail, escrow status, claim flow | `/issues/[id]` |
-| Milestone funding + recurring maintenance pools | `/milestones` |
-| Connect GitHub + Stellar wallet (Freighter) | `/connect` |
-| Contributor dashboard (earnings, claims, recommendations) | `/dashboard/contributor` |
-| Maintainer dashboard (bounty pipeline, PRs awaiting merge) | `/dashboard/maintainer` |
-| Sponsor dashboard (spend, active bounties, budget remaining) | `/dashboard/sponsor` |
-| Public reputation profile | `/reputation/[handle]` |
+| Feature                                                      | Route                    |
+| ------------------------------------------------------------ | ------------------------ |
+| Landing page / product pitch                                 | `/`                      |
+| Browse paid issues (bounties)                                | `/issues`                |
+| Bounty detail, escrow status, claim flow                     | `/issues/[id]`           |
+| Milestone funding + recurring maintenance pools              | `/milestones`            |
+| Connect GitHub + Stellar wallet (Freighter)                  | `/connect`               |
+| Contributor dashboard (earnings, claims, recommendations)    | `/dashboard/contributor` |
+| Maintainer dashboard (bounty pipeline, PRs awaiting merge)   | `/dashboard/maintainer`  |
+| Sponsor dashboard (spend, active bounties, budget remaining) | `/dashboard/sponsor`     |
+| Public reputation profile                                    | `/reputation/[handle]`   |
 
 ## Architecture
 
@@ -114,39 +119,39 @@ useful for frontend-only development or a quick demo. Point
 
 Both `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_STELLAR_NETWORK` are validated at build time (`next.config.ts` / `src/lib/env.ts`, #26) — an unset or invalid value fails `next build`/`next dev`/`next start` immediately with a clear error, rather than silently falling back and only surfacing as a confusing on-chain failure later. `NEXT_PUBLIC_SITE_URL` is not build-time validated — it falls back to `https://mergefi.app` if unset. `.env.example` sets all three explicitly, so the quickstart above needs no manual edits.
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Base URL of the `mergefi-backend` API. Must be a well-formed URL. | `http://localhost:4000/api` |
-| `NEXT_PUBLIC_STELLAR_NETWORK` | Must be exactly `TESTNET` or `PUBLIC` (case-sensitive) — selects the Freighter network passphrase used to sign transactions. | **None.** Network selection is too consequential to guess a default for — the wrong value signs transactions with the wrong passphrase. Set it explicitly (`.env.example` does this for local dev). |
-| `NEXT_PUBLIC_SITE_URL` | Base URL used by `src/app/sitemap.ts` to generate absolute sitemap URLs. Set this when deploying to a domain other than `mergefi.app` (staging, forks, etc.). | `https://mergefi.app` |
+| Variable                      | Purpose                                                                                                                                                       | Default                                                                                                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`         | Base URL of the `mergefi-backend` API. Must be a well-formed URL.                                                                                             | `http://localhost:4000/api`                                                                                                                                                                         |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | Must be exactly `TESTNET` or `PUBLIC` (case-sensitive) — selects the Freighter network passphrase used to sign transactions.                                  | **None.** Network selection is too consequential to guess a default for — the wrong value signs transactions with the wrong passphrase. Set it explicitly (`.env.example` does this for local dev). |
+| `NEXT_PUBLIC_SITE_URL`        | Base URL used by `src/app/sitemap.ts` to generate absolute sitemap URLs. Set this when deploying to a domain other than `mergefi.app` (staging, forks, etc.). | `https://mergefi.app`                                                                                                                                                                               |
 
 ### Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start the dev server with Turbopack |
-| `npm run build` | Production build |
-| `npm run start` | Serve the production build |
-| `npm run lint` | ESLint (flat config, `eslint-config-next`) |
-| `npm test` | Runs the Jest test suite |
-| `npm run test:watch` | Runs the Jest test suite in watch mode |
-| `npm run verify:headers` | Boots the production build and asserts security headers are present on real responses (run `npm run build` first) |
-| `npm run verify:env` | Asserts `next build` succeeds/fails correctly across missing, invalid, and valid `NEXT_PUBLIC_*` env var scenarios (runs in CI) |
+| Command                  | Description                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`            | Start the dev server with Turbopack                                                                                             |
+| `npm run build`          | Production build                                                                                                                |
+| `npm run start`          | Serve the production build                                                                                                      |
+| `npm run lint`           | ESLint (flat config, `eslint-config-next`)                                                                                      |
+| `npm test`               | Runs the Jest test suite                                                                                                        |
+| `npm run test:watch`     | Runs the Jest test suite in watch mode                                                                                          |
+| `npm run verify:headers` | Boots the production build and asserts security headers are present on real responses (run `npm run build` first)               |
+| `npm run verify:env`     | Asserts `next build` succeeds/fails correctly across missing, invalid, and valid `NEXT_PUBLIC_*` env var scenarios (runs in CI) |
 
 ## Security headers
 
 `next.config.ts` sets these on every route, verified in CI via `npm run verify:headers`:
 
-| Header | Value | Why |
-|---|---|---|
-| `X-Frame-Options` | `DENY` | No legitimate iframe-embedding use case exists in this app, and fund/claim actions are one click away — clickjacking is a real risk here. Relax to a scoped CSP `frame-ancestors` allowlist if a real embed need ever comes up. |
-| `X-Content-Type-Options` | `nosniff` | Stops the browser from MIME-sniffing a response into an executable content type. |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | The GitHub OAuth callback (`/auth/callback`) carries a short-lived token in its query string; this keeps the full URL out of the `Referer` header on cross-origin requests. |
-| `Strict-Transport-Security` | `max-age=86400` | Deliberately conservative to start (no `includeSubDomains`, no `preload`) — HSTS is effectively irreversible once cached by a browser. Raise `max-age` and add `includeSubDomains` after a stable production run, and only add `preload` once that's stable too. |
+| Header                      | Value                             | Why                                                                                                                                                                                                                                                              |
+| --------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `X-Frame-Options`           | `DENY`                            | No legitimate iframe-embedding use case exists in this app, and fund/claim actions are one click away — clickjacking is a real risk here. Relax to a scoped CSP `frame-ancestors` allowlist if a real embed need ever comes up.                                  |
+| `X-Content-Type-Options`    | `nosniff`                         | Stops the browser from MIME-sniffing a response into an executable content type.                                                                                                                                                                                 |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin` | The GitHub OAuth callback (`/auth/callback`) carries a short-lived token in its query string; this keeps the full URL out of the `Referer` header on cross-origin requests.                                                                                      |
+| `Strict-Transport-Security` | `max-age=86400`                   | Deliberately conservative to start (no `includeSubDomains`, no `preload`) — HSTS is effectively irreversible once cached by a browser. Raise `max-age` and add `includeSubDomains` after a stable production run, and only add `preload` once that's stable too. |
 
 `Content-Security-Policy` is intentionally not set here — it's tracked separately so it can compose correctly with the theme-init inline script in `layout.tsx` rather than this change guessing at a nonce/hash strategy.
 
-None of these headers affect the Freighter wallet bridge or the GitHub OAuth flow: Freighter communicates via an injected browser-extension content script (`@stellar/freighter-api`), which framing/MIME/referrer/transport headers have no bearing on, and the OAuth `fetch` calls to the backend are unaffected since these headers only change what's *disclosed*, not whether a request succeeds.
+None of these headers affect the Freighter wallet bridge or the GitHub OAuth flow: Freighter communicates via an injected browser-extension content script (`@stellar/freighter-api`), which framing/MIME/referrer/transport headers have no bearing on, and the OAuth `fetch` calls to the backend are unaffected since these headers only change what's _disclosed_, not whether a request succeeds.
 
 ## Example user journey
 

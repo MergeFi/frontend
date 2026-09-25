@@ -1,8 +1,18 @@
 import { useState } from "react";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  act,
+  fireEvent,
+} from "@testing-library/react";
 import { WalletProvider, useWallet } from "./WalletContext";
 import { useAuth } from "@/context/AuthContext";
-import { connectWallet } from "@/lib/wallet";
+import {
+  checkNetworkMismatch,
+  connectWallet,
+  getActiveFreighterAddress,
+} from "@/lib/wallet";
 import { apiRequest } from "@/lib/api";
 
 const WALLET_KEY = "mergefi_wallet_address";
@@ -31,19 +41,33 @@ jest.mock("@/lib/api", () => ({
 }));
 
 const mockUseAuth = useAuth as jest.Mock;
+const mockGetActiveFreighterAddress = getActiveFreighterAddress as jest.Mock;
+const mockCheckNetworkMismatch = checkNetworkMismatch as jest.Mock;
 const mockConnectWallet = connectWallet as jest.Mock;
 const mockApiRequest = apiRequest as jest.Mock;
 const mockRefresh = jest.fn();
 
 function TestConsumer() {
-  const { address, connecting, error, connect, disconnect, getError } = useWallet();
-  const [readAfterConnect, setReadAfterConnect] = useState<string>("not-read-yet");
+  const {
+    address,
+    connecting,
+    error,
+    addressMismatch,
+    networkMismatch,
+    connect,
+    disconnect,
+    getError,
+  } = useWallet();
+  const [readAfterConnect, setReadAfterConnect] =
+    useState<string>("not-read-yet");
 
   return (
     <div>
       <div data-testid="address">{address ?? "disconnected"}</div>
       <div data-testid="connecting">{String(connecting)}</div>
       <div data-testid="error">{error ?? "none"}</div>
+      <div data-testid="address-mismatch">{String(addressMismatch)}</div>
+      <div data-testid="network-mismatch">{String(networkMismatch)}</div>
       <div data-testid="read-after-connect">{readAfterConnect}</div>
       <button onClick={() => void connect()}>connect</button>
       <button onClick={disconnect}>disconnect</button>
@@ -74,9 +98,60 @@ function dispatchWalletStorageEvent(newValue: string | null) {
 beforeEach(() => {
   window.localStorage.clear();
   mockUseAuth.mockReturnValue({ user: null, refresh: mockRefresh });
+  mockGetActiveFreighterAddress.mockResolvedValue(null);
+  mockCheckNetworkMismatch.mockResolvedValue(null);
   mockConnectWallet.mockReset();
   mockApiRequest.mockReset();
   mockRefresh.mockReset();
+});
+
+describe("WalletContext — mount reconciliation (#402)", () => {
+  it("detects cached address and network mismatches after mount", async () => {
+    window.localStorage.setItem(WALLET_KEY, "GCACHEDADDRESS");
+    mockGetActiveFreighterAddress.mockResolvedValue("GDIFFERENTADDRESS");
+    mockCheckNetworkMismatch.mockResolvedValue("Wrong network");
+
+    render(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("address")).toHaveTextContent("GCACHEDADDRESS");
+      expect(screen.getByTestId("address-mismatch")).toHaveTextContent("true");
+      expect(screen.getByTestId("network-mismatch")).toHaveTextContent("true");
+    });
+  });
+
+  it("clears both mismatch flags after a successful connection", async () => {
+    window.localStorage.setItem(WALLET_KEY, "GCACHEDADDRESS");
+    mockGetActiveFreighterAddress.mockResolvedValue("GDIFFERENTADDRESS");
+    mockCheckNetworkMismatch.mockResolvedValue("Wrong network");
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
+
+    render(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("address-mismatch")).toHaveTextContent("true");
+      expect(screen.getByTestId("network-mismatch")).toHaveTextContent("true");
+    });
+
+    fireEvent.click(screen.getByText("connect"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("address")).toHaveTextContent("GNEWADDRESS");
+      expect(screen.getByTestId("address-mismatch")).toHaveTextContent("false");
+      expect(screen.getByTestId("network-mismatch")).toHaveTextContent("false");
+    });
+  });
 });
 
 describe("WalletContext — cross-tab sync (issue #84)", () => {
@@ -95,7 +170,9 @@ describe("WalletContext — cross-tab sync (issue #84)", () => {
       dispatchWalletStorageEvent("GABC123FROMANOTHERTAB");
     });
 
-    expect(screen.getByTestId("address")).toHaveTextContent("GABC123FROMANOTHERTAB");
+    expect(screen.getByTestId("address")).toHaveTextContent(
+      "GABC123FROMANOTHERTAB",
+    );
   });
 
   it("clears the address when disconnected in another tab", async () => {
@@ -108,7 +185,9 @@ describe("WalletContext — cross-tab sync (issue #84)", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("address")).toHaveTextContent("GABC123ALREADYCONNECTED"),
+      expect(screen.getByTestId("address")).toHaveTextContent(
+        "GABC123ALREADYCONNECTED",
+      ),
     );
 
     act(() => {
@@ -128,7 +207,9 @@ describe("WalletContext — cross-tab sync (issue #84)", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("address")).toHaveTextContent("GABC123ALREADYCONNECTED"),
+      expect(screen.getByTestId("address")).toHaveTextContent(
+        "GABC123ALREADYCONNECTED",
+      ),
     );
 
     act(() => {
@@ -141,13 +222,18 @@ describe("WalletContext — cross-tab sync (issue #84)", () => {
       );
     });
 
-    expect(screen.getByTestId("address")).toHaveTextContent("GABC123ALREADYCONNECTED");
+    expect(screen.getByTestId("address")).toHaveTextContent(
+      "GABC123ALREADYCONNECTED",
+    );
   });
 });
 
 describe("WalletContext — connect() (#231)", () => {
   it("sets address/network and returns the address on a successful connection", async () => {
-    mockConnectWallet.mockResolvedValue({ address: "GNEWADDRESS", network: "TESTNET" });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
 
     render(
       <WalletProvider>
@@ -166,7 +252,9 @@ describe("WalletContext — connect() (#231)", () => {
   });
 
   it("sets error and leaves address null when connectWallet() rejects", async () => {
-    mockConnectWallet.mockRejectedValue(new Error("Install the Freighter wallet extension to continue."));
+    mockConnectWallet.mockRejectedValue(
+      new Error("Install the Freighter wallet extension to continue."),
+    );
 
     render(
       <WalletProvider>
@@ -186,8 +274,14 @@ describe("WalletContext — connect() (#231)", () => {
   });
 
   it("sets a distinct error when the wallet connects but the profile-link PATCH fails (#229)", async () => {
-    mockUseAuth.mockReturnValue({ user: { id: "user-1" }, refresh: mockRefresh });
-    mockConnectWallet.mockResolvedValue({ address: "GNEWADDRESS", network: "TESTNET" });
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1" },
+      refresh: mockRefresh,
+    });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
     mockApiRequest.mockRejectedValue(new Error("network error"));
 
     render(
@@ -210,8 +304,14 @@ describe("WalletContext — connect() (#231)", () => {
   });
 
   it("links the profile and refreshes the session when connected and signed in", async () => {
-    mockUseAuth.mockReturnValue({ user: { id: "user-1" }, refresh: mockRefresh });
-    mockConnectWallet.mockResolvedValue({ address: "GNEWADDRESS", network: "TESTNET" });
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1" },
+      refresh: mockRefresh,
+    });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
     mockApiRequest.mockResolvedValue(undefined);
 
     render(
@@ -231,7 +331,9 @@ describe("WalletContext — connect() (#231)", () => {
   });
 
   it("getError() returns the fresh failure reason synchronously right after connect() settles (#235)", async () => {
-    mockConnectWallet.mockRejectedValue(new Error("Wallet access was not granted."));
+    mockConnectWallet.mockRejectedValue(
+      new Error("Wallet access was not granted."),
+    );
 
     render(
       <WalletProvider>
@@ -254,7 +356,10 @@ describe("WalletContext — connect() (#231)", () => {
 
 describe("WalletContext — disconnect() (#230, #231)", () => {
   it("clears local address/network state and localStorage", async () => {
-    mockConnectWallet.mockResolvedValue({ address: "GNEWADDRESS", network: "TESTNET" });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
 
     render(
       <WalletProvider>
@@ -274,7 +379,10 @@ describe("WalletContext — disconnect() (#230, #231)", () => {
   });
 
   it("does not call the backend when disconnecting while signed out", async () => {
-    mockConnectWallet.mockResolvedValue({ address: "GNEWADDRESS", network: "TESTNET" });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
 
     render(
       <WalletProvider>
@@ -293,8 +401,14 @@ describe("WalletContext — disconnect() (#230, #231)", () => {
   });
 
   it("unlinks stellarAddress on the backend when disconnecting while signed in (#230)", async () => {
-    mockUseAuth.mockReturnValue({ user: { id: "user-1" }, refresh: mockRefresh });
-    mockConnectWallet.mockResolvedValue({ address: "GNEWADDRESS", network: "TESTNET" });
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1" },
+      refresh: mockRefresh,
+    });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
     mockApiRequest.mockResolvedValue(undefined);
 
     render(
@@ -317,14 +431,23 @@ describe("WalletContext — disconnect() (#230, #231)", () => {
     await waitFor(() =>
       expect(mockApiRequest).toHaveBeenCalledWith(
         "/users/user-1/stellar-address",
-        expect.objectContaining({ method: "PATCH", body: JSON.stringify({ stellarAddress: null }) }),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ stellarAddress: null }),
+        }),
       ),
     );
   });
 
   it("still clears local state even when the backend unlink call fails", async () => {
-    mockUseAuth.mockReturnValue({ user: { id: "user-1" }, refresh: mockRefresh });
-    mockConnectWallet.mockResolvedValue({ address: "GNEWADDRESS", network: "TESTNET" });
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1" },
+      refresh: mockRefresh,
+    });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
 
     render(
       <WalletProvider>

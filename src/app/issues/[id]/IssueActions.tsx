@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
-import { useWallet } from "@/context/WalletContext";
+import { useWalletAction } from "@/hooks/useWalletAction";
 import { apiPost, ApiRequestError } from "@/lib/api";
 import { formatCurrency, generateIdempotencyKey } from "@/lib/utils";
 import type { Bounty } from "@/types";
@@ -12,63 +12,33 @@ import type { Bounty } from "@/types";
 export function IssueActions({ bounty }: { bounty: Bounty }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { address, connect, connecting, addressMismatch, networkMismatch, getError: getWalletError } = useWallet();
+  const { runWithWallet, connecting } = useWalletAction();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  async function withWallet(action: (walletAddress: string) => Promise<void>) {
+  async function handleFund() {
     setError(null);
     setNotice(null);
-
-    // Block if Freighter's active account has drifted from the cached address.
-    // The user must reconnect to re-sync before any signing action (#71).
-    if (addressMismatch) {
-      setError(
-        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
-      );
-      return;
-    }
-
-    // Block if Freighter's network doesn't match the app's configured network.
-    // A signed transaction would be rejected by Soroban anyway, but this
-    // avoids burning the user's attention on an doomed approval (#2).
-    if (networkMismatch) {
-      setError(
-        "Your Freighter wallet is on the wrong network. Switch it in the extension and try again.",
-      );
-      return;
-    }
-
     setPending(true);
     try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        // connect() resolves to null on failure rather than throwing, but
-        // WalletContext already computed a specific reason (extension not
-        // installed, access denied, ...). getError() reads it synchronously
-        // off a ref rather than the (possibly stale, pre-await) `error`
-        // value from context, so it's guaranteed current here (#235).
-        setError(getWalletError() ?? "Connect a Stellar wallet to continue.");
+      const result = await runWithWallet(async (walletAddress) => {
+        await apiPost(`/bounties/${bounty.id}/fund`, {
+          funderAddress: walletAddress,
+          idempotencyKey: generateIdempotencyKey(),
+        });
+        setNotice("Escrow funded on-chain. This bounty is now open for claims.");
+      }, "Connect a Stellar wallet to continue.");
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
-      await action(walletAddress);
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
     } finally {
       setPending(false);
     }
-  }
-
-  async function handleFund() {
-    await withWallet(async (walletAddress) => {
-      await apiPost(`/bounties/${bounty.id}/fund`, {
-        funderAddress: walletAddress,
-        idempotencyKey: generateIdempotencyKey(),
-      });
-      setNotice("Escrow funded on-chain. This bounty is now open for claims.");
-    });
   }
 
   async function handleClaim() {

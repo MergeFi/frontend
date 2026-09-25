@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { useWallet } from "@/context/WalletContext";
+import { useWalletAction } from "@/hooks/useWalletAction";
 import { apiPost, ApiRequestError } from "@/lib/api";
 import { parseMoneyInput, generateIdempotencyKey } from "@/lib/utils";
 
@@ -15,35 +15,26 @@ export function MilestoneFundButton({
   milestoneName?: string;
 }) {
   const router = useRouter();
-  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
+  const { runWithWallet, connecting } = useWalletAction();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleFund() {
     setError(null);
-
-    if (addressMismatch) {
-      setError(
-        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
-      );
-      return;
-    }
-
     setPending(true);
     try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        // getError() reads WalletContext's specific failure reason off a
-        // ref, always current the instant connect() settles — unlike the
-        // `error` context value, which may still reflect a pre-await
-        // render (#235).
-        setError(getWalletError() ?? "Connect a Stellar wallet to fund this milestone.");
+      const result = await runWithWallet(
+        (walletAddress) =>
+          apiPost(`/milestones/${milestoneId}/fund`, {
+            funderAddress: walletAddress,
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        "Connect a Stellar wallet to fund this milestone.",
+      );
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
-      await apiPost(`/milestones/${milestoneId}/fund`, {
-        funderAddress: walletAddress,
-        idempotencyKey: generateIdempotencyKey(),
-      });
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
@@ -82,7 +73,7 @@ export function PoolDepositButton({
   asset?: "USDC" | "XLM";
 }) {
   const router = useRouter();
-  const { address, connect, connecting, addressMismatch, getError: getWalletError } = useWallet();
+  const { runWithWallet, connecting } = useWalletAction();
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,25 +98,21 @@ export function PoolDepositButton({
       return;
     }
 
-    if (addressMismatch) {
-      setError(
-        "Freighter's active account has changed. Please disconnect and reconnect your wallet to continue.",
-      );
-      return;
-    }
-
     setPending(true);
     try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        setError(getWalletError() ?? "Connect a Stellar wallet to deposit.");
+      const walletResult = await runWithWallet(
+        (walletAddress) =>
+          apiPost(`/maintenance-pools/${poolId}/deposit`, {
+            amount: result.normalized,
+            funderAddress: walletAddress,
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        "Connect a Stellar wallet to deposit.",
+      );
+      if (!walletResult.ok) {
+        setError(walletResult.error);
         return;
       }
-      await apiPost(`/maintenance-pools/${poolId}/deposit`, {
-        amount: result.normalized,
-        funderAddress: walletAddress,
-        idempotencyKey: generateIdempotencyKey(),
-      });
       setSuccess(true);
       router.refresh();
     } catch (err) {

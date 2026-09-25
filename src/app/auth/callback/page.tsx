@@ -1,5 +1,11 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { CallbackClient } from "./CallbackClient";
+
+export const metadata: Metadata = {
+  title: "Signing in… | MergeFi",
+  robots: { index: false, follow: false },
+};
 
 export default function AuthCallbackPage() {
   return (

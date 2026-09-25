@@ -40,7 +40,7 @@
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^7"
   },
   "engines": {
     "node": ">=20"

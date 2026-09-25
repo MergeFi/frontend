@@ -93,13 +93,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(id);
   }, []);
 
-  const handleWalletKeyChangedElsewhere = useCallback((newValue: string | null) => {
-    setAddress(newValue);
-    if (newValue === null) {
-      // Disconnected in another tab — no address means no network either.
-      setNetwork(null);
-    }
-  }, []);
+  const handleWalletKeyChangedElsewhere = useCallback(
+    (newValue: string | null) => {
+      setAddress(newValue);
+      if (newValue === null) {
+        // Disconnected in another tab — no address means no network either.
+        setNetwork(null);
+      }
+    },
+    [],
+  );
   useCrossTabStorage(WALLET_KEY, handleWalletKeyChangedElsewhere);
 
   // Tracks the latest `address` for the logout-clearing effect below
@@ -133,6 +136,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setAddress(connection.address);
       setNetwork(connection.network);
       setAddressMismatch(false);
+      setNetworkMismatch(false);
       window.localStorage.setItem(WALLET_KEY, connection.address);
 
       if (user) {
@@ -160,7 +164,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // special-case here (#192). The non-Error fallback below only covers
       // a genuinely unexpected non-Error throw.
       updateError(
-        err instanceof Error ? err.message : "Unable to connect wallet. Please try again.",
+        err instanceof Error
+          ? err.message
+          : "Unable to connect wallet. Please try again.",
       );
       return null;
     } finally {
@@ -188,7 +194,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ address, network, connecting, error, addressMismatch, networkMismatch, connect, disconnect, getError }}
+      value={{
+        address,
+        network,
+        connecting,
+        error,
+        addressMismatch,
+        networkMismatch,
+        connect,
+        disconnect,
+        getError,
+      }}
     >
       {children}
     </WalletContext.Provider>

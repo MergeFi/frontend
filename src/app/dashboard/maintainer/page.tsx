@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, sumMoney } from "@/lib/utils";
 import { PipelineBoard, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
 
 export const metadata = {
@@ -33,9 +33,14 @@ export default async function MaintainerDashboardPage() {
   const needsReview = bounties.filter((b) => b.status === "in_review");
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
   const repoCount = new Set(bounties.map((b) => `${b.org}/${b.repo}`)).size;
-  const totalEscrow = bounties
-    .filter((b) => !ESCROW_LOCKED_EXCLUDED_STATUSES.includes(b.status))
-    .reduce((sum, b) => sum + b.reward, 0);
+  // Summed in integer minor units to avoid float drift (#353). 7 decimals
+  // covers both USDC (2) and XLM (7) rewards without truncation.
+  const totalEscrow = sumMoney(
+    bounties
+      .filter((b) => !ESCROW_LOCKED_EXCLUDED_STATUSES.includes(b.status))
+      .map((b) => b.reward),
+    7,
+  );
 
   return (
     <DashboardShell

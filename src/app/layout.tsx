@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://mergefi.app",
+  ),
   title: "MergeFi | Merge code. Earn instantly.",
   description:
     "MergeFi is the financial infrastructure for open source: fund GitHub issues, escrow payment with Soroban smart contracts on Stellar, and pay contributors automatically when work is merged.",

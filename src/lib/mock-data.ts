@@ -45,8 +45,9 @@ export const mockBounties: Bounty[] = [
     title: "Document Soroban escrow contract API reference",
     description:
       "Write reference docs for fund/release/refund functions including auth requirements and error codes.",
-    reward: 60,
-    asset: "USDC",
+    // XLM-denominated (#367) so the demo exercises 7-decimal XLM formatting.
+    reward: 1250.5,
+    asset: "XLM",
     difficulty: "beginner",
     status: "open",
     deadline: new Date(Date.now() + 10 * 86400000).toISOString(),
@@ -104,9 +105,10 @@ export const mockMilestones: Milestone[] = [
     id: "m2",
     name: "v1.4: Indexer performance pass",
     repo: "core-indexer",
-    budget: 6000,
-    distributed: 2100,
-    asset: "USDC",
+    // XLM-denominated (#367): XLM trades far below 1 USD, so budgets are larger.
+    budget: 48000,
+    distributed: 16837.25,
+    asset: "XLM",
     issueCount: 8,
     completedCount: 3,
   },
@@ -119,6 +121,14 @@ export const mockMaintenancePools: MaintenancePool[] = [
     monthlyDeposit: 500,
     balance: 1240,
     asset: "USDC",
+  },
+  {
+    // XLM-denominated (#367); balance carries full 7-decimal stroop precision.
+    id: "p2",
+    repo: "stellar-wallet-kit",
+    monthlyDeposit: 2500,
+    balance: 8412.1234567,
+    asset: "XLM",
   },
 ];
 
@@ -286,6 +296,15 @@ export const recentActivity: ActivityEvent[] = [
     amount: 2500,
     asset: "USDC",
     occurredAt: minutesAgo(71),
+  },
+  {
+    id: "a4b",
+    handle: "Stellar Community Fund",
+    action: "funded",
+    target: "v1.4: Indexer performance pass",
+    amount: 15000,
+    asset: "XLM",
+    occurredAt: minutesAgo(95),
   },
   {
     id: "a5",

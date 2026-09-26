@@ -106,9 +106,7 @@ export async function connectWallet(): Promise<WalletConnection> {
 export async function signTransaction(xdr: string, address: string) {
   return freighterSignTransaction(xdr, {
     address,
-    networkPassphrase:
-      STELLAR_NETWORK === "PUBLIC"
-        ? "Public Global Stellar Network ; September 2015"
-        : "Test SDF Network ; September 2015",
+    // Reuse the shared mapping so signing and checkNetworkMismatch can't drift (#357).
+    networkPassphrase: NETWORK_PASSPHRASES[STELLAR_NETWORK],
   });
 }

@@ -244,10 +244,14 @@ export function generateIdempotencyKey(): string {
  * don't have representation gaps in the ranges we care about.
  */
 export function toCents(value: string | number, decimals = 2): number {
-  const str = typeof value === "number" ? value.toFixed(decimals) : String(value);
+  const raw = (typeof value === "number" ? value.toFixed(decimals) : String(value)).trim();
+  // Apply the sign to the whole amount: "-12.50" is -1250, not -1200 + 50 (#353).
+  const negative = raw.startsWith("-");
+  const str = negative || raw.startsWith("+") ? raw.slice(1) : raw;
   const [whole = "0", frac = ""] = str.split(".");
   const padded = frac.padEnd(decimals, "0").slice(0, decimals);
-  return parseInt(whole, 10) * 10 ** decimals + parseInt(padded || "0", 10);
+  const cents = parseInt(whole || "0", 10) * 10 ** decimals + parseInt(padded || "0", 10);
+  return negative ? -cents : cents;
 }
 
 /**
@@ -256,4 +260,21 @@ export function toCents(value: string | number, decimals = 2): number {
  */
 export function toMajorUnits(cents: number, decimals = 2): number {
   return cents / 10 ** decimals;
+}
+
+/**
+ * Sum monetary amounts without float drift by adding integer minor units
+ * (#353). `sumMoney([0.1, 0.2])` is exactly 0.3, unlike `0.1 + 0.2`.
+ */
+export function sumMoney(values: ReadonlyArray<string | number>, decimals = 2): number {
+  const cents = values.reduce<number>((total, value) => total + toCents(value, decimals), 0);
+  return toMajorUnits(cents, decimals);
+}
+
+/**
+ * Subtract monetary amounts (`a - b`) via integer minor units (#353), e.g. a
+ * total spent derived from total funded minus budget remaining.
+ */
+export function subtractMoney(a: string | number, b: string | number, decimals = 2): number {
+  return toMajorUnits(toCents(a, decimals) - toCents(b, decimals), decimals);
 }

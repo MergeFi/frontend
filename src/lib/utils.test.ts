@@ -18,6 +18,8 @@ import {
   generateIdempotencyKey,
   toCents,
   toMajorUnits,
+  sumMoney,
+  subtractMoney,
 } from "./utils";
 
 // ─── formatCurrency ──────────────────────────────────────────────────────────
@@ -441,5 +443,58 @@ describe("toMajorUnits", () => {
   it("converts minor units back for XLM (7 decimals)", () => {
     expect(toMajorUnits(10000000, 7)).toBe(1);
     expect(toMajorUnits(1, 7)).toBe(0.0000001);
+  });
+});
+
+// ─── Negative amounts + sumMoney / subtractMoney (#353) ──────────────────────
+
+describe("toCents with negative amounts (#353)", () => {
+  it("applies the sign to the whole amount", () => {
+    expect(toCents("-12.50")).toBe(-1250);
+    expect(toCents(-12.5)).toBe(-1250);
+    expect(toCents("-0.01")).toBe(-1);
+    expect(toCents("-0.0000001", 7)).toBe(-1);
+  });
+
+  it("accepts an explicit plus sign and surrounding whitespace", () => {
+    expect(toCents("+12.50")).toBe(1250);
+    expect(toCents(" 12.50 ")).toBe(1250);
+  });
+
+  it("round-trips negatives through toMajorUnits", () => {
+    expect(toMajorUnits(toCents("-12.34"))).toBe(-12.34);
+  });
+});
+
+describe("sumMoney (#353)", () => {
+  it("sums without float drift", () => {
+    expect(0.1 + 0.2).not.toBe(0.3);
+    expect(sumMoney([0.1, 0.2])).toBe(0.3);
+    expect(sumMoney(["19.99", "0.01", 5.1])).toBe(25.1);
+  });
+
+  it("returns 0 for an empty list", () => {
+    expect(sumMoney([])).toBe(0);
+  });
+
+  it("respects XLM precision", () => {
+    expect(sumMoney(["0.0000001", "0.0000002"], 7)).toBe(0.0000003);
+    expect(sumMoney([1250.5, 8412.1234567], 7)).toBe(9662.6234567);
+  });
+});
+
+describe("subtractMoney (#353)", () => {
+  it("subtracts without float drift", () => {
+    expect(0.3 - 0.1).not.toBe(0.2);
+    expect(subtractMoney(0.3, 0.1)).toBe(0.2);
+    expect(subtractMoney(24000, 15800)).toBe(8200);
+  });
+
+  it("returns a correctly signed negative result", () => {
+    expect(subtractMoney("10.25", "12.50")).toBe(-2.25);
+  });
+
+  it("respects XLM precision", () => {
+    expect(subtractMoney("1", "0.0000001", 7)).toBe(0.9999999);
   });
 });

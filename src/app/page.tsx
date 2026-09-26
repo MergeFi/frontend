@@ -135,25 +135,25 @@ export default function HomePage() {
           <p className="text-center text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
             Trusted by open-source teams on Stellar
           </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          <ul role="list" className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             {trustedOrgs.map((org) => (
-              <span key={org} className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+              <li key={org} className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
                 <Avatar seed={org} size={20} className="rounded-md" />
                 {org}
-              </span>
+              </li>
             ))}
-          </div>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 border-t border-slate-100 pt-6 dark:border-slate-800">
+          </ul>
+          <ul role="list" className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 border-t border-slate-100 pt-6 dark:border-slate-800">
             {integrations.map(({ icon: Icon, label }) => (
-              <span
+              <li
                 key={label}
                 className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                 {label}
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 

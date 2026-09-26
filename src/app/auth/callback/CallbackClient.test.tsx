@@ -71,6 +71,11 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
     mockedUseSearchParams.mockReturnValue(new URLSearchParams({ token: "jwt-token" }));
   });
 
+  it("redirects maintainer to /dashboard/maintainer", async () => {
+    const user = makeUser(["maintainer"]);
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn().mockResolvedValue(user),
+    });
   it("redirects maintainer to /dashboard/maintainer after async login", async () => {
     const { loginMock, getAuthValue } = createAsyncAuthMock(makeUser(["maintainer"]));
     // Simulate AuthContext behavior: user starts null, becomes populated after login
@@ -97,6 +102,11 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
     });
   });
 
+  it("redirects sponsor to /dashboard/sponsor", async () => {
+    const user = makeUser(["sponsor"]);
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn().mockResolvedValue(user),
+    });
   it("redirects sponsor to /dashboard/sponsor after async login", async () => {
     const { loginMock, getAuthValue } = createAsyncAuthMock(makeUser(["sponsor"]));
     let currentUser: AuthUser | null = null;
@@ -117,6 +127,11 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
     });
   });
 
+  it("redirects contributor to /dashboard/contributor", async () => {
+    const user = makeUser(["contributor"]);
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn().mockResolvedValue(user),
+    });
   it("redirects contributor to /dashboard/contributor after async login", async () => {
     const { loginMock, getAuthValue } = createAsyncAuthMock(makeUser(["contributor"]));
     let currentUser: AuthUser | null = null;
@@ -138,6 +153,10 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
   });
 
   it("prefers maintainer over sponsor when user has multiple roles", async () => {
+    const user = makeUser(["sponsor", "maintainer"]);
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn().mockResolvedValue(user),
+    });
     const { loginMock, getAuthValue } = createAsyncAuthMock(makeUser(["sponsor", "maintainer"]));
     let currentUser: AuthUser | null = null;
     const authValue = getAuthValue();
@@ -158,6 +177,10 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
   });
 
   it("falls back to contributor when roles array is empty", async () => {
+    const user = makeUser([]);
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn().mockResolvedValue(user),
+    });
     const { loginMock, getAuthValue } = createAsyncAuthMock(makeUser([]));
     let currentUser: AuthUser | null = null;
     const authValue = getAuthValue();
@@ -177,11 +200,11 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
     });
   });
 
+  it("falls back to contributor when login returns null", async () => {
   it("falls back to contributor when user remains null after login", async () => {
     // Test case where login succeeds but user is still null (no roles)
     mockedUseAuth.mockReturnValue({
-      login: jest.fn().mockResolvedValue(undefined),
-      user: null,
+      login: jest.fn().mockResolvedValue(null),
     });
     render(<CallbackClient />);
 
@@ -190,9 +213,22 @@ describe("CallbackClient — role-based redirect (issue #77)", () => {
     });
   });
 
+  it("uses the user returned by login, not a stale context value", async () => {
+    const user = makeUser(["maintainer"]);
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn().mockResolvedValue(user),
+    });
+    render(<CallbackClient />);
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer");
+    });
+    // Verify login was called — the resolved user drives the redirect
+    expect(mockedUseAuth.mock.results[0].value.login).toHaveBeenCalledWith("jwt-token");
+  });
+
   it("shows error when no token is present", () => {
     mockedUseSearchParams.mockReturnValue(new URLSearchParams());
-    mockedUseAuth.mockReturnValue({ login: jest.fn(), user: null });
+    mockedUseAuth.mockReturnValue({ login: jest.fn() });
     render(<CallbackClient />);
     expect(screen.getByText(/No token was returned/)).toBeInTheDocument();
   });

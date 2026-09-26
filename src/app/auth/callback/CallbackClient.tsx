@@ -23,7 +23,7 @@ function redirectForRoles(roles: UserRole[] | undefined): string {
 export function CallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,11 +39,11 @@ export function CallbackClient() {
     window.history.replaceState({}, "", window.location.pathname);
 
     login(token)
-      .then(() => {
-        router.replace(redirectForRoles(user?.roles));
+      .then((resolvedUser) => {
+        router.replace(redirectForRoles(resolvedUser?.roles));
       })
       .catch(() => setError("Could not complete sign-in. Please try again."));
-  }, [searchParams, login, router, user]);
+  }, [searchParams, login, router]);
 
   return (
     <div className="mx-auto max-w-md px-6 py-24 text-center">

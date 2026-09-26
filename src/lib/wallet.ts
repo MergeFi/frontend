@@ -7,13 +7,19 @@ import {
   signTransaction as freighterSignTransaction,
 } from "@stellar/freighter-api";
 import { STELLAR_NETWORK } from "./config";
+import type { StellarNetwork } from "./env";
 
 export interface WalletConnection {
   address: string;
   network: string;
 }
 
-const NETWORK_PASSPHRASES: Record<string, string> = {
+/**
+ * Single source of truth for network passphrases (#357). Keyed by
+ * `StellarNetwork`, so adding a network to that type without a passphrase
+ * here is a compile error.
+ */
+export const NETWORK_PASSPHRASES: Record<StellarNetwork, string> = {
   PUBLIC: "Public Global Stellar Network ; September 2015",
   TESTNET: "Test SDF Network ; September 2015",
 };

@@ -47,14 +47,22 @@ export const ESCROW_LOCKED_EXCLUDED_STATUSES: BountyStatus[] = [
 // list of cards on every dashboard visit (#226).
 const MAX_VISIBLE_PER_COLUMN = 8;
 
-function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[] }) {
+function PipelineColumn({
+  label,
+  bounties,
+}: {
+  label: string;
+  bounties: Bounty[];
+}) {
   const visible = bounties.slice(0, MAX_VISIBLE_PER_COLUMN);
   const hiddenCount = bounties.length - visible.length;
 
   return (
     <div className="min-w-0 flex-1">
       <div className="flex items-center justify-between px-1">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          {label}
+        </p>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
           {bounties.length}
         </span>
@@ -103,6 +111,16 @@ function PipelineColumn({ label, bounties }: { label: string; bounties: Bounty[]
  * `bounties`, testable without mocking data-fetching, DashboardShell, etc.
  */
 export function PipelineBoard({ bounties }: { bounties: Bounty[] }) {
+  const byStatus = new Map<BountyStatus, Bounty[]>();
+  for (const bounty of bounties) {
+    const group = byStatus.get(bounty.status);
+    if (group) {
+      group.push(bounty);
+    } else {
+      byStatus.set(bounty.status, [bounty]);
+    }
+  }
+
   return (
     <Card className="mt-8">
       <h2 className="font-medium text-slate-900 dark:text-white">Pipeline</h2>
@@ -111,7 +129,7 @@ export function PipelineBoard({ bounties }: { bounties: Bounty[] }) {
           <PipelineColumn
             key={stage.status}
             label={stage.label}
-            bounties={bounties.filter((b) => b.status === stage.status)}
+            bounties={byStatus.get(stage.status) ?? []}
           />
         ))}
       </div>

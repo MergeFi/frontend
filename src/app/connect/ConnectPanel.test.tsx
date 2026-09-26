@@ -172,4 +172,42 @@ describe("ConnectPanel — the four connection-state combinations", () => {
     expect(screen.queryByText("Continue with GitHub")).not.toBeInTheDocument();
     expect(screen.queryByText("Connect Freighter")).not.toBeInTheDocument();
   });
+
+  it("shows wallet address mismatch banner when addresses differ", () => {
+    const userWithDifferentAddress = {
+      ...USER,
+      stellarAddress: "GXYZABCD1234567890OPQR",
+    };
+    setAuth(userWithDifferentAddress);
+    setWallet({ address: "GABCDEFGH1234567890WXYZ", network: "TESTNET" });
+    render(<ConnectPanel />);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Wallet address mismatch")).toBeInTheDocument();
+    expect(screen.getByText(/The connected wallet/)).toBeInTheDocument();
+    expect(screen.getByText(/GABC\.\.\.WXYZ/)).toBeInTheDocument();
+    expect(screen.getByText(/GXYZ\.\.\.OPQR/)).toBeInTheDocument();
+  });
+
+  it("hides wallet address mismatch banner when addresses match", () => {
+    const userWithMatchingAddress = {
+      ...USER,
+      stellarAddress: "GABCDEFGH1234567890WXYZ",
+    };
+    setAuth(userWithMatchingAddress);
+    setWallet({ address: "GABCDEFGH1234567890WXYZ", network: "TESTNET" });
+    render(<ConnectPanel />);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Wallet address mismatch")).not.toBeInTheDocument();
+  });
+
+  it("hides mismatch banner when user has no stellarAddress", () => {
+    setAuth(USER);
+    setWallet({ address: "GABCDEFGH1234567890WXYZ", network: "TESTNET" });
+    render(<ConnectPanel />);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Wallet address mismatch")).not.toBeInTheDocument();
+  });
 });

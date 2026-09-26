@@ -131,6 +131,7 @@ export function PoolDepositButton({
   }
 
   const inputId = `pool-deposit-${poolId}`;
+  const errorId = `${inputId}-error`;
 
   return (
     <div className="mt-4 flex items-center gap-2">
@@ -139,6 +140,8 @@ export function PoolDepositButton({
       </label>
       <input
         id={inputId}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         type="number"
         min="0.01"
         step="0.01"
@@ -157,7 +160,7 @@ export function PoolDepositButton({
         {pending || connecting ? "Confirming..." : "Deposit"}
       </Button>
       {error && (
-        <p role="alert" className="text-xs text-rose-600">
+        <p id={errorId} role="alert" className="text-xs text-rose-600">
           {error}
         </p>
       )}

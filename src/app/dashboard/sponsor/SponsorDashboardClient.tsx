@@ -10,7 +10,7 @@ import { BarChart } from "@/components/ui/BarChart";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { Card } from "@/components/ui/Card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, subtractMoney } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
 import { adaptBounty, type RawBounty, type RawMilestone } from "@/lib/adapters";
 import {
@@ -56,7 +56,11 @@ export default function SponsorDashboardClient() {
         activeBounties: mockBounties.filter((b) =>
           ["open", "funded", "claimed", "in_review"].includes(b.status),
         ),
-        totalSpent: mockSponsorSummary.totalFunded - mockSponsorSummary.budgetRemaining,
+        // Integer minor-unit arithmetic, not raw float subtraction (#353).
+        totalSpent: subtractMoney(
+          mockSponsorSummary.totalFunded,
+          mockSponsorSummary.budgetRemaining,
+        ),
         budgetLocked: mockSponsorSummary.budgetRemaining,
         repoCount: mockSponsorSummary.repos.length,
       });

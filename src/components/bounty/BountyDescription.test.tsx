@@ -17,7 +17,9 @@ describe("BountyDescription — content fidelity", () => {
     render(<BountyDescription description={description} />);
 
     expect(screen.queryByText(/```/)).not.toBeInTheDocument();
-    const code = screen.getByText((content) => content.includes("getBalance()"));
+    const code = screen.getByText((content) =>
+      content.includes("getBalance()"),
+    );
     expect(code.tagName.toLowerCase()).toBe("code");
     expect(code.closest("pre")).toBeInTheDocument();
   });
@@ -88,7 +90,9 @@ describe("BountyDescription — content fidelity", () => {
   it("styles h4/h5/h6 headings instead of falling back to unstyled defaults (#214)", () => {
     render(
       <BountyDescription
-        description={"#### Steps to reproduce\n\n##### Expected\n\n###### Actual"}
+        description={
+          "#### Steps to reproduce\n\n##### Expected\n\n###### Actual"
+        }
       />,
     );
 
@@ -112,14 +116,22 @@ describe("BountyDescription — content fidelity", () => {
 
     const img = container.querySelector("img");
     expect(img).not.toBeNull();
-    expect(img).toHaveAttribute("src", "https://user-images.githubusercontent.com/1/shot.png");
+    expect(img).toHaveAttribute(
+      "src",
+      "https://user-images.githubusercontent.com/1/shot.png",
+    );
     expect(img).toHaveAttribute("alt", "a screenshot");
     expect(img?.className).toContain("max-w-full");
+    expect(img?.className).toContain("aspect-video");
+    expect(img?.className).toContain("object-contain");
   });
 
   it("renders a GFM table as real <table>/<thead>/<tbody>/<tr>/<th>/<td> elements with styling", () => {
-    const description = "| Token | Amount |\n|-------|--------|\n| USDC  | 100    |\n| XLM   | 500    |";
-    const { container } = render(<BountyDescription description={description} />);
+    const description =
+      "| Token | Amount |\n|-------|--------|\n| USDC  | 100    |\n| XLM   | 500    |";
+    const { container } = render(
+      <BountyDescription description={description} />,
+    );
 
     const table = container.querySelector("table");
     expect(table).toBeInTheDocument();
@@ -171,7 +183,7 @@ describe("BountyDescription — untrusted-content hardening", () => {
   });
 
   it("renders a raw <script> tag embedded in the markdown as inert text, never as an executable script element", () => {
-    const payload = 'Notes: <script>window.__xss = 1;</script> end';
+    const payload = "Notes: <script>window.__xss = 1;</script> end";
     (window as unknown as { __xss?: number }).__xss = undefined;
 
     const { container } = render(<BountyDescription description={payload} />);

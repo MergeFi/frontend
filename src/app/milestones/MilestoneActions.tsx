@@ -37,10 +37,14 @@ export function MilestoneFundButton({
         setError(result.error);
         return;
       }
-      setNotice("Milestone funded successfully. The funds are now locked in escrow.");
+      setNotice(
+        "Milestone funded successfully. The funds are now locked in escrow.",
+      );
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
+      setError(
+        err instanceof ApiRequestError ? err.message : "Something went wrong.",
+      );
     } finally {
       setPending(false);
     }
@@ -53,7 +57,9 @@ export function MilestoneFundButton({
         variant="outline"
         onClick={handleFund}
         loading={pending || connecting}
-        aria-label={milestoneName ? `Fund milestone: ${milestoneName}` : "Fund milestone"}
+        aria-label={
+          milestoneName ? `Fund milestone: ${milestoneName}` : "Fund milestone"
+        }
       >
         {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
       </Button>
@@ -63,7 +69,11 @@ export function MilestoneFundButton({
         </p>
       )}
       {notice && (
-        <p role="status" aria-live="polite" className="mt-2 text-xs text-emerald-600">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-2 text-xs text-emerald-600"
+        >
           {notice}
         </p>
       )}
@@ -124,12 +134,15 @@ export function PoolDepositButton({
       setSuccess(true);
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
+      setError(
+        err instanceof ApiRequestError ? err.message : "Something went wrong.",
+      );
     } finally {
       setPending(false);
     }
   }
 
+  const step = asset === "XLM" ? "0.0000001" : "0.01";
   const inputId = `pool-deposit-${poolId}`;
 
   return (
@@ -140,8 +153,8 @@ export function PoolDepositButton({
       <input
         id={inputId}
         type="number"
-        min="0.01"
-        step="0.01"
+        min={step}
+        step={step}
         value={amount}
         onChange={handleAmountChange}
         className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
@@ -152,7 +165,9 @@ export function PoolDepositButton({
         onClick={handleDeposit}
         loading={pending || connecting}
         disabled={!inputValid}
-        aria-label={poolRepo ? `Deposit to pool: ${poolRepo}` : "Deposit to pool"}
+        aria-label={
+          poolRepo ? `Deposit to pool: ${poolRepo}` : "Deposit to pool"
+        }
       >
         {pending || connecting ? "Confirming..." : "Deposit"}
       </Button>
@@ -162,7 +177,11 @@ export function PoolDepositButton({
         </p>
       )}
       {success && (
-        <p role="status" aria-live="polite" className="text-xs text-emerald-600">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-xs text-emerald-600"
+        >
           Deposit successful.
         </p>
       )}

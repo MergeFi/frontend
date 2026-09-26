@@ -7,13 +7,19 @@ import {
   signTransaction as freighterSignTransaction,
 } from "@stellar/freighter-api";
 import { STELLAR_NETWORK } from "./config";
+import type { StellarNetwork } from "./env";
 
 export interface WalletConnection {
   address: string;
   network: string;
 }
 
-const NETWORK_PASSPHRASES: Record<string, string> = {
+/**
+ * Single source of truth for network passphrases (#357). Keyed by
+ * `StellarNetwork`, so adding a network to that type without a passphrase
+ * here is a compile error.
+ */
+export const NETWORK_PASSPHRASES: Record<StellarNetwork, string> = {
   PUBLIC: "Public Global Stellar Network ; September 2015",
   TESTNET: "Test SDF Network ; September 2015",
 };
@@ -100,9 +106,7 @@ export async function connectWallet(): Promise<WalletConnection> {
 export async function signTransaction(xdr: string, address: string) {
   return freighterSignTransaction(xdr, {
     address,
-    networkPassphrase:
-      STELLAR_NETWORK === "PUBLIC"
-        ? "Public Global Stellar Network ; September 2015"
-        : "Test SDF Network ; September 2015",
+    // Reuse the shared mapping so signing and checkNetworkMismatch can't drift (#357).
+    networkPassphrase: NETWORK_PASSPHRASES[STELLAR_NETWORK],
   });
 }

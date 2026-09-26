@@ -10,7 +10,9 @@ jest.mock("@/context/ThemeContext", () => ({
 const mockUseTheme = useTheme as jest.MockedFunction<typeof useTheme>;
 
 function renderWithTheme(theme: "light" | "dark", toggle = jest.fn()) {
-  mockUseTheme.mockReturnValue({ theme, toggle } as unknown as ReturnType<typeof useTheme>);
+  mockUseTheme.mockReturnValue({ theme, toggle } as unknown as ReturnType<
+    typeof useTheme
+  >);
   const utils = render(<ThemeToggle />);
   return { ...utils, toggle };
 }
@@ -31,4 +33,28 @@ describe("ThemeToggle", () => {
     expect(container.querySelector("svg.lucide-moon")).toBeInTheDocument();
     expect(container.querySelector("svg.lucide-sun")).not.toBeInTheDocument();
   });
+
+  it("labels the button with the action it will perform", () => {
+    renderWithTheme("dark");
+    expect(
+      screen.getByRole("button", { name: "Switch to light mode" }),
+    ).toBeInTheDocument();
+  });
+
+  it("labels the button for switching to dark mode in light mode", () => {
+    renderWithTheme("light");
+    expect(
+      screen.getByRole("button", { name: "Switch to dark mode" }),
+    ).toBeInTheDocument();
+  });
+
+  it.each(["light", "dark"] as const)(
+    "calls toggle() once when clicked in %s mode",
+    async (theme) => {
+      const user = userEvent.setup();
+      const { toggle } = renderWithTheme(theme);
+      await user.click(screen.getByRole("button"));
+      expect(toggle).toHaveBeenCalledTimes(1);
+    },
+  );
 });

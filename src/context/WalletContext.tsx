@@ -41,6 +41,14 @@ interface WalletContextValue {
    * always current the instant connect()'s promise settles (#235).
    */
   getError: () => string | null;
+  /**
+   * Re-derives the network-mismatch flag from Freighter's *current* live
+   * state (via checkNetworkMismatch in lib/wallet) and returns the resulting
+   * boolean. Callers that gate an action on `networkMismatch` can use this to
+   * recover from a stale mount-time snapshot instead of trusting a render-time
+   * value that may have since been corrected in the extension (#349).
+   */
+  refreshNetworkState: () => Promise<boolean>;
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -59,6 +67,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setError(message);
   }, []);
   const getError = useCallback(() => errorRef.current, []);
+
+  /**
+   * Re-derives `networkMismatch` from Freighter's current live network and
+   * returns the resulting boolean. Exposed so `runWithWallet` (and any other
+   * gate) can re-check the live state instead of trusting a stale mount-time
+   * snapshot that may have since been corrected in the extension (#349).
+   */
+  const refreshNetworkState = useCallback(async () => {
+    const msg = await checkNetworkMismatch();
+    const mismatch = Boolean(msg);
+    setNetworkMismatch(mismatch);
+    return mismatch;
+  }, []);
 
   useEffect(() => {
     // localStorage is unavailable during SSR, so this can't be a lazy
@@ -204,6 +225,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         connect,
         disconnect,
         getError,
+        refreshNetworkState,
       }}
     >
       {children}

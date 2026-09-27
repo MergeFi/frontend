@@ -5,6 +5,7 @@ import {
   waitFor,
   act,
   fireEvent,
+  renderHook,
 } from "@testing-library/react";
 import { WalletProvider, useWallet } from "./WalletContext";
 import { useAuth } from "@/context/AuthContext";
@@ -151,6 +152,48 @@ describe("WalletContext — mount reconciliation (#402)", () => {
       expect(screen.getByTestId("address-mismatch")).toHaveTextContent("false");
       expect(screen.getByTestId("network-mismatch")).toHaveTextContent("false");
     });
+  });
+});
+
+describe("WalletContext — refreshNetworkState() (#349)", () => {
+  it("re-derives networkMismatch from Freighter's current live state", async () => {
+    window.localStorage.setItem(WALLET_KEY, "GCACHEDADDRESS");
+    mockCheckNetworkMismatch.mockResolvedValue("Wrong network"); // latched true at mount
+
+    const { result } = renderHook(() => useWallet(), {
+      wrapper: ({ children }) => <WalletProvider>{children}</WalletProvider>,
+    });
+
+    await waitFor(() => expect(result.current.networkMismatch).toBe(true));
+
+    // User corrects the network in their extension; re-derive.
+    mockCheckNetworkMismatch.mockResolvedValue(null);
+    let stillMismatched: boolean;
+    await act(async () => {
+      stillMismatched = await result.current.refreshNetworkState();
+    });
+
+    expect(stillMismatched!).toBe(false);
+    expect(result.current.networkMismatch).toBe(false);
+  });
+
+  it("reports true and keeps the flag set when the network is still wrong", async () => {
+    window.localStorage.setItem(WALLET_KEY, "GCACHEDADDRESS");
+    mockCheckNetworkMismatch.mockResolvedValue("Wrong network");
+
+    const { result } = renderHook(() => useWallet(), {
+      wrapper: ({ children }) => <WalletProvider>{children}</WalletProvider>,
+    });
+
+    await waitFor(() => expect(result.current.networkMismatch).toBe(true));
+
+    let stillMismatched: boolean;
+    await act(async () => {
+      stillMismatched = await result.current.refreshNetworkState();
+    });
+
+    expect(stillMismatched!).toBe(true);
+    expect(result.current.networkMismatch).toBe(true);
   });
 });
 

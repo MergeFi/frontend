@@ -53,6 +53,10 @@ function mockWallet(overrides: Record<string, unknown> = {}) {
     addressMismatch: false,
     networkMismatch: false,
     getError: () => null,
+    // Default: a re-check confirms the network is still wrong, so a genuine
+    // mismatch keeps blocking. Tests that exercise the stale-flag recovery
+    // path override this with a mockResolvedValue(false).
+    refreshNetworkState: jest.fn().mockResolvedValue(true),
     ...overrides,
   } as unknown as ReturnType<typeof useWallet>);
 }
@@ -162,6 +166,27 @@ describe("IssueActions — fund (wallet-gated)", () => {
       expect(refresh).not.toHaveBeenCalled();
     },
   );
+
+  it("recovers from a stale (false-positive) networkMismatch and funds once the network is corrected (#349)", async () => {
+    const user = userEvent.setup();
+    // The flag was latched true at mount, but the user fixed the network in
+    // their extension — refreshNetworkState() now reports no mismatch.
+    mockWallet({
+      networkMismatch: true,
+      refreshNetworkState: jest.fn().mockResolvedValue(false),
+    });
+    render(<IssueActions bounty={makeBounty("open")} />);
+    await user.click(screen.getByRole("button", { name: "Fund this bounty" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /Escrow funded on-chain/,
+    );
+    expect(mockApiPost).toHaveBeenCalledWith(
+      "/bounties/bounty-1/fund",
+      expect.objectContaining({ funderAddress: "GWALLET" }),
+    );
+    expect(connect).not.toHaveBeenCalled();
+  });
 
   it("shows the connect error when the wallet connection is declined", async () => {
     const user = userEvent.setup();

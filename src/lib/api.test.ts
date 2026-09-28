@@ -1,4 +1,4 @@
-import { fetchIndexableReputationHandles } from "./api";
+import { fetchIndexableReputationHandles, apiRequest, ApiRequestError } from "./api";
 
 /**
  * The privacy filter in fetchIndexableReputationHandles is the point where a
@@ -69,5 +69,96 @@ describe("fetchIndexableReputationHandles", () => {
 
     expect(result.source).toBe("mock");
     expect(result.data).toEqual(["mock-handle"]);
+  });
+});
+
+describe("apiRequest 429 rate-limit handling (#572)", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  // Mirrors the shape of a real fetch Response for the 429 branch; the body is
+  // never read in that path because apiRequest throws before reaching res.text().
+  function mock429(retryAfter: string | null) {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      headers: {
+        get: (h: string) => (h.toLowerCase() === "retry-after" ? retryAfter : null),
+      },
+      json: async () => ({}),
+    }) as unknown as typeof fetch;
+  }
+
+  it("parses a delay-seconds Retry-After and surfaces retryAfter to callers", async () => {
+    mock429("120");
+    let caught: unknown;
+    try {
+      await apiRequest("/r572-seconds");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ApiRequestError);
+    const e = caught as ApiRequestError;
+    expect(e.status).toBe(429);
+    expect(e.retryAfter).toBe(120);
+    expect(e.message).toBe(
+      "You're doing that too fast. Please wait 120 seconds before trying again.",
+    );
+  });
+
+  it("parses an HTTP-date Retry-After (RFC 9110 §10.2.3) into seconds", async () => {
+    const future = new Date(Date.now() + 90_000).toUTCString();
+    mock429(future);
+    let caught: unknown;
+    try {
+      await apiRequest("/r572-httpdate");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ApiRequestError);
+    const e = caught as ApiRequestError;
+    expect(e.status).toBe(429);
+    expect(Number.isFinite(e.retryAfter)).toBe(true);
+    expect(e.retryAfter).toBeGreaterThan(0);
+    expect(e.retryAfter).toBeLessThanOrEqual(95);
+  });
+
+  it("uses the plain fallback message when Retry-After is missing", async () => {
+    mock429(null);
+    let caught: unknown;
+    try {
+      await apiRequest("/r572-missing");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ApiRequestError);
+    const e = caught as ApiRequestError;
+    expect(e.retryAfter).toBeUndefined();
+    expect(e.message).toBe(
+      "You're doing that too fast. Rate limited. Please try again later.",
+    );
+  });
+
+  it("treats a garbage Retry-After as missing rather than NaN", async () => {
+    mock429("not-a-number");
+    let caught: unknown;
+    try {
+      await apiRequest("/r572-garbage");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ApiRequestError);
+    const e = caught as ApiRequestError;
+    expect(e.retryAfter).toBeUndefined();
+    expect(e.message).toContain("Rate limited. Please try again later.");
   });
 });

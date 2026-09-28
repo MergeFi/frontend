@@ -128,18 +128,32 @@ export async function apiRequest<T>(
       throw err;
     }
 
-    // --- Rate-limit handling (#44) ---
+    // --- Rate-limit handling (#44, #572) ---
+    // RFC 9110 §10.2.3 allows Retry-After to be either delay-seconds OR an
+    // HTTP-date (which proxies/CDNs commonly send). The previous parseInt()
+    // silently dropped the date form, so callers reading `retryAfter` to
+    // throttle retries got `undefined`. Parse both forms; the left-hand `||`
+    // fallback message was also dead code because the template literal is
+    // always truthy, so the "no wait info" wording was unreachable.
     if (res.status === 429) {
       const retryAfter = res.headers.get("Retry-After");
-      const seconds = retryAfter ? parseInt(retryAfter, 10) : NaN;
-      const waitMsg = Number.isFinite(seconds)
-        ? ` Please wait ${seconds} second${seconds === 1 ? "" : "s"} before trying again.`
-        : "";
-      throw new ApiRequestError(
-        `You're doing that too fast.${waitMsg}` || `Rate limited. Please try again later.`,
-        429,
-        Number.isFinite(seconds) ? seconds : undefined,
-      );
+      let seconds: number | undefined;
+      if (retryAfter) {
+        const trimmed = retryAfter.trim();
+        if (/^\d+$/.test(trimmed)) {
+          seconds = parseInt(trimmed, 10);
+        } else {
+          const dateMs = Date.parse(trimmed);
+          if (!Number.isNaN(dateMs)) {
+            seconds = Math.max(0, Math.ceil((dateMs - Date.now()) / 1000));
+          }
+        }
+      }
+      const message =
+        seconds != null
+          ? `You're doing that too fast. Please wait ${seconds} second${seconds === 1 ? "" : "s"} before trying again.`
+          : `You're doing that too fast. Rate limited. Please try again later.`;
+      throw new ApiRequestError(message, 429, seconds);
     }
 
     if (!res.ok) {

@@ -145,3 +145,35 @@ describe("DashboardShell — content rendering", () => {
     expect(screen.getByText("Welcome back")).toBeInTheDocument();
   });
 });
+describe("DashboardShell - accessibility aria-current (#444)", () => {
+  it("sets aria-current='page' on active nav link and undefined on inactive links", () => {
+    shell("contributor", "/dashboard/contributor");
+    const overviewLink = screen.getByText("Overview").closest("a")!;
+    const browseLink = screen.getByText("Browse bounties").closest("a")!;
+    const reputationLink = screen.getByText("Reputation").closest("a")!;
+
+    expect(overviewLink).toHaveAttribute("aria-current", "page");
+    expect(browseLink).not.toHaveAttribute("aria-current");
+    expect(reputationLink).not.toHaveAttribute("aria-current");
+  });
+
+  it("sets aria-current='page' on nested matched nav links", () => {
+    shell("contributor", "/issues/123");
+    const overviewLink = screen.getByText("Overview").closest("a")!;
+    const browseLink = screen.getByText("Browse bounties").closest("a")!;
+
+    expect(browseLink).toHaveAttribute("aria-current", "page");
+    expect(overviewLink).not.toHaveAttribute("aria-current");
+  });
+
+  it("sets aria-current='page' on the active role link and undefined on others in role switcher", () => {
+    shell("maintainer", "/dashboard/maintainer");
+    const maintainerLink = screen.getByText("Maintainer").closest("a")!;
+    const contributorLink = screen.getByText("Contributor").closest("a")!;
+    const sponsorLink = screen.getByText("Sponsor").closest("a")!;
+
+    expect(maintainerLink).toHaveAttribute("aria-current", "page");
+    expect(contributorLink).not.toHaveAttribute("aria-current");
+    expect(sponsorLink).not.toHaveAttribute("aria-current");
+  });
+});

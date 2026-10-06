@@ -1,5 +1,6 @@
+import { useRef, useCallback, useEffect } from 'react';
 import { useSmartPolling } from './useSmartPolling';
-import { fetchBounty } from '@/lib/api';
+import { fetchBountyLive } from '@/lib/api';
 import type { Bounty, BountyStatus } from '@/types/bounty';
 
 interface UseBountyStatusOptions {
@@ -28,6 +29,54 @@ export function useBountyStatus({
   enabled = true,
   onStatusChange,
 }: UseBountyStatusOptions): UseBountyStatusResult {
+  const lastLiveBountyIdRef = useRef<string | null>(null);
+
+  const fallbackRef = useRef(fallbackBounty);
+  useEffect(() => {
+    fallbackRef.current = fallbackBounty;
+  });
+
+  const onStatusChangeRef = useRef(onStatusChange);
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+  });
+
+  const fetchFn = useCallback(async () => {
+    try {
+      const result = await fetchBountyLive(bountyId);
+      lastLiveBountyIdRef.current = bountyId;
+      return result;
+    } catch (err) {
+      // Only return static fallback before any live data has been observed for this bounty
+      const hasObservedLive = lastLiveBountyIdRef.current === bountyId;
+      if (!hasObservedLive && fallbackRef.current !== undefined) {
+        return { data: fallbackRef.current, source: 'mock' as const };
+      }
+      throw err;
+    }
+  }, [bountyId]);
+
+  const compareFn = useCallback(
+    (
+      a: { data: Bounty | undefined; source: 'live' | 'mock' } | null,
+      b: { data: Bounty | undefined; source: 'live' | 'mock' } | null,
+    ) => {
+      const aStatus = a?.data?.status;
+      const bStatus = b?.data?.status;
+      return aStatus === bStatus && a?.data?.claimedBy === b?.data?.claimedBy;
+    },
+    [],
+  );
+
+  const handleDataChange = useCallback(
+    (result: { data: Bounty | undefined; source: 'live' | 'mock' }) => {
+      if (onStatusChangeRef.current && result?.data?.status) {
+        onStatusChangeRef.current(result.data.status);
+      }
+    },
+    [],
+  );
+
   const {
     data,
     isLoading,
@@ -36,25 +85,14 @@ export function useBountyStatus({
     isPolling,
     isBackingOff,
   } = useSmartPolling<{ data: Bounty | undefined; source: 'live' | 'mock' }>({
-    fetchFn: async () => {
-      const result = await fetchBounty(bountyId, fallbackBounty);
-      return result;
-    },
+    fetchFn,
     interval,
     enabled,
     backoffMultiplier: 1.5,
     maxBackoff: 30000,
     unchangedThreshold: 3,
-    compareFn: (a, b) => {
-      const aStatus = a?.data?.status;
-      const bStatus = b?.data?.status;
-      return aStatus === bStatus && a?.data?.claimedBy === b?.data?.claimedBy;
-    },
-    onDataChange: (result) => {
-      if (onStatusChange && result?.data?.status) {
-        onStatusChange(result.data.status);
-      }
-    },
+    compareFn,
+    onDataChange: handleDataChange,
   });
 
   return {

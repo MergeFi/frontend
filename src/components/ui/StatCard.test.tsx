@@ -337,4 +337,37 @@ describe("StatCard — sparkline", () => {
       "Earnings history: 4 data points, trending up from 10 to 30, range 10 to 30",
     );
   });
+
+  it("formats sparkline values according to format and asset props (#709)", () => {
+    render(
+      <StatCard
+        label="Lifetime earnings"
+        status="loaded"
+        value={8420}
+        format="currency"
+        asset="USDC"
+        sparkline={[1234.5, 2000, 5000, 8420]}
+      />,
+    );
+    const svg = screen.getByRole("img");
+    expect(svg).toHaveAccessibleName(
+      "Lifetime earnings: 4 data points, trending up from 1,234.5 USDC to 8,420 USDC, range 1,234.5 USDC to 8,420 USDC",
+    );
+  });
+
+  it("formats sparkline values for count format (#709)", () => {
+    render(
+      <StatCard
+        label="Completed tasks"
+        status="loaded"
+        value={5000}
+        format="count"
+        sparkline={[1000, 2500, 5000]}
+      />,
+    );
+    const svg = screen.getByRole("img");
+    expect(svg).toHaveAccessibleName(
+      "Completed tasks: 3 data points, trending up from 1,000 to 5,000, range 1,000 to 5,000",
+    );
+  });
 });

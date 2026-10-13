@@ -116,25 +116,53 @@ export function isFilterActive(query: BountyQuery): boolean {
   );
 }
 
+/** True when the set of bounties spans more than one asset (e.g. USDC and XLM). */
+function hasMixedAssets(bounties: Bounty[]): boolean {
+  const assets = new Set(bounties.map((b) => b.asset));
+  return assets.size > 1;
+}
+
 export function filterBounties(bounties: Bounty[], query: BountyQuery): Bounty[] {
-  return bounties.filter((b) => {
+  const facetFiltered = bounties.filter((b) => {
     if (query.status !== "all" && b.status !== query.status) return false;
     if (query.difficulty !== "all" && b.difficulty !== query.difficulty) return false;
     if (query.asset !== "all" && b.asset !== query.asset) return false;
+    return true;
+  });
+
+  if (query.minReward === undefined && query.maxReward === undefined) {
+    return facetFiltered;
+  }
+
+  // `reward` is a raw number in the bounty's own asset — USDC and XLM are not
+  // 1-for-1 (1 XLM is roughly $0.10, not $1). A bound like "min reward 100"
+  // is only meaningful once every candidate shares one asset; otherwise it
+  // silently keeps a 100 XLM bounty (~$10) next to a 100 USDC one as if they
+  // were comparable (#613). When no single asset is selected and the result
+  // set actually spans more than one asset, the reward bound is ignored
+  // rather than producing a misleading cross-currency comparison.
+  if (query.asset === "all" && hasMixedAssets(facetFiltered)) {
+    return facetFiltered;
+  }
+
+  return facetFiltered.filter((b) => {
     if (query.minReward !== undefined && b.reward < query.minReward) return false;
     if (query.maxReward !== undefined && b.reward > query.maxReward) return false;
     return true;
   });
 }
 
-function sortBounties(bounties: Bounty[], sort: SortOption): Bounty[] {
+function sortBounties(bounties: Bounty[], sort: SortOption, asset: AssetFilter): Bounty[] {
   const sorted = [...bounties];
+  // Same cross-currency caveat as filterBounties: don't rank by raw reward
+  // when the list mixes assets and no single asset is selected (#613).
+  const skipRewardSort = asset === "all" && hasMixedAssets(bounties);
   switch (sort) {
     case "reward-desc":
-      sorted.sort((a, b) => b.reward - a.reward);
+      if (!skipRewardSort) sorted.sort((a, b) => b.reward - a.reward);
       break;
     case "reward-asc":
-      sorted.sort((a, b) => a.reward - b.reward);
+      if (!skipRewardSort) sorted.sort((a, b) => a.reward - b.reward);
       break;
     case "deadline-asc":
       sorted.sort((a, b) => {
@@ -169,7 +197,7 @@ export function applyBountyQuery(
   pageSize = PAGE_SIZE,
 ): BountyQueryResult {
   const filtered = filterBounties(bounties, query);
-  const sorted = sortBounties(filtered, query.sort);
+  const sorted = sortBounties(filtered, query.sort, query.asset);
   const filteredCount = sorted.length;
   const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const page = Math.min(Math.max(1, query.page), totalPages);

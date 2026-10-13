@@ -122,6 +122,38 @@ describe("filterBounties", () => {
     });
     expect(result).toHaveLength(3);
   });
+
+  it("ignores an incomparable reward-range filter across mixed assets (#613)", () => {
+    const mixed = [
+      bounty({ id: "small-xlm", asset: "XLM", reward: 500 }),
+      bounty({ id: "big-usdc", asset: "USDC", reward: 400 }),
+    ];
+    const result = filterBounties(mixed, {
+      status: "all",
+      difficulty: "all",
+      asset: "all",
+      minReward: 450,
+      sort: "default",
+      page: 1,
+    });
+    expect(result.map((b) => b.id)).toEqual(["small-xlm", "big-usdc"]);
+  });
+
+  it("still applies a reward-range filter once a single asset is selected (#613)", () => {
+    const sameAsset = [
+      bounty({ id: "a", asset: "USDC", reward: 100 }),
+      bounty({ id: "b", asset: "USDC", reward: 300 }),
+    ];
+    const result = filterBounties(sameAsset, {
+      status: "all",
+      difficulty: "all",
+      asset: "USDC",
+      minReward: 200,
+      sort: "default",
+      page: 1,
+    });
+    expect(result.map((b) => b.id)).toEqual(["b"]);
+  });
 });
 
 describe("applyBountyQuery", () => {
@@ -157,6 +189,35 @@ describe("applyBountyQuery", () => {
       10,
     );
     expect(result.items[0].reward).toBe(24);
+  });
+
+  it("does not rank by raw reward across mixed assets when no single asset is selected (#613)", () => {
+    const mixed = [
+      bounty({ id: "small-xlm", asset: "XLM", reward: 500, deadline: null }),
+      bounty({ id: "big-usdc", asset: "USDC", reward: 400, deadline: null }),
+    ];
+    const result = applyBountyQuery(
+      mixed,
+      { status: "all", difficulty: "all", asset: "all", sort: "reward-desc", page: 1 },
+      10,
+    );
+    // Left in original order rather than reordered by raw number, since 500
+    // XLM and 400 USDC are not actually comparable as "500 > 400".
+    expect(result.items.map((b) => b.id)).toEqual(["small-xlm", "big-usdc"]);
+  });
+
+  it("still ranks by reward once a single asset is selected, even with mixed data present (#613)", () => {
+    const mixed = [
+      bounty({ id: "xlm-bounty", asset: "XLM", reward: 500, deadline: null }),
+      bounty({ id: "usdc-low", asset: "USDC", reward: 100, deadline: null }),
+      bounty({ id: "usdc-high", asset: "USDC", reward: 300, deadline: null }),
+    ];
+    const result = applyBountyQuery(
+      mixed,
+      { status: "all", difficulty: "all", asset: "USDC", sort: "reward-desc", page: 1 },
+      10,
+    );
+    expect(result.items.map((b) => b.id)).toEqual(["usdc-high", "usdc-low"]);
   });
 
   it("puts bounties without a deadline last when sorting by soonest deadline", () => {

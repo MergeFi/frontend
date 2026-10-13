@@ -172,6 +172,30 @@ describe("applyBountyQuery", () => {
     );
     expect(result.items.map((b) => b.id)).toEqual(["z", "y", "x"]);
   });
+
+  it("puts an already-expired deadline after every still-open one (#703)", () => {
+    const mixed = [
+      bounty({ id: "expired-recent", deadline: new Date(Date.now() - 3600000).toISOString(), reward: 1 }),
+      bounty({ id: "expired-long-ago", deadline: new Date(Date.now() - 86400000 * 30).toISOString(), reward: 2 }),
+      bounty({ id: "open-far", deadline: new Date(Date.now() + 86400000 * 7).toISOString(), reward: 3 }),
+      bounty({ id: "open-soon", deadline: new Date(Date.now() + 3600000).toISOString(), reward: 4 }),
+      bounty({ id: "no-deadline", deadline: null, reward: 5 }),
+    ];
+    const result = applyBountyQuery(
+      mixed,
+      { status: "all", difficulty: "all", asset: "all", sort: "deadline-asc", page: 1 },
+      10,
+    );
+    // Open bounties (soonest first), then expired ones, then no-deadline last —
+    // not a raw timestamp sort, which would put "expired-long-ago" first.
+    expect(result.items.map((b) => b.id)).toEqual([
+      "open-soon",
+      "open-far",
+      "expired-long-ago",
+      "expired-recent",
+      "no-deadline",
+    ]);
+  });
 });
 
 describe("buildBountyQueryString", () => {

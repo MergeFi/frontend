@@ -136,14 +136,25 @@ function sortBounties(bounties: Bounty[], sort: SortOption): Bounty[] {
     case "reward-asc":
       sorted.sort((a, b) => a.reward - b.reward);
       break;
-    case "deadline-asc":
+    case "deadline-asc": {
+      // Captured once so every comparison in this sort agrees on "now" (#703).
+      const now = Date.now();
       sorted.sort((a, b) => {
         if (!a.deadline && !b.deadline) return 0;
         if (!a.deadline) return 1;
         if (!b.deadline) return -1;
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        const aTime = new Date(a.deadline).getTime();
+        const bTime = new Date(b.deadline).getTime();
+        const aExpired = aTime < now;
+        const bExpired = bTime < now;
+        // "Soonest" means soonest upcoming deadline. An already-expired
+        // deadline is never "soonest" — it ranks after every still-open one,
+        // regardless of how its raw timestamp compares.
+        if (aExpired !== bExpired) return aExpired ? 1 : -1;
+        return aTime - bTime;
       });
       break;
+    }
     case "default":
       break;
   }

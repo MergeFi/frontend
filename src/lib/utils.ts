@@ -319,8 +319,24 @@ export function generateIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // Fallback for environments without crypto.randomUUID (very unlikely in
-  // modern browsers, but defensive).
+
+  // `crypto.randomUUID` requires a secure context, but `crypto.getRandomValues`
+  // does not — it's available on a plain-http origin too (e.g. a staging
+  // deploy), so prefer it over Math.random, which is predictable and
+  // collision-prone. Idempotency keys are scoped per caller on the backend,
+  // so a collision replays someone's cached response instead of executing
+  // the request (#706).
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    // RFC 4122 v4: fix the version nibble to 4 and the variant bits to 10xx.
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  // Last-resort fallback for environments with no Web Crypto API at all
+  // (very unlikely in modern browsers, but defensive).
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);

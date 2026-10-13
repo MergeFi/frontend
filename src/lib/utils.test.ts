@@ -401,6 +401,43 @@ describe("generateIdempotencyKey", () => {
     const keys = new Set(Array.from({ length: 50 }, () => generateIdempotencyKey()));
     expect(keys.size).toBe(50);
   });
+
+  describe("without crypto.randomUUID (e.g. a non-secure origin) (#706)", () => {
+    let originalRandomUUID: typeof crypto.randomUUID;
+
+    beforeEach(() => {
+      originalRandomUUID = crypto.randomUUID;
+      // @ts-expect-error - simulating an insecure-context environment where
+      // crypto.randomUUID is unavailable but crypto.getRandomValues still is.
+      crypto.randomUUID = undefined;
+    });
+
+    afterEach(() => {
+      crypto.randomUUID = originalRandomUUID;
+    });
+
+    it("still returns a valid UUID v4 string via crypto.getRandomValues", () => {
+      const key = generateIdempotencyKey();
+      expect(key).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+    });
+
+    it("still generates unique keys on successive calls", () => {
+      const keys = new Set(Array.from({ length: 50 }, () => generateIdempotencyKey()));
+      expect(keys.size).toBe(50);
+    });
+
+    it("does not fall back to Math.random when getRandomValues is available", () => {
+      const mathRandomSpy = jest.spyOn(Math, "random");
+      try {
+        generateIdempotencyKey();
+        expect(mathRandomSpy).not.toHaveBeenCalled();
+      } finally {
+        mathRandomSpy.mockRestore();
+      }
+    });
+  });
 });
 
 // ─── toCents / toMajorUnits ────────────────────────────────────────────────

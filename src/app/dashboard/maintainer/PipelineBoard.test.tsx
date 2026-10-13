@@ -30,6 +30,38 @@ function makeBounty(overrides: Partial<Bounty> = {}): Bounty {
   };
 }
 
+describe("PipelineBoard — 'View all N' link carries the column's status (#693)", () => {
+  function manyBounties(status: BountyStatus, count: number): Bounty[] {
+    return Array.from({ length: count }, (_, i) =>
+      makeBounty({ id: `${status}-${i}`, status }),
+    );
+  }
+
+  it("links to /issues?status=<column status> when a column overflows", () => {
+    render(<PipelineBoard bounties={manyBounties("funded", 10)} />);
+
+    const link = screen.getByRole("link", { name: /View all 10/ });
+    expect(link).toHaveAttribute("href", "/issues?status=funded");
+  });
+
+  it("carries the status for every pipeline column, not just the default facet values", () => {
+    const bounties = [
+      ...manyBounties("claimed", 9),
+      ...manyBounties("merged", 9),
+    ];
+    render(<PipelineBoard bounties={bounties} />);
+
+    const claimedLink = screen
+      .getAllByRole("link", { name: /View all 9/ })
+      .find((link) => link.getAttribute("href") === "/issues?status=claimed");
+    const mergedLink = screen
+      .getAllByRole("link", { name: /View all 9/ })
+      .find((link) => link.getAttribute("href") === "/issues?status=merged");
+    expect(claimedLink).toBeDefined();
+    expect(mergedLink).toBeDefined();
+  });
+});
+
 describe("PipelineBoard — merged column (#88)", () => {
   it("renders a bounty with status 'merged' in a visible pipeline column", () => {
     const merged = makeBounty({ id: "merged-1", title: "Merged, awaiting payout", status: "merged" });

@@ -48,9 +48,11 @@ export const ESCROW_LOCKED_EXCLUDED_STATUSES: BountyStatus[] = [
 const MAX_VISIBLE_PER_COLUMN = 8;
 
 function PipelineColumn({
+  status,
   label,
   bounties,
 }: {
+  status: BountyStatus;
   label: string;
   bounties: Bounty[];
 }) {
@@ -94,7 +96,7 @@ function PipelineColumn({
         )}
         {hiddenCount > 0 && (
           <Link
-            href="/issues"
+            href={`/issues?status=${status}`}
             className="block rounded-xl border border-dashed border-slate-200 px-3 py-2 text-center text-xs font-medium text-indigo-600 transition-colors hover:border-indigo-300 dark:border-slate-800 dark:text-indigo-400 dark:hover:border-indigo-700"
           >
             View all {bounties.length} in Bounty pipeline
@@ -128,6 +130,7 @@ export function PipelineBoard({ bounties }: { bounties: Bounty[] }) {
         {pipelineStages.map((stage) => (
           <PipelineColumn
             key={stage.status}
+            status={stage.status}
             label={stage.label}
             bounties={byStatus.get(stage.status) ?? []}
           />

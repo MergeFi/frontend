@@ -17,7 +17,17 @@ import type { Bounty } from "@/types";
 
 export const PAGE_SIZE = 10;
 
-export const STATUS_VALUES = ["all", "open", "in_review"] as const;
+// Includes every status PipelineBoard renders a column for (#693) — a
+// maintainer following a column's "View all N" link needs the facet to
+// actually filter to that status, not silently fall back to "all".
+export const STATUS_VALUES = [
+  "all",
+  "open",
+  "in_review",
+  "funded",
+  "claimed",
+  "merged",
+] as const;
 export type StatusFilter = (typeof STATUS_VALUES)[number];
 
 export const DIFFICULTY_VALUES = [

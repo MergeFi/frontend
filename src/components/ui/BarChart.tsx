@@ -15,13 +15,10 @@ export interface BarChartPoint {
  * widely-supported role) and it means every figure is available as real text
  * to a screen reader rather than being reconstructed from bar heights.
  *
- * Hover-only information used to live in a `title` attribute, which is not
- * reachable by keyboard and is not reliably announced. Each bar is now
- * focusable with a visible focus ring and reveals the same tooltip on focus
- * (group-focus-within) as on hover, so a keyboard user gets the identical
- * detail a mouse user does. The tooltip lives inside the aria-hidden subtree
- * on purpose: sighted keyboard users need to *see* it, while assistive tech
- * should read the table once rather than announce every bar again.
+ * Sighted users receive hover tooltips on each bar. The visual bars subtree
+ * is marked aria-hidden and contains no focusable elements (#708), avoiding
+ * axe's aria-hidden-focus rule and silent tab stops for screen reader users.
+ * Assistive tech reaches all data via the visually-hidden (sr-only) table.
  *
  * Colour is never the only signal: negative bars are drawn with a diagonal
  * stripe as well as a different hue, and the value keeps its sign in both the
@@ -70,11 +67,10 @@ export function BarChart({
             >
               <div className="relative flex w-full flex-1 items-end justify-center">
                 <div
-                  tabIndex={0}
                   className={
                     isNegative
-                      ? "w-full max-w-8 rounded-t-md bg-rose-600/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 dark:bg-rose-400/70 dark:focus-visible:outline-rose-400"
-                      : "w-full max-w-8 rounded-t-md bg-indigo-500/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:bg-indigo-400/70 dark:focus-visible:outline-indigo-400"
+                      ? "w-full max-w-8 rounded-t-md bg-rose-600/80 dark:bg-rose-400/70"
+                      : "w-full max-w-8 rounded-t-md bg-indigo-500/80 dark:bg-indigo-400/70"
                   }
                   style={{
                     height: `${pct}%`,
@@ -86,7 +82,7 @@ export function BarChart({
                       : undefined,
                   }}
                 />
-                <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-100 dark:text-slate-900">
                   {d.label}: {format(d.value)}
                 </span>
               </div>

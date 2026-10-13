@@ -1,4 +1,5 @@
 import {
+  getRecentActivity,
   mockBounties,
   mockMaintenancePools,
   mockMilestones,
@@ -42,5 +43,24 @@ describe("mock-data asset coverage", () => {
 
     const milestone = mockMilestones.find((m) => m.asset === "XLM")!;
     expect(formatCurrency(milestone.distributed, milestone.asset)).toBe("16,837.25 XLM");
+  });
+});
+
+describe("recentActivity — dynamic timestamps (#707)", () => {
+  it("computes occurredAt timestamps relative to passed reference time", () => {
+    const fixedNow = new Date("2026-10-13T12:00:00Z").getTime();
+    const events = getRecentActivity(fixedNow);
+    const first = events[0];
+    // a1 is 6 minutes ago
+    expect(first.occurredAt).toBe(new Date(fixedNow - 6 * 60_000).toISOString());
+  });
+
+  it("advances timestamps dynamically at access time instead of freezing at module load", () => {
+    const time1 = new Date(recentActivity[0].occurredAt).getTime();
+    jest.useFakeTimers();
+    jest.advanceTimersByTime(3600 * 1000); // 1 hour later
+    const time2 = new Date(recentActivity[0].occurredAt).getTime();
+    expect(time2).toBeGreaterThan(time1);
+    jest.useRealTimers();
   });
 });

@@ -938,3 +938,81 @@ describe("WalletContext — recheckNetworkMismatch (issue #4: stale flag blocked
     expect(screen.getByTestId("network-mismatch")).toHaveTextContent("false");
   });
 });
+
+describe("WalletContext — private browsing / storage errors (#705)", () => {
+  it("clears initializing flag even when localStorage.getItem throws on mount", async () => {
+    const getItemSpy = jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("QuotaExceededError", "SecurityError");
+    });
+    mockUseAuth.mockReturnValue({ user: null, loading: false, refresh: mockRefresh });
+
+    render(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("initializing")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("address")).toHaveTextContent("disconnected");
+    getItemSpy.mockRestore();
+  });
+
+  it("handles localStorage.removeItem throwing on logout without crashing", async () => {
+    const removeItemSpy = jest.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new DOMException("SecurityError", "SecurityError");
+    });
+
+    const userWithWallet = { id: "u1", stellarAddress: "GVALIDWALLET" };
+    mockUseAuth.mockReturnValue({ user: userWithWallet, loading: false, refresh: mockRefresh });
+
+    const { rerender } = render(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("address")).toHaveTextContent("GVALIDWALLET");
+    });
+
+    // Simulate logout: transition user from logged-in to null
+    mockUseAuth.mockReturnValue({ user: null, loading: false, refresh: mockRefresh });
+    rerender(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("address")).toHaveTextContent("disconnected");
+    });
+    removeItemSpy.mockRestore();
+  });
+
+  it("connects and sets address in memory even when localStorage.setItem throws", async () => {
+    const setItemSpy = jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("QuotaExceededError", "QuotaExceededError");
+    });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWWALLET",
+      network: "TESTNET",
+    });
+    mockUseAuth.mockReturnValue({ user: null, loading: false, refresh: mockRefresh });
+
+    render(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    fireEvent.click(screen.getByText("connect"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("address")).toHaveTextContent("GNEWWALLET");
+    });
+    setItemSpy.mockRestore();
+  });
+});
+

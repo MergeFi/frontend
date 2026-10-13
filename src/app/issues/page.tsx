@@ -4,6 +4,7 @@ import { GitPullRequest, FilterX } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { BountyCard } from "@/components/bounty/BountyCard";
+import { IssuesFilterForm } from "@/components/bounty/IssuesFilterForm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
@@ -14,8 +15,6 @@ import {
   buildIssuesHref,
   isFilterActive,
   parseBountyQuery,
-  SORT_LABELS,
-  SORT_VALUES,
   STATUS_VALUES,
   DIFFICULTY_VALUES,
   ASSET_VALUES,
@@ -128,97 +127,16 @@ export default async function IssuesPage({
           rather than client-side state — every combination stays a shareable,
           bookmarkable URL and the page works with JavaScript disabled. The
           hidden `status` field carries the pill selection above through the
-          same submit, since HTML forms only send their own named fields. */}
-      <form
-        method="get"
-        action="/issues"
-        className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40"
-      >
-        {query.status !== "all" && <input type="hidden" name="status" value={query.status} />}
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-          Difficulty
-          <select
-            name="difficulty"
-            defaultValue={query.difficulty}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-          >
-            {DIFFICULTY_VALUES.map((value) => (
-              <option key={value} value={value}>
-                {DIFFICULTY_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-          Asset
-          <select
-            name="asset"
-            defaultValue={query.asset}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-          >
-            {ASSET_VALUES.map((value) => (
-              <option key={value} value={value}>
-                {ASSET_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-          Min reward
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            name="minReward"
-            defaultValue={query.minReward ?? ""}
-            placeholder="0"
-            className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-          Max reward
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            name="maxReward"
-            defaultValue={query.maxReward ?? ""}
-            placeholder="Any"
-            className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-          Sort by
-          <select
-            name="sort"
-            defaultValue={query.sort}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-          >
-            {SORT_VALUES.map((value) => (
-              <option key={value} value={value}>
-                {SORT_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Button type="submit" size="sm">
-          Apply filters
-        </Button>
-        {filterActive && (
-          <Link
-            href="/issues"
-            className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-          >
-            Clear all
-          </Link>
-        )}
-      </form>
+          same submit, since HTML forms only send their own named fields.
+          Extracted into a client component so it can disable default/empty
+          fields before submit when JS is available (#701) — see
+          IssuesFilterForm's own doc comment for why. */}
+      <IssuesFilterForm
+        query={query}
+        filterActive={filterActive}
+        difficultyLabels={DIFFICULTY_LABELS}
+        assetLabels={ASSET_LABELS}
+      />
 
       {visible.length === 0 ? (
         filterActive ? (

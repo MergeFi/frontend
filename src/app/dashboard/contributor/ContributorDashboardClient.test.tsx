@@ -14,6 +14,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import ContributorDashboardClient from "./ContributorDashboardClient";
 import { useAuth } from "@/context/AuthContext";
+import { useSearchParams } from "next/navigation";
 import { apiRequest, fetchBounties, type FetchResult } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import type { Bounty } from "@/types";
@@ -27,12 +28,13 @@ jest.mock("@/context/AuthContext", () => ({ useAuth: jest.fn() }));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ replace: jest.fn(), refresh: jest.fn() }),
   usePathname: () => "/dashboard/contributor",
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 const mockFetchBounties = fetchBounties as jest.MockedFunction<typeof fetchBounties>;
+const mockUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>;
 
 interface Snapshot {
   totalEarnings: string;
@@ -110,6 +112,44 @@ describe("ContributorDashboardClient — data-source badge", () => {
     expect(screen.queryByText("Live data")).not.toBeInTheDocument();
     expect(mockApiRequest).not.toHaveBeenCalled();
     expect(mockFetchBounties).not.toHaveBeenCalled();
+  });
+});
+
+describe("ContributorDashboardClient — ?tab= param validation (#692)", () => {
+  it("falls back to the active tab when ?tab= has an unrecognized value", async () => {
+    mockUseSearchParams.mockReturnValueOnce(
+      new URLSearchParams("tab=foo") as ReturnType<typeof useSearchParams>,
+    );
+    mockApiRequest.mockResolvedValue(SNAPSHOT);
+    setUser({ id: "u1", username: "alice" });
+
+    render(<ContributorDashboardClient />);
+    await screen.findByText("Live data");
+
+    expect(screen.getByRole("tab", { name: /Active/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: /Completed/i })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("honors a valid ?tab=completed value", async () => {
+    mockUseSearchParams.mockReturnValueOnce(
+      new URLSearchParams("tab=completed") as ReturnType<typeof useSearchParams>,
+    );
+    mockApiRequest.mockResolvedValue(SNAPSHOT);
+    setUser({ id: "u1", username: "alice" });
+
+    render(<ContributorDashboardClient />);
+    await screen.findByText("Live data");
+
+    expect(screen.getByRole("tab", { name: /Completed/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 });
 

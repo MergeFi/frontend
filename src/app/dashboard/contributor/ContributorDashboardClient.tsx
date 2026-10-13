@@ -71,8 +71,11 @@ export default function ContributorDashboardClient() {
   const [bounties, setBounties] = useState<Bounty[]>(mockBounties);
   const [statsSource, setStatsSource] = useState<DataSource>("loading");
   const [bountiesSource, setBountiesSource] = useState<DataSource>("loading");
+  // Only "active"/"completed" are valid tab values — anything else (a stale
+  // bookmark, a mistyped `?tab=foo`) falls back to "active" instead of
+  // selecting neither tab and rendering no panel at all (#692).
   const [tab, setTabState] = useState<"active" | "completed">(
-    (searchParams.get("tab") as "active" | "completed") || "active"
+    searchParams.get("tab") === "completed" ? "completed" : "active"
   );
   // Explicit fetch status: starts "loading" so cards shimmer rather than
   // flashing zeroes while the auth check + API call are in flight.

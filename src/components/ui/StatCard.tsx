@@ -23,7 +23,7 @@
  */
 
 import { cn, formatCurrency, formatInteger, formatPercent } from "@/lib/utils";
-import { isRTLLocale, resolveLocale } from "@/lib/locale";
+import { resolveLocale } from "@/lib/locale";
 import { ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sparkline } from "./Sparkline";
@@ -280,7 +280,11 @@ export function StatCard({
           {/* The card's own label becomes the sparkline's accessible name, so
               the trend is announced as "Earnings: 8 data points, trending up
               from …" rather than as an unlabelled graphic. */}
-          <Sparkline data={sparkline} label={label} />
+          <Sparkline
+            data={sparkline}
+            label={label}
+            formatValue={(v) => formatValue(v, format, asset, locale).display}
+          />
         </div>
       )}
     </div>,

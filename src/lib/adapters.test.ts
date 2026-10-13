@@ -32,6 +32,7 @@ function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
     difficulty: "intermediate",
     status: "open",
     deadline: "2026-01-01T00:00:00.000Z",
+    createdAt: "2026-01-01T00:00:00.000Z",
     escrowId: null,
     issue: {
       number: 42,
@@ -121,6 +122,18 @@ describe("adaptBounty — sponsorId mapping", () => {
   });
 });
 
+describe("adaptBounty — createdAt mapping (#702)", () => {
+  it("maps createdAt when provided on raw bounty", () => {
+    const raw = rawBounty({ createdAt: "2026-10-12T14:00:00Z" });
+    expect(adaptBounty(raw).createdAt).toBe("2026-10-12T14:00:00Z");
+  });
+
+  it("leaves createdAt undefined when omitted or null", () => {
+    expect(adaptBounty(rawBounty({ createdAt: undefined })).createdAt).toBeUndefined();
+    expect(adaptBounty(rawBounty({ createdAt: null })).createdAt).toBeUndefined();
+  });
+});
+
 describe("adaptBounty — field coverage audit (#86)", () => {
   // Every key the Bounty interface declares (src/types/index.ts). Kept as
   // an explicit list, checked against adaptBounty's actual output below,
@@ -146,6 +159,7 @@ describe("adaptBounty — field coverage audit (#86)", () => {
     "teamSplitsValid",
     "milestoneId",
     "escrowId",
+    "createdAt",
   ] as const;
 
   it("sets every Bounty field to a defined value given a fully-populated raw bounty", () => {

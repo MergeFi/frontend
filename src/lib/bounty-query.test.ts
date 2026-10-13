@@ -172,6 +172,20 @@ describe("applyBountyQuery", () => {
     );
     expect(result.items.map((b) => b.id)).toEqual(["z", "y", "x"]);
   });
+
+  it("sorts by createdAt descending for default ('Newest') sort (#702)", () => {
+    const withCreatedAt = [
+      bounty({ id: "older", createdAt: "2026-10-01T00:00:00Z" }),
+      bounty({ id: "newest", createdAt: "2026-10-12T00:00:00Z" }),
+      bounty({ id: "middle", createdAt: "2026-10-05T00:00:00Z" }),
+    ];
+    const result = applyBountyQuery(
+      withCreatedAt,
+      { status: "all", difficulty: "all", asset: "all", sort: "default", page: 1 },
+      10,
+    );
+    expect(result.items.map((b) => b.id)).toEqual(["newest", "middle", "older"]);
+  });
 });
 
 describe("buildBountyQueryString", () => {

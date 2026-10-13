@@ -145,6 +145,13 @@ function sortBounties(bounties: Bounty[], sort: SortOption): Bounty[] {
       });
       break;
     case "default":
+      // "Newest" sort (#702): sort by createdAt descending.
+      sorted.sort((a, b) => {
+        if (!a.createdAt && !b.createdAt) return 0;
+        if (!a.createdAt) return 1;
+        if (!b.createdAt) return -1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
       break;
   }
   return sorted;

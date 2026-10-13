@@ -65,6 +65,7 @@ export interface RawBounty {
   // callers can rely on a single "unknown funder" representation.
   sponsorId?: string | null;
   team?: { splits?: RawTeamSplit[] } | null;
+  createdAt?: string | null;
 }
 
 /**
@@ -138,6 +139,7 @@ export function adaptBounty(raw: RawBounty): Bounty {
     // timestamp that would make daysUntil() render it as already expired
     // (#193). Consumers must render a "No deadline" state for null.
     deadline: raw.deadline,
+    createdAt: raw.createdAt ?? undefined,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
     claimedById: raw.claimedBy?.id,

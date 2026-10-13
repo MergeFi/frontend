@@ -186,6 +186,30 @@ export function ClaimButton({
   const needsPayoutWallet = !!user && !user.stellarAddress;
 
   if (status === 'claimed') {
+    // The claimant sees this same view on every later visit too, not just
+    // right after the 5s success notice expires -- "already claimed" /
+    // "Claimed by: ..." reads like they lost a race they actually won, with
+    // no indication of what to do next (#699).
+    const isOwnClaim = !!user && !!bounty?.claimedById && bounty.claimedById === user.id;
+
+    if (isOwnClaim) {
+      return (
+        <div
+          className={`p-4 bg-indigo-50 border border-indigo-200 rounded-lg ${className}`}
+          role="status"
+        >
+          <h4 className="text-indigo-800 font-semibold">You&apos;re working on this</h4>
+          <p className="text-indigo-700 text-sm mt-1">
+            Open a pull request that says{' '}
+            <code className="rounded bg-indigo-100 px-1 py-0.5 text-indigo-900">
+              Fixes #{bounty?.issueNumber}
+            </code>{' '}
+            in its description. The reward releases automatically once it&apos;s merged.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className={`p-4 bg-gray-50 border border-gray-200 rounded-lg ${className}`}>
         <p className="text-gray-600">

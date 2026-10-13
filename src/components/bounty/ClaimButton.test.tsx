@@ -108,6 +108,51 @@ describe("ClaimButton", () => {
     expect(screen.queryByText(/Claimed by:/)).not.toBeInTheDocument();
   });
 
+  describe("the claimant's own view of their claim (#699)", () => {
+    it("shows 'You're working on this' with PR instructions instead of the loser's message", () => {
+      mockAuth({ id: "user-1", stellarAddress: "GSTELLAR" });
+      mockHooks(
+        {},
+        {
+          status: "claimed",
+          bounty: { id: "b1", status: "claimed", claimedById: "user-1", issueNumber: 42 },
+        },
+      );
+      render(<ClaimButton bountyId="b1" />);
+
+      expect(screen.getByText("You're working on this")).toBeInTheDocument();
+      expect(screen.getByText("Fixes #42")).toBeInTheDocument();
+      expect(screen.queryByText(/This bounty has already been/)).not.toBeInTheDocument();
+    });
+
+    it("still shows the generic already-claimed view to a different signed-in user", () => {
+      mockAuth({ id: "user-2", stellarAddress: "GOTHER" });
+      mockHooks(
+        {},
+        {
+          status: "claimed",
+          bounty: { id: "b1", status: "claimed", claimedById: "user-1", claimedBy: "alice" },
+        },
+      );
+      render(<ClaimButton bountyId="b1" />);
+
+      expect(screen.getByText(/This bounty has already been/)).toBeInTheDocument();
+      expect(screen.queryByText("You're working on this")).not.toBeInTheDocument();
+    });
+
+    it("shows the generic already-claimed view when signed out", () => {
+      mockAuth(null);
+      mockHooks(
+        {},
+        { status: "claimed", bounty: { id: "b1", status: "claimed", claimedById: "user-1" } },
+      );
+      render(<ClaimButton bountyId="b1" />);
+
+      expect(screen.getByText(/This bounty has already been/)).toBeInTheDocument();
+      expect(screen.queryByText("You're working on this")).not.toBeInTheDocument();
+    });
+  });
+
   it("shows the auto-refresh hint only while polling", () => {
     mockHooks({}, { isPolling: true });
     render(<ClaimButton bountyId="b1" />);

@@ -22,6 +22,34 @@ import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 
 const WALLET_KEY = "mergefi_wallet_address";
 
+function getStoredWallet(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(WALLET_KEY);
+  } catch {
+    // Reads are best-effort (e.g. Safari private browsing, disabled storage).
+    return null;
+  }
+}
+
+function setStoredWallet(address: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(WALLET_KEY, address);
+  } catch {
+    // Persistence is best-effort in private browsing mode.
+  }
+}
+
+function clearStoredWallet() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WALLET_KEY);
+  } catch {
+    // Removal is best-effort in private browsing mode.
+  }
+}
+
 /**
  * Durability of the current wallet connection.
  *
@@ -132,7 +160,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // so this provider (mounted on every route) doesn't add to the
     // critical path to interactivity for routes that don't need it yet.
     const id = window.setTimeout(() => {
-      const stored = window.localStorage.getItem(WALLET_KEY);
+      const stored = getStoredWallet();
       if (stored) {
         setAddress(stored);
         // This app only ever signs against the build's configured network,
@@ -205,7 +233,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authLoading) return;
     if (user === null && addressRef.current !== null) {
-      window.localStorage.removeItem(WALLET_KEY);
+      clearStoredWallet();
       setNetwork(null);
       setAddress(null);
       setAddressMismatch(false);
@@ -223,11 +251,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (authLoading || !user?.stellarAddress) return;
     const onFile = user.stellarAddress;
     if (addressRef.current === onFile) return;
-    try {
-      window.localStorage.setItem(WALLET_KEY, onFile);
-    } catch {
-      // Private-mode storage failure: in-memory state below still corrects.
-    }
+    setStoredWallet(onFile);
     setAddress(onFile);
     setNetwork(STELLAR_NETWORK);
     setAddressMismatch(false);
@@ -272,7 +296,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setNetwork(STELLAR_NETWORK);
       setAddressMismatch(false);
       setNetworkMismatch(false);
-      window.localStorage.setItem(WALLET_KEY, walletAddress);
+      setStoredWallet(walletAddress);
 
       if (user) {
         try {
@@ -346,11 +370,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const disconnect = useCallback(() => {
     // Best-effort local clear: localStorage throws in Safari private browsing.
-    try {
-      window.localStorage.removeItem(WALLET_KEY);
-    } catch {
-      // Ignore — the in-memory state below is what the UI renders from.
-    }
+    clearStoredWallet();
     setAddress(null);
     setNetwork(null);
     setPendingRelinkAddress(null);

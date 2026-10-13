@@ -401,6 +401,63 @@ describe("generateIdempotencyKey", () => {
     const keys = new Set(Array.from({ length: 50 }, () => generateIdempotencyKey()));
     expect(keys.size).toBe(50);
   });
+
+  it("falls back to crypto.getRandomValues when crypto.randomUUID is undefined (#706)", () => {
+    const originalCrypto = globalThis.crypto;
+    const getRandomValuesSpy = jest.fn((bytes: Uint8Array) => {
+      // fill with dummy non-zero bytes to verify version & variant formatting
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = (i * 17 + 5) & 0xff;
+      }
+      return bytes;
+    });
+
+    try {
+      Object.defineProperty(globalThis, "crypto", {
+        value: {
+          getRandomValues: getRandomValuesSpy,
+          randomUUID: undefined,
+        },
+        configurable: true,
+        writable: true,
+      });
+
+      const key = generateIdempotencyKey();
+      expect(getRandomValuesSpy).toHaveBeenCalled();
+      expect(key).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      // Verify version 4 character at position 14
+      expect(key.charAt(14)).toBe("4");
+      // Verify variant [89ab] character at position 19
+      expect(["8", "9", "a", "b"]).toContain(key.charAt(19).toLowerCase());
+    } finally {
+      Object.defineProperty(globalThis, "crypto", {
+        value: originalCrypto,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+
+  it("falls back to pseudo-random string when crypto is undefined", () => {
+    const originalCrypto = globalThis.crypto;
+    try {
+      // @ts-expect-error simulating legacy/unsupported environment
+      delete globalThis.crypto;
+
+      const key = generateIdempotencyKey();
+      expect(key).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+    } finally {
+      Object.defineProperty(globalThis, "crypto", {
+        value: originalCrypto,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
 });
 
 // ─── toCents / toMajorUnits ────────────────────────────────────────────────

@@ -23,6 +23,7 @@ export interface Bounty {
   issueNumber: number;
   labels: string[];
   deadline: string | null;
+  createdAt?: string;
   claimedBy?: string;
   claimedById?: string;
   /**

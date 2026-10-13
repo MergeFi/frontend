@@ -136,14 +136,22 @@ function sortBounties(bounties: Bounty[], sort: SortOption): Bounty[] {
     case "reward-asc":
       sorted.sort((a, b) => a.reward - b.reward);
       break;
-    case "deadline-asc":
+    case "deadline-asc": {
+      const now = Date.now();
       sorted.sort((a, b) => {
         if (!a.deadline && !b.deadline) return 0;
         if (!a.deadline) return 1;
         if (!b.deadline) return -1;
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        const timeA = new Date(a.deadline).getTime();
+        const timeB = new Date(b.deadline).getTime();
+        const isPastA = timeA < now;
+        const isPastB = timeB < now;
+        if (isPastA && !isPastB) return 1;
+        if (!isPastA && isPastB) return -1;
+        return timeA - timeB;
       });
       break;
+    }
     case "default":
       break;
   }

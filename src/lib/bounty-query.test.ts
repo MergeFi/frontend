@@ -172,6 +172,30 @@ describe("applyBountyQuery", () => {
     );
     expect(result.items.map((b) => b.id)).toEqual(["z", "y", "x"]);
   });
+
+  it("puts past (expired) deadlines after future deadlines when sorting by soonest deadline (#703)", () => {
+    const now = Date.now();
+    const withMixedDeadlines = [
+      bounty({ id: "expired-old", deadline: new Date(now - 86400000 * 2).toISOString(), reward: 1 }),
+      bounty({ id: "future-soon", deadline: new Date(now + 3600000).toISOString(), reward: 2 }),
+      bounty({ id: "no-deadline", deadline: null, reward: 3 }),
+      bounty({ id: "future-later", deadline: new Date(now + 86400000).toISOString(), reward: 4 }),
+      bounty({ id: "expired-recent", deadline: new Date(now - 3600000).toISOString(), reward: 5 }),
+    ];
+    const result = applyBountyQuery(
+      withMixedDeadlines,
+      { status: "all", difficulty: "all", asset: "all", sort: "deadline-asc", page: 1 },
+      10,
+    );
+    // Order: future soonest -> future later -> past (expired) -> null
+    expect(result.items.map((b) => b.id)).toEqual([
+      "future-soon",
+      "future-later",
+      "expired-old",
+      "expired-recent",
+      "no-deadline",
+    ]);
+  });
 });
 
 describe("buildBountyQueryString", () => {

@@ -30,6 +30,30 @@ function makeBounty(overrides: Partial<Bounty> = {}): Bounty {
   };
 }
 
+describe("PipelineBoard — card accessible name (#694)", () => {
+  it("announces the org/repo/issue reference as part of the link's accessible name", () => {
+    const bounty = makeBounty({
+      org: "SmartDropLabs",
+      repo: "smartdrop-backend",
+      issueNumber: 42,
+      title: "Fix retry backoff jitter",
+      reward: 500,
+      asset: "USDC",
+      status: "open",
+    });
+    render(<PipelineBoard bounties={[bounty]} />);
+
+    const link = screen.getByRole("link", {
+      name: /SmartDropLabs\/smartdrop-backend #42/,
+    });
+    // The accessible name is computed from visible content (no aria-label
+    // override), so the title and reward are present too, not just the repo
+    // reference.
+    expect(link).toHaveAccessibleName(/Fix retry backoff jitter/);
+    expect(link).toHaveAccessibleName(/500/);
+  });
+});
+
 describe("PipelineBoard — merged column (#88)", () => {
   it("renders a bounty with status 'merged' in a visible pipeline column", () => {
     const merged = makeBounty({ id: "merged-1", title: "Merged, awaiting payout", status: "merged" });

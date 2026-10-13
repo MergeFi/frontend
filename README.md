@@ -189,16 +189,16 @@ Sitemaps are split into 50,000-URL files (`/sitemaps/<id>.xml`, with a permanent
 
 ## Example user journey
 
-1. A maintainer connects a GitHub repository from `/connect`.
-2. From their dashboard, they mark an issue with a **100 USDC** reward.
-3. A sponsor funds the bounty from `/dashboard/sponsor` — the backend locks the funds in a Soroban escrow contract.
-4. A contributor browses `/issues`, claims the bounty, and opens a pull request.
-5. The maintainer reviews and merges it on GitHub.
-6. The backend detects the merge via a GitHub webhook and calls the escrow contract's release function.
-7. The contributor is paid on-chain within minutes, and their `/reputation/[handle]` profile updates.
+1. A maintainer connects their GitHub login and Stellar wallet (Freighter) from `/connect`.
+2. A sponsor funds a specific issue's bounty directly from its detail page at `/issues/[id]` — the backend locks the funds in a Soroban escrow contract.
+3. A contributor browses `/issues`, claims the bounty, and opens a pull request.
+4. The maintainer reviews and merges it on GitHub.
+5. The backend detects the merge via a GitHub webhook and calls the escrow contract's release function.
+6. The contributor is paid on-chain within minutes, and their `/reputation/[handle]` profile updates.
 
 ## Roadmap
 
+- Repository sync from `/connect` and an in-app bounty-creation flow for maintainers — today, a maintainer can't yet mark an issue with a reward amount from a dashboard; bounty funding happens per-issue from `/issues/[id]`.
 - Wire the contributor/maintainer dashboards to authenticated sessions instead of a hardcoded demo handle.
 - Real-time bounty/escrow status via websockets or polling once the backend emits webhook-driven events.
 - AI-powered issue recommendations based on a contributor's language/repo history.

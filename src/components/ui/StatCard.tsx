@@ -279,8 +279,16 @@ export function StatCard({
         <div data-testid="statcard-sparkline" className="text-indigo-500 dark:text-indigo-400">
           {/* The card's own label becomes the sparkline's accessible name, so
               the trend is announced as "Earnings: 8 data points, trending up
-              from …" rather than as an unlabelled graphic. */}
-          <Sparkline data={sparkline} label={label} />
+              from …" rather than as an unlabelled graphic. formatValue is
+              threaded through too (#709): without it, describeTrend falls
+              back to String(v), so a currency card like "Lifetime earnings"
+              announced "trending up from 1234.5 to 8420" with no currency or
+              locale grouping, while the visible value reads "$8,420.00". */}
+          <Sparkline
+            data={sparkline}
+            label={label}
+            formatValue={(v) => formatValue(v, format, asset, locale).display}
+          />
         </div>
       )}
     </div>,

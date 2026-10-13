@@ -337,4 +337,22 @@ describe("StatCard — sparkline", () => {
       "Earnings history: 4 data points, trending up from 10 to 30, range 10 to 30",
     );
   });
+
+  it("formats sparkline values through the card's own format/asset, not raw numbers (#709)", () => {
+    render(
+      <StatCard
+        label="Lifetime earnings"
+        status="loaded"
+        value={8420}
+        format="currency"
+        asset="USDC"
+        sparkline={[1234.5, 4000, 6200, 8420]}
+      />,
+    );
+    const svg = screen.getByRole("img");
+    // Previously announced "trending up from 1234.5 to 8420" via describeTrend's
+    // String(v) fallback -- no currency symbol or locale grouping, unlike the
+    // visible "$8,420.00" value right next to it.
+    expect(svg).toHaveAccessibleName(/trending up from 1,234.5 USDC to 8,420 USDC/);
+  });
 });

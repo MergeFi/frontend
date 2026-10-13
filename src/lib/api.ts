@@ -162,10 +162,16 @@ export async function apiRequest<T>(
   });
 }
 
-export function apiPost<T>(path: string, body?: unknown): Promise<T> {
+export function apiPost<T>(
+  path: string,
+  body?: unknown,
+  init?: Omit<RequestInit, "method" | "body">,
+): Promise<T> {
   return apiRequest<T>(path, {
+    ...init,
     method: "POST",
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: { ...init?.headers },
   });
 }
 

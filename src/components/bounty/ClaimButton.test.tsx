@@ -94,12 +94,46 @@ describe("ClaimButton", () => {
     expect(reset.mock.invocationCallOrder[0]).toBeLessThan(claim.mock.invocationCallOrder[0]);
   });
 
-  it("renders the already-claimed view instead of a button when status is claimed", () => {
-    mockHooks({}, { status: "claimed", bounty: { id: "b1", status: "claimed", claimedBy: "bob" } });
+  it("renders the already-claimed view instead of a button when status is claimed by someone else", () => {
+    mockHooks({}, { status: "claimed", bounty: { id: "b1", status: "claimed", claimedBy: "bob", claimedById: "user-2" } });
     render(<ClaimButton bountyId="b1" />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.getByText(/This bounty has already been/)).toBeInTheDocument();
     expect(screen.getByText("Claimed by: bob")).toBeInTheDocument();
+  });
+
+  it("renders the working-on-this state with PR instructions when claimed by current user (#699)", () => {
+    mockHooks({}, {
+      status: "claimed",
+      bounty: {
+        id: "b1",
+        status: "claimed",
+        claimedById: "user-1",
+        issueNumber: 42,
+      },
+    });
+    render(<ClaimButton bountyId="b1" />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("You're working on this bounty")).toBeInTheDocument();
+    expect(screen.getByText(/Open a pull request that says/)).toBeInTheDocument();
+    expect(screen.getByText("Fixes #42")).toBeInTheDocument();
+    expect(screen.queryByText(/This bounty has already been/)).not.toBeInTheDocument();
+  });
+
+  it("identifies claimant by username when claimedById is absent (#699)", () => {
+    mockAuth({ id: "user-1", username: "alice", stellarAddress: "GSTELLAR" });
+    mockHooks({}, {
+      status: "claimed",
+      bounty: {
+        id: "b1",
+        status: "claimed",
+        claimedBy: "alice",
+        issueNumber: 101,
+      },
+    });
+    render(<ClaimButton bountyId="b1" />);
+    expect(screen.getByText("You're working on this bounty")).toBeInTheDocument();
+    expect(screen.getByText("Fixes #101")).toBeInTheDocument();
   });
 
   it("omits the claimant line when claimedBy is missing", () => {

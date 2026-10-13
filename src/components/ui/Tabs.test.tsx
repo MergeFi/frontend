@@ -81,6 +81,37 @@ describe("Tabs — count badge", () => {
   });
 });
 
+describe("Tabs — aria-controls only on the active tab (#710)", () => {
+  it("sets aria-controls on the active tab", () => {
+    render(<Tabs tabs={sampleTabs} active="active" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "Active" })).toHaveAttribute(
+      "aria-controls",
+      "tabpanel-active",
+    );
+  });
+
+  it("omits aria-controls on inactive tabs, since their tabpanel isn't in the DOM", () => {
+    render(<Tabs tabs={sampleTabs} active="active" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "Completed" })).not.toHaveAttribute(
+      "aria-controls",
+    );
+    expect(screen.getByRole("tab", { name: "Archived" })).not.toHaveAttribute(
+      "aria-controls",
+    );
+  });
+
+  it("moves aria-controls to whichever tab becomes active", () => {
+    render(<Tabs tabs={sampleTabs} active="completed" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "Completed" })).toHaveAttribute(
+      "aria-controls",
+      "tabpanel-completed",
+    );
+    expect(screen.getByRole("tab", { name: "Active" })).not.toHaveAttribute(
+      "aria-controls",
+    );
+  });
+});
+
 describe("Tabs — keyboard navigation (#24)", () => {
   const threeTabs = [
     { key: "first", label: "First" },

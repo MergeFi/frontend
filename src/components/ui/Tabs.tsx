@@ -79,7 +79,13 @@ export function Tabs<T extends string>({
             role="tab"
             id={`tab-${tab.key}`}
             aria-selected={isActive}
-            aria-controls={`tabpanel-${tab.key}`}
+            // Only the active tab's panel actually exists in the DOM (a
+            // consumer like ContributorDashboardClient renders just the one
+            // tabpanel matching the current tab). aria-controls on an
+            // inactive tab pointed at a missing id -- an ARIA reference
+            // error flagged by axe and confusing for assistive tech
+            // following the relationship (#710).
+            aria-controls={isActive ? `tabpanel-${tab.key}` : undefined}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.key)}
             onKeyDown={(e) => handleKeyDown(e, tab.key)}

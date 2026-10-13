@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiPost, fetchBounty } from '@/lib/api';
+import { generateIdempotencyKey } from '@/lib/utils';
 import type { Bounty, ClaimResult } from '@/types/bounty';
 
 interface ApiError {
@@ -15,6 +16,7 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
   // skip state updates once unmounted. Set to true in the effect body too so
   // React Strict Mode's simulated unmount/remount doesn't leave it false.
   const isMountedRef = useRef(true);
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -22,6 +24,11 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
       isMountedRef.current = false;
     };
   }, []);
+
+  // Reset idempotency key when the active bounty changes
+  useEffect(() => {
+    idempotencyKeyRef.current = null;
+  }, [bountyId]);
 
   const recordResult = useCallback((result: ClaimResult) => {
     if (isMountedRef.current) {
@@ -32,10 +39,25 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
 
   const claim = useCallback(async (): Promise<ClaimResult> => {
     setIsClaiming(true);
-    
+
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = generateIdempotencyKey();
+    }
+    const idempotencyKey = idempotencyKeyRef.current;
+
     try {
-      const response = await apiPost<{ data: Bounty }>(`/bounties/${bountyId}/claim`, {});
-      
+      const response = await apiPost<{ data: Bounty }>(
+        `/bounties/${bountyId}/claim`,
+        {},
+        {
+          headers: {
+            'Idempotency-Key': idempotencyKey,
+          },
+        },
+      );
+
+      idempotencyKeyRef.current = null;
+
       const result: ClaimResult = {
         success: true,
         bounty: response.data,
@@ -53,6 +75,7 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
         apiError?.message?.toLowerCase().includes('claimed by another user');
 
       if (isAlreadyClaimed) {
+        idempotencyKeyRef.current = null;
         try {
           const updatedResult = await fetchBounty(bountyId, undefined);
           const result: ClaimResult = {

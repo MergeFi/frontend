@@ -102,6 +102,62 @@ describe("useClaimRace (mounted)", () => {
     });
     expect(result.current.isClaiming).toBe(false);
   });
+
+  it("sends an Idempotency-Key header on claim request and reuses it on retry (#698)", async () => {
+    mockApiPost
+      .mockRejectedValueOnce(new Error("network timeout"))
+      .mockResolvedValueOnce({ data: bounty });
+
+    const { result } = renderHook(() => useClaimRace("b1"));
+
+    // First attempt (fails)
+    await act(async () => {
+      await result.current.claim();
+    });
+
+    expect(mockApiPost).toHaveBeenCalledTimes(1);
+    const firstCallHeaders = mockApiPost.mock.calls[0][2]?.headers;
+    const firstIdempotencyKey = firstCallHeaders?.["Idempotency-Key"];
+    expect(firstIdempotencyKey).toBeDefined();
+    expect(typeof firstIdempotencyKey).toBe("string");
+    // Validate UUID format
+    expect(firstIdempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+
+    // Second attempt (retry should reuse the exact same idempotency key)
+    await act(async () => {
+      await result.current.claim();
+    });
+
+    expect(mockApiPost).toHaveBeenCalledTimes(2);
+    const secondCallHeaders = mockApiPost.mock.calls[1][2]?.headers;
+    const secondIdempotencyKey = secondCallHeaders?.["Idempotency-Key"];
+    expect(secondIdempotencyKey).toBe(firstIdempotencyKey);
+  });
+
+  it("generates a fresh Idempotency-Key after a successful claim (#698)", async () => {
+    mockApiPost
+      .mockResolvedValueOnce({ data: bounty })
+      .mockResolvedValueOnce({ data: bounty });
+
+    const { result } = renderHook(() => useClaimRace("b1"));
+
+    await act(async () => {
+      await result.current.claim();
+    });
+
+    const firstKey = mockApiPost.mock.calls[0][2]?.headers?.["Idempotency-Key"];
+
+    await act(async () => {
+      await result.current.claim();
+    });
+
+    const secondKey = mockApiPost.mock.calls[1][2]?.headers?.["Idempotency-Key"];
+    expect(firstKey).toBeDefined();
+    expect(secondKey).toBeDefined();
+    expect(firstKey).not.toBe(secondKey);
+  });
 });
 
 describe("useClaimRace — unmount while a claim is in flight (#361)", () => {

@@ -36,7 +36,15 @@ export const SORT_VALUES = ["default", "reward-desc", "reward-asc", "deadline-as
 export type SortOption = (typeof SORT_VALUES)[number];
 
 export const SORT_LABELS: Record<SortOption, string> = {
-  default: "Newest",
+  // Labelled "Newest" despite sortBounties leaving "default" unordered: there
+  // is no `createdAt` (or equivalent) field anywhere on `Bounty`, and the
+  // backend's listing query has no ORDER BY, so order is whatever Postgres's
+  // heap happens to return and can change between requests (#702). Fixing
+  // the label alone rather than sorting by a field that doesn't exist on
+  // this type — introducing one would be guessing at a backend contract this
+  // repo doesn't control. A real "Newest" sort needs a `createdAt` field
+  // exposed end-to-end first.
+  default: "Default order",
   "reward-desc": "Reward: high to low",
   "reward-asc": "Reward: low to high",
   "deadline-asc": "Deadline: soonest",

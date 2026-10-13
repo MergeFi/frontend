@@ -14,6 +14,7 @@ import {
   filterBounties,
   isFilterActive,
   parseBountyQuery,
+  SORT_LABELS,
 } from "./bounty-query";
 import type { Bounty } from "@/types";
 
@@ -121,6 +122,15 @@ describe("filterBounties", () => {
       page: 1,
     });
     expect(result).toHaveLength(3);
+  });
+});
+
+describe("SORT_LABELS", () => {
+  it("doesn't label the unordered default sort as a real chronological sort (#702)", () => {
+    // `sortBounties`'s "default" case leaves the array unchanged, and Bounty
+    // has no createdAt (or equivalent) field to sort by — the label must not
+    // claim an ordering ("Newest", "Oldest", ...) that doesn't exist.
+    expect(SORT_LABELS.default.toLowerCase()).not.toMatch(/newest|oldest|recent/);
   });
 });
 

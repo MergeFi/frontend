@@ -107,4 +107,23 @@ describe("PipelineBoard / escrow-stat consistency (#88)", () => {
       expect(columnStatuses.has(status)).toBe(false);
     }
   });
+
+  it("does not override visible content with aria-label, allowing screen readers to announce repo and issue (#694)", () => {
+    const bounty = makeBounty({
+      id: "bounty-42",
+      org: "StellarOrg",
+      repo: "stellar-core",
+      issueNumber: 99,
+      title: "Consensus round timeout fix",
+      reward: 1000,
+      asset: "USDC",
+      status: "open",
+    });
+    render(<PipelineBoard bounties={[bounty]} />);
+
+    const link = screen.getByRole("link", { name: /stellarorg\/stellar-core #99/i });
+    expect(link).toBeInTheDocument();
+    expect(link).not.toHaveAttribute("aria-label");
+  });
 });
+

@@ -275,65 +275,73 @@ function minutesAgo(n: number): string {
   return new Date(Date.now() - n * 60_000).toISOString();
 }
 
-export const recentActivity: ActivityEvent[] = [
-  {
-    id: "a1",
-    handle: "devrel_ana",
-    action: "was paid",
-    target: "core-indexer#288",
-    amount: 40,
-    asset: "USDC",
-    occurredAt: minutesAgo(6),
-  },
-  {
-    id: "a2",
-    handle: "0xkoda",
-    action: "claimed",
-    target: "soroban-escrow-sdk#17",
-    occurredAt: minutesAgo(22),
-  },
-  {
-    id: "a3",
-    handle: "linh_dev",
-    action: "opened a pull request for",
-    target: "stellar-wallet-kit#475",
-    occurredAt: minutesAgo(48),
-  },
-  {
-    id: "a4",
-    handle: "Stellar Development Foundation",
-    action: "funded",
-    target: "v2.0: Multi-asset escrow",
-    amount: 2500,
-    asset: "USDC",
-    occurredAt: minutesAgo(71),
-  },
-  {
-    id: "a4b",
-    handle: "Stellar Community Fund",
-    action: "funded",
-    target: "v1.4: Indexer performance pass",
-    amount: 15000,
-    asset: "XLM",
-    occurredAt: minutesAgo(95),
-  },
-  {
-    id: "a5",
-    handle: "priyaeth",
-    action: "was paid",
-    target: "core-indexer#301",
-    amount: 480,
-    asset: "USDC",
-    occurredAt: minutesAgo(130),
-  },
-  {
-    id: "a6",
-    handle: "qa_marcus",
-    action: "joined as a",
-    target: "contributor",
-    occurredAt: minutesAgo(210),
-  },
-];
+// A function, not a module-level constant: minutesAgo(n) anchors each event
+// n minutes before whenever it's *called*. A constant array only calls
+// minutesAgo once, when the module first loads -- on a long-running server
+// that's once at deploy, so the "live" feed goes stale for the rest of the
+// process's uptime (#707). Calling getRecentActivity() at render/request
+// time instead keeps every event's anchor fresh relative to now.
+export function getRecentActivity(): ActivityEvent[] {
+  return [
+    {
+      id: "a1",
+      handle: "devrel_ana",
+      action: "was paid",
+      target: "core-indexer#288",
+      amount: 40,
+      asset: "USDC",
+      occurredAt: minutesAgo(6),
+    },
+    {
+      id: "a2",
+      handle: "0xkoda",
+      action: "claimed",
+      target: "soroban-escrow-sdk#17",
+      occurredAt: minutesAgo(22),
+    },
+    {
+      id: "a3",
+      handle: "linh_dev",
+      action: "opened a pull request for",
+      target: "stellar-wallet-kit#475",
+      occurredAt: minutesAgo(48),
+    },
+    {
+      id: "a4",
+      handle: "Stellar Development Foundation",
+      action: "funded",
+      target: "v2.0: Multi-asset escrow",
+      amount: 2500,
+      asset: "USDC",
+      occurredAt: minutesAgo(71),
+    },
+    {
+      id: "a4b",
+      handle: "Stellar Community Fund",
+      action: "funded",
+      target: "v1.4: Indexer performance pass",
+      amount: 15000,
+      asset: "XLM",
+      occurredAt: minutesAgo(95),
+    },
+    {
+      id: "a5",
+      handle: "priyaeth",
+      action: "was paid",
+      target: "core-indexer#301",
+      amount: 480,
+      asset: "USDC",
+      occurredAt: minutesAgo(130),
+    },
+    {
+      id: "a6",
+      handle: "qa_marcus",
+      action: "joined as a",
+      target: "contributor",
+      occurredAt: minutesAgo(210),
+    },
+  ];
+}
 
 
 // Weekly earnings/spend series (8 weeks) for dashboard charts.

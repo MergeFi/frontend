@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Layers, Clock, Coins, FolderGit2, CheckCircle2 } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
-import { mockBounties, recentActivity, bountiesCompletedSparkline } from "@/lib/mock-data";
+import { mockBounties, getRecentActivity, bountiesCompletedSparkline } from "@/lib/mock-data";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
 import { StatCard } from "@/components/ui/StatCard";
@@ -167,7 +167,7 @@ export default async function MaintainerDashboardPage() {
             {source === "mock" && <SampleDataChip />}
           </div>
           <div className="mt-4">
-            <ActivityList events={recentActivity.slice(0, 5)} />
+            <ActivityList events={getRecentActivity().slice(0, 5)} />
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import {
   mockBounties,
   mockMaintenancePools,
   mockMilestones,
-  recentActivity,
+  getRecentActivity,
 } from "./mock-data";
 import { formatCurrency, isPlausibleAmount } from "./utils";
 
@@ -13,7 +13,7 @@ describe("mock-data asset coverage", () => {
     mockBounties,
     mockMilestones,
     mockMaintenancePools,
-    recentActivity: recentActivity.filter((e) => e.asset),
+    recentActivity: getRecentActivity().filter((e) => e.asset),
   };
 
   it.each(Object.entries(collections))("%s contains both USDC and XLM entries", (_, items) => {
@@ -26,11 +26,25 @@ describe("mock-data asset coverage", () => {
       ...mockBounties.map((b) => b.reward),
       ...mockMilestones.flatMap((m) => [m.budget, m.distributed]),
       ...mockMaintenancePools.flatMap((p) => [p.balance, p.monthlyDeposit]),
-      ...recentActivity.flatMap((e) => (e.amount === undefined ? [] : [e.amount])),
+      ...getRecentActivity().flatMap((e) => (e.amount === undefined ? [] : [e.amount])),
     ];
     for (const amount of amounts) {
       expect(isPlausibleAmount(amount)).toBe(true);
     }
+  });
+
+  it("anchors activity timestamps to the current call time, not module load (#707)", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    const first = getRecentActivity()[0].occurredAt;
+
+    // Simulate a long-running server: real time passes well after the
+    // module was first evaluated.
+    jest.setSystemTime(new Date("2026-01-03T00:00:00.000Z"));
+    const twoDaysLater = getRecentActivity()[0].occurredAt;
+
+    jest.useRealTimers();
+    expect(twoDaysLater).not.toBe(first);
+    expect(new Date(twoDaysLater).getTime()).toBeGreaterThan(new Date(first).getTime());
   });
 
   it("XLM mock amounts render with XLM precision and no sanity warning", () => {

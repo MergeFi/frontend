@@ -22,7 +22,7 @@ import {
   platformStats,
   trustedOrgs,
   topContributors,
-  recentActivity,
+  getRecentActivity,
   faqs,
 } from "@/lib/mock-data";
 import { formatCurrency, formatInteger } from "@/lib/utils";
@@ -270,7 +270,7 @@ export default function HomePage() {
             </h2>
           </div>
           <div className="mt-6">
-            <ActivityList events={recentActivity} />
+            <ActivityList events={getRecentActivity()} />
           </div>
         </section>
 

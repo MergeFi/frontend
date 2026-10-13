@@ -19,7 +19,7 @@ import { adaptBounty, type RawBounty, type RawMilestone } from "@/lib/adapters";
 import {
   mockSponsorSummary,
   mockBounties,
-  recentActivity,
+  getRecentActivity,
   sponsorSpendHistory,
   sponsorSpendByRepo,
   budgetSparkline,
@@ -284,7 +284,7 @@ export default function SponsorDashboardClient() {
         {isLive && <SampleDataChip />}
       </div>
       <div className="mt-4">
-        <ActivityList events={recentActivity.slice(0, 5)} />
+        <ActivityList events={getRecentActivity().slice(0, 5)} />
       </div>
 
       {/* Dev-only: visual kitchen sink — renders all four StatCard states

@@ -19,7 +19,7 @@ import { apiRequest, fetchBounties } from "@/lib/api";
 import {
   mockReputationProfiles,
   mockBounties,
-  recentActivity,
+  getRecentActivity,
   contributorEarningsHistory,
   contributorSparkline,
 } from "@/lib/mock-data";
@@ -277,7 +277,7 @@ export default function ContributorDashboardClient() {
             {isLive && <SampleDataChip />}
           </div>
           <div className="mt-4">
-            <ActivityList events={recentActivity.slice(0, 4)} />
+            <ActivityList events={getRecentActivity().slice(0, 4)} />
           </div>
         </div>
       </div>

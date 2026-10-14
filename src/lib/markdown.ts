@@ -14,36 +14,48 @@
  * mid-syntax markdown fragment truncated by the clamp.
  */
 export function stripMarkdownToPlainText(markdown: string): string {
-  return markdown
-    // Fenced code blocks -> their inner content, unfenced.
-    .replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, "$1")
-    // Fallback for an unterminated fence (opened but never closed, e.g. a
-    // truncated description or a forgotten trailing ```): the paired regex
-    // above can't match it, so strip the leftover ``` markers/language tag
-    // directly rather than leaving them visible in the preview (#199).
-    .replace(/```[a-zA-Z0-9]*\n?/g, "")
-    // Images: drop entirely — alt text isn't meaningful in a short preview.
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-    // Links: keep the link text, drop the URL.
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    // Inline code.
-    .replace(/`([^`]+)`/g, "$1")
-    // Bold+italic, then bold, then italic (order matters — longest marker first).
-    .replace(/(\*\*\*|___)([^*_]+)\1/g, "$2")
-    .replace(/(\*\*|__)([^*_]+)\1/g, "$2")
-    .replace(/(\*|_)([^*_]+)\1/g, "$2")
-    // Strikethrough.
-    .replace(/~~([^~]+)~~/g, "$1")
-    // Headings.
-    .replace(/^#{1,6}\s+/gm, "")
-    // Blockquotes.
-    .replace(/^>\s?/gm, "")
-    // List markers.
-    .replace(/^\s*[-*+]\s+/gm, "")
-    .replace(/^\s*\d+\.\s+/gm, "")
-    // Collapse newlines/whitespace into single spaces for inline flow.
-    .replace(/\r\n/g, "\n")
-    .replace(/\n+/g, " ")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
+  return (
+    markdown
+      // Fenced code blocks -> their inner content, unfenced.
+      .replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, "$1")
+      // Fallback for an unterminated fence (opened but never closed, e.g. a
+      // truncated description or a forgotten trailing ```): the paired regex
+      // above can't match it, so strip the leftover ``` markers/language tag
+      // directly rather than leaving them visible in the preview (#199).
+      .replace(/```[a-zA-Z0-9]*\n?/g, "")
+      // Images: drop entirely — alt text isn't meaningful in a short preview.
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      // Links: keep the link text, drop the URL.
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      // Inline code.
+      .replace(/`([^`]+)`/g, "$1")
+      // Bold+italic, then bold, then italic (order matters — longest marker first).
+      .replace(/(\*\*\*|___)([^*_]+)\1/g, "$2")
+      .replace(/(\*\*|__)([^*_]+)\1/g, "$2")
+      .replace(/(\*|_)([^*_]+)\1/g, "$2")
+      // Strikethrough.
+      .replace(/~~([^~]+)~~/g, "$1")
+      // Headings.
+      .replace(/^#{1,6}\s+/gm, "")
+      // Blockquotes.
+      .replace(/^>\s?/gm, "")
+      // GFM task-list markers — "- [ ] Add tests" leaves "[ ] Add tests" in the
+      // preview; strip the checkbox too (#682). And GFM table rows/separators
+      // ("| a | b |", "|---|---|") — collapse to their cell text.
+      .replace(/^\s*\|?(\s*:?-+:?\s*\|)+\s*$/gm, "") // table separator rows
+      .replace(/^\s*\|(.+)\|?\s*$/gm, (_m, cells: string) =>
+        cells
+          .split("|")
+          .map((c) => c.trim())
+          .join(" "),
+      ) // table rows -> cell text
+      .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, "") // task-list checkbox
+      .replace(/^\s*[-*+]\s+/gm, "")
+      .replace(/^\s*\d+\.\s+/gm, "")
+      // Collapse newlines/whitespace into single spaces for inline flow.
+      .replace(/\r\n/g, "\n")
+      .replace(/\n+/g, " ")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim()
+  );
 }

@@ -32,7 +32,12 @@ export type DifficultyFilter = (typeof DIFFICULTY_VALUES)[number];
 export const ASSET_VALUES = ["all", "USDC", "XLM"] as const;
 export type AssetFilter = (typeof ASSET_VALUES)[number];
 
-export const SORT_VALUES = ["default", "reward-desc", "reward-asc", "deadline-asc"] as const;
+export const SORT_VALUES = [
+  "default",
+  "reward-desc",
+  "reward-asc",
+  "deadline-asc",
+] as const;
 export type SortOption = (typeof SORT_VALUES)[number];
 
 export const SORT_LABELS: Record<SortOption, string> = {
@@ -77,10 +82,14 @@ function coerceEnum<T extends string>(
   fallback: T,
 ): T {
   const value = firstParam(raw);
-  return (values as readonly string[]).includes(value ?? "") ? (value as T) : fallback;
+  return (values as readonly string[]).includes(value ?? "")
+    ? (value as T)
+    : fallback;
 }
 
-function coerceNonNegativeNumber(raw: string | string[] | undefined): number | undefined {
+function coerceNonNegativeNumber(
+  raw: string | string[] | undefined,
+): number | undefined {
   const value = firstParam(raw);
   if (value === undefined || value === "") return undefined;
   const n = Number(value);
@@ -104,7 +113,9 @@ export function parseBountyQuery(params: RawSearchParams): BountyQuery {
   // An inverted range (min > max) can't ever match — treat it as "no max"
   // rather than silently producing a permanently-empty result set.
   const maxReward =
-    minReward !== undefined && maxRewardRaw !== undefined && maxRewardRaw < minReward
+    minReward !== undefined &&
+    maxRewardRaw !== undefined &&
+    maxRewardRaw < minReward
       ? undefined
       : maxRewardRaw;
 
@@ -129,10 +140,14 @@ export function isFilterActive(query: BountyQuery): boolean {
   );
 }
 
-export function filterBounties(bounties: Bounty[], query: BountyQuery): Bounty[] {
+export function filterBounties(
+  bounties: Bounty[],
+  query: BountyQuery,
+): Bounty[] {
   return bounties.filter((b) => {
     if (query.status !== "all" && b.status !== query.status) return false;
-    if (query.difficulty !== "all" && b.difficulty !== query.difficulty) return false;
+    if (query.difficulty !== "all" && b.difficulty !== query.difficulty)
+      return false;
     if (query.asset !== "all" && b.asset !== query.asset) return false;
     // Normalise to USD-equivalent when comparing across assets (#613).
     if (query.minReward !== undefined || query.maxReward !== undefined) {
@@ -157,15 +172,32 @@ function sortBounties(bounties: Bounty[], sort: SortOption): Bounty[] {
         (a, b) => rewardToUsd(a.reward, a.asset) - rewardToUsd(b.reward, b.asset),
       );
       break;
-    case "deadline-asc":
+    case "deadline-asc": {
+      // Soonest-FUTURE-deadline first. A raw ascending sort put already-past
+      // deadlines (the smallest timestamps) first — a contributor picking
+      // "soonest" saw bounties they could no longer complete ahead of the
+      // urgent-but-open ones (#703). Past deadlines sort AFTER all future
+      // ones; no-deadline bounties sort last.
+      const now = Date.now();
+      const rank = (d: string | null): number => {
+        if (!d) return 2; // no deadline → last
+        return new Date(d).getTime() < now ? 1 : 0; // past → after future
+      };
       sorted.sort((a, b) => {
-        if (!a.deadline && !b.deadline) return 0;
-        if (!a.deadline) return 1;
-        if (!b.deadline) return -1;
+        const ra = rank(a.deadline);
+        const rb = rank(b.deadline);
+        if (ra !== rb) return ra - rb;
+        if (!a.deadline || !b.deadline) return 0;
         return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
       });
       break;
+    }
     case "default":
+      // "Newest": the backend has no ORDER BY, so unsorted order is Postgres
+      // heap order — unstable across requests, which also breaks client-side
+      // pagination. Sort by the GitHub issue number descending — a higher
+      // issue-number is the newer bounty on the linked repo (#702).
+      sorted.sort((a, b) => b.issueNumber - a.issueNumber);
       break;
   }
   return sorted;
@@ -214,8 +246,10 @@ export function buildBountyQueryString(query: BountyQuery): string {
   if (query.status !== "all") sp.set("status", query.status);
   if (query.difficulty !== "all") sp.set("difficulty", query.difficulty);
   if (query.asset !== "all") sp.set("asset", query.asset);
-  if (query.minReward !== undefined) sp.set("minReward", String(query.minReward));
-  if (query.maxReward !== undefined) sp.set("maxReward", String(query.maxReward));
+  if (query.minReward !== undefined)
+    sp.set("minReward", String(query.minReward));
+  if (query.maxReward !== undefined)
+    sp.set("maxReward", String(query.maxReward));
   if (query.sort !== "default") sp.set("sort", query.sort);
   const qs = sp.toString();
   return qs ? `?${qs}` : "";

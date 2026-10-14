@@ -46,10 +46,17 @@ function validateFundingAmount(
 }
 
 /** Pre-fill the remaining budget, rounded down to the asset's precision. */
-function defaultAmount(asset: "USDC" | "XLM", remainingBudget?: number): string {
-  if (remainingBudget === undefined || !Number.isFinite(remainingBudget)) return "100";
+function defaultAmount(
+  asset: "USDC" | "XLM",
+  remainingBudget?: number,
+): string {
+  if (remainingBudget === undefined || !Number.isFinite(remainingBudget))
+    return "100";
   if (remainingBudget <= 0) return "100";
-  return remainingBudget.toFixed(asset === "XLM" ? 7 : 2).replace(/\.?0+$/, "") || "0";
+  return (
+    remainingBudget.toFixed(asset === "XLM" ? 7 : 2).replace(/\.?0+$/, "") ||
+    "0"
+  );
 }
 
 export function MilestoneFundButton({
@@ -66,7 +73,9 @@ export function MilestoneFundButton({
 }) {
   const router = useRouter();
   const { runWithWallet, connecting } = useWalletAction();
-  const [amount, setAmount] = useState(() => defaultAmount(asset, remainingBudget));
+  const [amount, setAmount] = useState(() =>
+    defaultAmount(asset, remainingBudget),
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -138,8 +147,9 @@ export function MilestoneFundButton({
   const hintId = `${inputId}-hint`;
   const hasHint = remainingBudget !== undefined;
   const describedBy =
-    [hasHint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") ||
-    undefined;
+    [hasHint ? hintId : null, error ? errorId : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   return (
     <div className="mt-4 flex items-center gap-2">
@@ -175,20 +185,19 @@ export function MilestoneFundButton({
       >
         {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
       </Button>
-      {error && (
-        <p id={errorId} role="alert" className="text-xs text-rose-600">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="mt-2 text-xs text-emerald-600"
-        >
-          {notice}
-        </p>
-      )}
+      {/* Always-mounted live regions — a region inserted WITH its text is
+          skipped by screen readers; a present region announces the change
+          (#711). */}
+      <p id={errorId} role="alert" className="text-xs text-rose-600">
+        {error ?? ""}
+      </p>
+      <p
+        role="status"
+        aria-live="polite"
+        className="mt-2 text-xs text-emerald-600"
+      >
+        {notice ?? ""}
+      </p>
     </div>
   );
 }

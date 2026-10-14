@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { sitemapUrls } from "@/lib/sitemap";
 
 /**
  * robots.txt — the third surface that has to agree with the indexability
@@ -17,15 +16,24 @@ import { sitemapUrls } from "@/lib/sitemap";
  * value in a search index, and /auth/callback carries a short-lived token in
  * its query string.
  */
-export default async function robots(): Promise<MetadataRoute.Robots> {
+// Static robots.txt — a crawler hits this FIRST, so it must never await the
+// backend. sitemapUrls() calls the API (up to a 20s timeout each on a cold
+// module cache), and a slow/unreachable backend made crawlers treat
+// robots.txt timeouts as a reason to back off the whole site (#715). Point at
+// the stable /sitemap.xml index and let that route do the dynamic work.
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://mergefi.example.com";
+
+export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
       disallow: ["/dashboard/", "/auth/callback"],
     },
-    // One entry per generated child sitemap, so this stays correct as the
-    // entry count grows past a single 50,000-URL file.
-    sitemap: await sitemapUrls(),
+    // The single stable index URL — /sitemap.xml already redirects to the
+    // generated sitemap set. Crawlers get a fast static answer; the sitemap
+    // route absorbs the backend latency instead.
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

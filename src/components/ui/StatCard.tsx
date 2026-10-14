@@ -159,7 +159,10 @@ export function StatCard({
             data-testid="statcard-icon"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-500/10"
           >
-            <Icon aria-hidden="true" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <Icon
+              aria-hidden="true"
+              className="h-4 w-4 text-indigo-600 dark:text-indigo-400"
+            />
           </span>
         )}
       </div>
@@ -263,9 +266,15 @@ export function StatCard({
             )}
           >
             {trendUp ? (
-              <ArrowUpRight className="h-3.5 w-3.5 rtl:rotate-90" aria-hidden="true" />
+              <ArrowUpRight
+                className="h-3.5 w-3.5 rtl:rotate-90"
+                aria-hidden="true"
+              />
             ) : (
-              <ArrowDownRight className="h-3.5 w-3.5 rtl:-rotate-90" aria-hidden="true" />
+              <ArrowDownRight
+                className="h-3.5 w-3.5 rtl:-rotate-90"
+                aria-hidden="true"
+              />
             )}
             {Math.abs(trend)}% vs last period
           </p>
@@ -276,11 +285,21 @@ export function StatCard({
           avoids rendering an empty wrapper that leaves an unexplained gap
           in this row (#207). */}
       {sparkline && sparkline.length >= 2 && (
-        <div data-testid="statcard-sparkline" className="text-indigo-500 dark:text-indigo-400">
+        <div
+          data-testid="statcard-sparkline"
+          className="text-indigo-500 dark:text-indigo-400"
+        >
           {/* The card's own label becomes the sparkline's accessible name, so
               the trend is announced as "Earnings: 8 data points, trending up
-              from …" rather than as an unlabelled graphic. */}
-          <Sparkline data={sparkline} label={label} />
+              from …" rather than as an unlabelled graphic. formatValue makes
+              the spoken trend match the card's format — without it a currency
+              card announced raw "1234.5" while the display read "$1,234.50"
+              (#709). */}
+          <Sparkline
+            data={sparkline}
+            label={label}
+            formatValue={(v) => formatValue(v, format, asset, locale).display}
+          />
         </div>
       )}
     </div>,

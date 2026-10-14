@@ -44,7 +44,9 @@ export default async function MaintainerDashboardPage() {
       : [];
 
   const needsReview = bounties.filter((b) => b.status === "in_review");
-  const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
+  const open = bounties.filter(
+    (b) => b.status === "open" || b.status === "funded",
+  );
   const repoCount = new Set(bounties.map((b) => `${b.org}/${b.repo}`)).size;
   // Summed in integer minor units to avoid float drift (#353). 7 decimals
   // covers both USDC (2) and XLM (7) rewards without truncation.
@@ -94,7 +96,9 @@ export default async function MaintainerDashboardPage() {
           format="currency"
           status={statStatus}
           icon={Coins}
-          sparkline={statStatus === "loaded" ? bountiesCompletedSparkline : undefined}
+          sparkline={
+            statStatus === "loaded" ? bountiesCompletedSparkline : undefined
+          }
           zeroLabel="Nothing in escrow yet"
         />
         <StatCard
@@ -144,12 +148,18 @@ export default async function MaintainerDashboardPage() {
                 className="flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3">
-                  <Avatar seed={`${bounty.org}/${bounty.repo}`} size={36} className="rounded-xl" />
+                  <Avatar
+                    seed={`${bounty.org}/${bounty.repo}`}
+                    size={36}
+                    className="rounded-xl"
+                  />
                   <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {bounty.org}/{bounty.repo} #{bounty.issueNumber}
                     </p>
-                    <p className="font-medium text-slate-900 dark:text-white">{bounty.title}</p>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {bounty.title}
+                    </p>
                     {bounty.claimedBy && (
                       <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
                         by {bounty.claimedBy}
@@ -197,7 +207,7 @@ export default async function MaintainerDashboardPage() {
             {source === "mock" && <SampleDataChip />}
           </div>
           <div className="mt-4">
-            <ActivityList events={recentActivity.slice(0, 5)} />
+            <ActivityList events={getRecentActivity().slice(0, 5)} />
           </div>
         </div>
       </div>

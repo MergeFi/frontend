@@ -247,9 +247,19 @@ export interface LeaderboardEntry {
 export const topContributors: LeaderboardEntry[] = [
   { handle: "priyaeth", earnings: 8420, mergedPRs: 61, topLanguage: "Rust" },
   { handle: "0xkoda", earnings: 3210, mergedPRs: 27, topLanguage: "Rust" },
-  { handle: "devrel_ana", earnings: 2890, mergedPRs: 24, topLanguage: "TypeScript" },
+  {
+    handle: "devrel_ana",
+    earnings: 2890,
+    mergedPRs: 24,
+    topLanguage: "TypeScript",
+  },
   { handle: "qa_marcus", earnings: 2140, mergedPRs: 19, topLanguage: "Go" },
-  { handle: "linh_dev", earnings: 1780, mergedPRs: 15, topLanguage: "TypeScript" },
+  {
+    handle: "linh_dev",
+    earnings: 1780,
+    mergedPRs: 15,
+    topLanguage: "TypeScript",
+  },
 ];
 
 export interface ActivityEvent {
@@ -268,77 +278,92 @@ export interface ActivityEvent {
   occurredAt: string;
 }
 
-// minutesAgo(n) anchors each mock event n minutes before whenever this
-// module is evaluated, so the feed's relative-time text keeps advancing
-// (within a given server render) instead of being frozen at deploy time.
+// Timestamps are computed at CALL time, not module load — a long-lived
+// Next.js server keeps the module resident, so anchoring at import left the
+// "live" feed hours/days stale (#707). getRecentActivity() computes fresh
+// relative times on every render.
 function minutesAgo(n: number): string {
   return new Date(Date.now() - n * 60_000).toISOString();
 }
 
-export const recentActivity: ActivityEvent[] = [
-  {
-    id: "a1",
-    handle: "devrel_ana",
-    action: "was paid",
-    target: "core-indexer#288",
-    amount: 40,
-    asset: "USDC",
-    occurredAt: minutesAgo(6),
-  },
-  {
-    id: "a2",
-    handle: "0xkoda",
-    action: "claimed",
-    target: "soroban-escrow-sdk#17",
-    occurredAt: minutesAgo(22),
-  },
-  {
-    id: "a3",
-    handle: "linh_dev",
-    action: "opened a pull request for",
-    target: "stellar-wallet-kit#475",
-    occurredAt: minutesAgo(48),
-  },
-  {
-    id: "a4",
-    handle: "Stellar Development Foundation",
-    action: "funded",
-    target: "v2.0: Multi-asset escrow",
-    amount: 2500,
-    asset: "USDC",
-    occurredAt: minutesAgo(71),
-  },
-  {
-    id: "a4b",
-    handle: "Stellar Community Fund",
-    action: "funded",
-    target: "v1.4: Indexer performance pass",
-    amount: 15000,
-    asset: "XLM",
-    occurredAt: minutesAgo(95),
-  },
-  {
-    id: "a5",
-    handle: "priyaeth",
-    action: "was paid",
-    target: "core-indexer#301",
-    amount: 480,
-    asset: "USDC",
-    occurredAt: minutesAgo(130),
-  },
-  {
-    id: "a6",
-    handle: "qa_marcus",
-    action: "joined as a",
-    target: "contributor",
-    occurredAt: minutesAgo(210),
-  },
-];
+// Sponsor/org names in fixtures are clearly fictional — the feed renders as
+// "live", so real names like "Stellar Development Foundation" would read as
+// a real endorsement of the platform (#712). Fictional names + the sample-
+// data label keep the demo honest.
+export function getRecentActivity(): ActivityEvent[] {
+  return [
+    {
+      id: "a1",
+      handle: "devrel_ana",
+      action: "was paid",
+      target: "core-indexer#288",
+      amount: 40,
+      asset: "USDC",
+      occurredAt: minutesAgo(6),
+    },
+    {
+      id: "a2",
+      handle: "0xkoda",
+      action: "claimed",
+      target: "soroban-escrow-sdk#17",
+      occurredAt: minutesAgo(22),
+    },
+    {
+      id: "a3",
+      handle: "linh_dev",
+      action: "opened a pull request for",
+      target: "stellar-wallet-kit#475",
+      occurredAt: minutesAgo(48),
+    },
+    {
+      id: "a4",
+      handle: "Meridian Grants",
+      action: "funded",
+      target: "v2.0: Multi-asset escrow",
+      amount: 2500,
+      asset: "USDC",
+      occurredAt: minutesAgo(71),
+    },
+    {
+      id: "a4b",
+      handle: "Brightpath Fund",
+      action: "funded",
+      target: "v1.4: Indexer performance pass",
+      amount: 15000,
+      asset: "XLM",
+      occurredAt: minutesAgo(95),
+    },
+    {
+      id: "a5",
+      handle: "priyaeth",
+      action: "was paid",
+      target: "core-indexer#301",
+      amount: 480,
+      asset: "USDC",
+      occurredAt: minutesAgo(130),
+    },
+    {
+      id: "a6",
+      handle: "qa_marcus",
+      action: "joined as a",
+      target: "contributor",
+      occurredAt: minutesAgo(210),
+    },
+  ];
+}
 
+// Back-compat: `recentActivity` stays exported for stragglers/tests. New
+// consumers should call getRecentActivity() so timestamps compute at render
+// time (#707) — this snapshot only exists for the remaining readers.
+export const recentActivity: ActivityEvent[] = getRecentActivity();
 
 // Weekly earnings/spend series (8 weeks) for dashboard charts.
-export const contributorEarningsHistory = [420, 560, 310, 780, 640, 890, 720, 1050];
-export const sponsorSpendHistory = [1800, 2400, 2100, 3200, 2800, 3600, 3100, 4200];
+export const contributorEarningsHistory = [
+  420, 560, 310, 780, 640, 890, 720, 1050,
+];
+export const sponsorSpendHistory = [
+  1800, 2400, 2100, 3200, 2800, 3600, 3100, 4200,
+];
 
 export const contributorSparkline = [12, 18, 14, 22, 19, 27, 24, 31];
 export const bountiesCompletedSparkline = [40, 44, 42, 51, 55, 58, 60, 64];

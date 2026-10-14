@@ -23,7 +23,7 @@ import {
   platformStats as mockPlatformStats,
   trustedOrgs,
   topContributors,
-  recentActivity,
+  getRecentActivity,
   faqs,
 } from "@/lib/mock-data";
 import { formatCurrency, formatInteger } from "@/lib/utils";
@@ -120,7 +120,9 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-6 pb-20 pt-20 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            {STELLAR_NETWORK === "PUBLIC" ? "Built for Stellar Mainnet" : "Built for Stellar (Testnet)"}
+            {STELLAR_NETWORK === "PUBLIC"
+              ? "Built for Stellar Mainnet"
+              : "Built for Stellar (Testnet)"}
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl dark:text-white">
             Merge code.
@@ -129,14 +131,14 @@ export default async function HomePage() {
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-300">
             MergeFi is the financial infrastructure for open source. Sponsors
-            fund issues, contributors get paid the moment their pull request
-            is merged, and Soroban smart contracts on Stellar handle the
-            escrow.
+            fund issues, contributors get paid the moment their pull request is
+            merged, and Soroban smart contracts on Stellar handle the escrow.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/issues">
               <Button size="lg" className="gap-2">
-                Browse paid issues <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                Browse paid issues{" "}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </Link>
             <Link href="/connect">
@@ -163,21 +165,33 @@ export default async function HomePage() {
           <p className="text-center text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
             Trusted by open-source teams on Stellar
           </p>
-          <ul role="list" className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          <ul
+            role="list"
+            className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3"
+          >
             {trustedOrgs.map((org) => (
-              <li key={org} className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+              <li
+                key={org}
+                className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400"
+              >
                 <Avatar seed={org} size={20} className="rounded-md" />
                 {org}
               </li>
             ))}
           </ul>
-          <ul role="list" className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 border-t border-slate-100 pt-6 dark:border-slate-800">
+          <ul
+            role="list"
+            className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 border-t border-slate-100 pt-6 dark:border-slate-800"
+          >
             {integrations.map(({ icon: Icon, label }) => (
               <li
                 key={label}
                 className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
-                <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                <Icon
+                  className="h-4 w-4 text-slate-400 dark:text-slate-500"
+                  aria-hidden="true"
+                />
                 {label}
               </li>
             ))}
@@ -222,15 +236,16 @@ export default async function HomePage() {
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {features.map(({ icon: Icon, title, description }) => (
-              <Card
-                key={title}
-                className="transition-shadow hover:shadow-md"
-              >
+              <Card key={title} className="transition-shadow hover:shadow-md">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900">
                   <Icon className="h-5 w-5 text-white" aria-hidden="true" />
                 </span>
-                <h3 className="mt-4 font-medium text-slate-900 dark:text-white">{title}</h3>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+                <h3 className="mt-4 font-medium text-slate-900 dark:text-white">
+                  {title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  {description}
+                </p>
               </Card>
             ))}
           </div>
@@ -247,7 +262,9 @@ export default async function HomePage() {
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-medium text-indigo-600 ring-1 ring-inset ring-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400">
                     {i + 1}
                   </span>
-                  <p className="pt-0.5 text-slate-600 dark:text-slate-300">{step}</p>
+                  <p className="pt-0.5 text-slate-600 dark:text-slate-300">
+                    {step}
+                  </p>
                 </li>
               ))}
             </ol>
@@ -299,7 +316,7 @@ export default async function HomePage() {
             </h2>
           </div>
           <div className="mt-6">
-            <ActivityList events={recentActivity} />
+            <ActivityList events={getRecentActivity()} />
           </div>
         </section>
 
@@ -321,7 +338,12 @@ export default async function HomePage() {
                 <summary className="cursor-pointer list-none font-medium text-slate-900 marker:content-none dark:text-white">
                   <span className="flex items-center justify-between">
                     {faq.question}
-                    <span aria-hidden="true" className="ms-4 text-slate-400 transition-transform group-open:rotate-45">+</span>
+                    <span
+                      aria-hidden="true"
+                      className="ms-4 text-slate-400 transition-transform group-open:rotate-45"
+                    >
+                      +
+                    </span>
                   </span>
                 </summary>
                 <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
@@ -338,13 +360,16 @@ export default async function HomePage() {
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-slate-300">
             Very low transaction costs make micro-bounties practical, fast
-            settlement means contributors aren&apos;t waiting days for
-            payment, and Soroban smart contracts handle escrow, splits, and
-            milestone payouts natively on-chain.
+            settlement means contributors aren&apos;t waiting days for payment,
+            and Soroban smart contracts handle escrow, splits, and milestone
+            payouts natively on-chain.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Link href="/issues">
-              <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
+              <Button
+                size="lg"
+                className="bg-white text-slate-900 hover:bg-slate-100"
+              >
                 Get started
               </Button>
             </Link>

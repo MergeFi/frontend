@@ -25,8 +25,16 @@ export function ErrorBoundary({
         {title}
       </h1>
       <p className="mt-3 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-        {error.message || "An unexpected error occurred. Please try again."}
+        {/* Never render error.message — it leaks internals (stack fragments,
+            server messages) to users (#678). The digest is the safe
+            support-id; the real error's already logged to the console. */}
+        An unexpected error occurred. Please try again.
       </p>
+      {error.digest && (
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+          Error id: <code>{error.digest}</code>
+        </p>
+      )}
       <Button onClick={reset} className="mt-8">
         Try again
       </Button>

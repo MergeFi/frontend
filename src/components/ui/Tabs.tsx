@@ -14,12 +14,9 @@ export function Tabs<T extends string>({
 }) {
   const tabRefs = useRef<Map<T, HTMLButtonElement>>(new Map());
 
-  const focusTab = useCallback(
-    (key: T) => {
-      tabRefs.current.get(key)?.focus();
-    },
-    [],
-  );
+  const focusTab = useCallback((key: T) => {
+    tabRefs.current.get(key)?.focus();
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, currentKey: T) => {
@@ -40,10 +37,14 @@ export function Tabs<T extends string>({
 
       switch (e.key) {
         case "ArrowRight":
-          nextIdx = rtl ? (idx - 1 + keys.length) % keys.length : (idx + 1) % keys.length;
+          nextIdx = rtl
+            ? (idx - 1 + keys.length) % keys.length
+            : (idx + 1) % keys.length;
           break;
         case "ArrowLeft":
-          nextIdx = rtl ? (idx + 1) % keys.length : (idx - 1 + keys.length) % keys.length;
+          nextIdx = rtl
+            ? (idx + 1) % keys.length
+            : (idx - 1 + keys.length) % keys.length;
           break;
         case "Home":
           nextIdx = 0;
@@ -79,7 +80,11 @@ export function Tabs<T extends string>({
             role="tab"
             id={`tab-${tab.key}`}
             aria-selected={isActive}
-            aria-controls={`tabpanel-${tab.key}`}
+            // Only the ACTIVE tab's panel is rendered (ContributorDashboard
+            // mounts one tabpanel). aria-controls on an inactive tab pointed
+            // at a tabpanel id that isn't in the DOM — an ARIA reference
+            // error. Omit it on inactive tabs (#710).
+            aria-controls={isActive ? `tabpanel-${tab.key}` : undefined}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.key)}
             onKeyDown={(e) => handleKeyDown(e, tab.key)}

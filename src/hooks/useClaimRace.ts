@@ -8,7 +8,10 @@ interface ApiError {
   message?: string;
 }
 
-export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty) => void) {
+export function useClaimRace(
+  bountyId: string,
+  onClaimSuccess?: (bounty: Bounty) => void,
+) {
   const [isClaiming, setIsClaiming] = useState(false);
   const [lastResult, setLastResult] = useState<ClaimResult | null>(null);
   // Mirrors useSmartPolling (#361): the claim request can still be in flight
@@ -33,10 +36,10 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
 
   const claim = useCallback(async (): Promise<ClaimResult> => {
     setIsClaiming(true);
-    
+
     try {
       const raw = await apiPost<RawBounty>(`/bounties/${bountyId}/claim`, {});
-      
+
       const bounty = adaptBounty(raw);
       const result: ClaimResult = {
         success: true,
@@ -49,24 +52,32 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
       return result;
     } catch (error) {
       const apiError = error as ApiError;
-      const isAlreadyClaimed = 
-        apiError?.status === 409 || 
-        apiError?.message?.toLowerCase().includes('already claimed') ||
-        apiError?.message?.toLowerCase().includes('claimed by another user');
+      const msg = apiError?.message?.toLowerCase() ?? "";
+      // The backend's real already-claimed signal is a 500 from
+      // InvalidBountyTransitionError ("Cannot transition bounty from
+      // "claimed" to "claimed""), not the 409/'already claimed' text the
+      // detection was written against — so the race-UI never showed (#697).
+      // Match the transition-error too.
+      const isAlreadyClaimed =
+        apiError?.status === 409 ||
+        msg.includes("already claimed") ||
+        msg.includes("claimed by another user") ||
+        msg.includes("cannot transition bounty") ||
+        msg.includes('"claimed" to "claimed"');
 
       if (isAlreadyClaimed) {
         try {
           const updatedResult = await fetchBounty(bountyId, undefined);
           const result: ClaimResult = {
             success: false,
-            error: 'ALREADY_CLAIMED',
+            error: "ALREADY_CLAIMED",
             bounty: updatedResult?.data,
           };
           return recordResult(result);
         } catch {
           const result: ClaimResult = {
             success: false,
-            error: 'ALREADY_CLAIMED',
+            error: "ALREADY_CLAIMED",
           };
           return recordResult(result);
         }
@@ -74,8 +85,8 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
 
       const result: ClaimResult = {
         success: false,
-        error: 'NETWORK_ERROR',
-        message: apiError?.message || 'Network error occurred',
+        error: "NETWORK_ERROR",
+        message: apiError?.message || "Network error occurred",
       };
       return recordResult(result);
     } finally {

@@ -45,10 +45,17 @@
  * assumption.
  */
 
-import { Code2, Wallet as WalletIcon, CheckCircle2, Loader2, Link2Off } from "lucide-react";
+import {
+  Code2,
+  Wallet as WalletIcon,
+  CheckCircle2,
+  Loader2,
+  Link2Off,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { GITHUB_OAUTH_URL } from "@/lib/config";
+import { stashReturnTo } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 import { useWallet } from "@/context/WalletContext";
 import { messages, t } from "@/lib/messages";
@@ -74,7 +81,10 @@ export function ConnectPanel() {
   const walletConnectedLocally = linkState === "local";
   const everythingDone = githubDone && walletDone;
 
-  const walletMismatch = walletConnectedLocally && Boolean(user?.stellarAddress) && user?.stellarAddress !== address;
+  const walletMismatch =
+    walletConnectedLocally &&
+    Boolean(user?.stellarAddress) &&
+    user?.stellarAddress !== address;
   // The wallet connect control is gated on GitHub sign-in, per the ordering
   // policy documented above.
   const walletBlocked = !githubDone;
@@ -95,7 +105,10 @@ export function ConnectPanel() {
       </div>
 
       <ol aria-label={messages["connect.progressLabel"]} className="space-y-2">
-        <StepRow label={messages["connect.step.github"]} state={githubStep(showSpinner, githubDone)} />
+        <StepRow
+          label={messages["connect.step.github"]}
+          state={githubStep(showSpinner, githubDone)}
+        />
         <StepRow
           label={messages["connect.step.wallet"]}
           state={walletStep(showSpinner, walletDone, walletConnectedLocally)}
@@ -137,6 +150,20 @@ export function ConnectPanel() {
              announced as a link containing a button. */
           <a
             href={GITHUB_OAUTH_URL}
+            onClick={() => {
+              // Stash the post-sign-in destination so the OAuth round-trip
+              // returns the user to the bounty they were trying to claim
+              // (#700) — read ?returnTo off this page's URL, falling back to
+              // nothing (the callback then sends them to the right default).
+              try {
+                const rt = new URLSearchParams(window.location.search).get(
+                  "returnTo",
+                );
+                if (rt) stashReturnTo(rt);
+              } catch {
+                // best-effort
+              }
+            }}
             className="mt-4 flex h-10 w-full items-center justify-center rounded-full bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
           >
             {messages["connect.github.cta"]}
@@ -215,7 +242,9 @@ export function ConnectPanel() {
                   <Link2Off aria-hidden="true" className="h-4 w-4 shrink-0" />
                   {messages["connect.wallet.localOnlyTitle"]}
                 </p>
-                <p className="mt-1">{messages["connect.wallet.localOnlyBody"]}</p>
+                <p className="mt-1">
+                  {messages["connect.wallet.localOnlyBody"]}
+                </p>
               </div>
             )}
             {walletMismatch && (
@@ -223,7 +252,9 @@ export function ConnectPanel() {
                 role="alert"
                 className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30"
               >
-                <p className="font-medium">{messages["connect.wallet.mismatchTitle"]}</p>
+                <p className="font-medium">
+                  {messages["connect.wallet.mismatchTitle"]}
+                </p>
                 <p className="mt-1">
                   {t("connect.wallet.mismatchBody", {
                     address: `${address?.slice(0, 4)}...${address?.slice(-4)}`,
@@ -248,7 +279,11 @@ export function ConnectPanel() {
                   })}
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <Button size="sm" onClick={confirmRelink} loading={connecting}>
+                  <Button
+                    size="sm"
+                    onClick={confirmRelink}
+                    loading={connecting}
+                  >
                     {messages["connect.wallet.relinkConfirm"]}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={cancelRelink}>
@@ -263,7 +298,9 @@ export function ConnectPanel() {
               onClick={connect}
               loading={connecting}
             >
-              {connecting ? messages["connect.wallet.connecting"] : messages["connect.wallet.cta"]}
+              {connecting
+                ? messages["connect.wallet.connecting"]
+                : messages["connect.wallet.cta"]}
             </Button>
             {walletConnectedLocally && (
               <Button
@@ -279,7 +316,10 @@ export function ConnectPanel() {
         )}
 
         {error && (
-          <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-400">
+          <p
+            role="alert"
+            className="mt-3 text-sm text-rose-600 dark:text-rose-400"
+          >
             {error}
           </p>
         )}
@@ -309,7 +349,11 @@ function githubStep(working: boolean, done: boolean): StepState {
   return working ? "working" : "pending";
 }
 
-function walletStep(working: boolean, done: boolean, localOnly: boolean): StepState {
+function walletStep(
+  working: boolean,
+  done: boolean,
+  localOnly: boolean,
+): StepState {
   if (done) return "done";
   if (localOnly) return "attention";
   return working ? "working" : "pending";
@@ -319,13 +363,22 @@ function StepRow({ label, state }: { label: string; state: StepState }) {
   return (
     <li className="flex items-center gap-2 text-sm">
       {state === "done" && (
-        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+        <CheckCircle2
+          className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+          aria-hidden="true"
+        />
       )}
       {state === "working" && (
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400" aria-hidden="true" />
+        <Loader2
+          className="h-4 w-4 shrink-0 animate-spin text-slate-400"
+          aria-hidden="true"
+        />
       )}
       {state === "attention" && (
-        <Link2Off className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        <Link2Off
+          className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        />
       )}
       {state === "pending" && (
         <span

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { consumeReturnTo } from "@/lib/auth";
 import type { UserRole } from "@/types";
 
 const ROLE_REDIRECT_MAP: Record<UserRole, string> = {
@@ -12,7 +13,11 @@ const ROLE_REDIRECT_MAP: Record<UserRole, string> = {
 };
 
 /** Multi-role precedence for the *landing* page only. */
-const ROLE_PRECEDENCE: readonly UserRole[] = ["maintainer", "sponsor", "contributor"];
+const ROLE_PRECEDENCE: readonly UserRole[] = [
+  "maintainer",
+  "sponsor",
+  "contributor",
+];
 
 /**
  * Where to land after sign-in.
@@ -43,7 +48,10 @@ function redirectForRoles(roles: UserRole[] | undefined): string {
  * without this a user who signed in from the connect page could never finish
  * connecting. Send them straight back instead.
  */
-function shouldFinishConnect(roles: UserRole[] | undefined, stellarAddress: string | null): boolean {
+function shouldFinishConnect(
+  roles: UserRole[] | undefined,
+  stellarAddress: string | null,
+): boolean {
   return stellarAddress === null || stellarAddress === undefined;
 }
 
@@ -74,10 +82,18 @@ export function CallbackClient() {
           setError("sign-in-failed");
           return;
         }
+        // If a page stashed a returnTo before the OAuth hop (e.g. a bounty's
+        // sign-in CTA, #700), send the user back there — not a generic
+        // dashboard. consumeReturnTo only yields safe same-origin paths.
+        const returnTo = consumeReturnTo();
         router.replace(
-          shouldFinishConnect(resolvedUser.roles, resolvedUser.stellarAddress)
-            ? "/connect"
-            : redirectForRoles(resolvedUser.roles),
+          returnTo ??
+            (shouldFinishConnect(
+              resolvedUser.roles,
+              resolvedUser.stellarAddress,
+            )
+              ? "/connect"
+              : redirectForRoles(resolvedUser.roles)),
         );
       })
       .catch(() => setError("sign-in-failed"));
@@ -98,11 +114,19 @@ export function CallbackClient() {
     <div className="mx-auto max-w-md px-6 py-24 text-center">
       {error ? (
         <>
-          <p role="alert" className="font-medium text-rose-600">{copy.title}</p>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{copy.body}</p>
+          <p role="alert" className="font-medium text-rose-600">
+            {copy.title}
+          </p>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            {copy.body}
+          </p>
         </>
       ) : (
-        <p role="status" aria-live="polite" className="text-slate-500 dark:text-slate-400">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-slate-500 dark:text-slate-400"
+        >
           Finishing sign-in…
         </p>
       )}

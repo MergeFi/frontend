@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import type { UserRole } from "@/types";
 
-type Role = "contributor" | "maintainer" | "sponsor";
+type Role = UserRole;
 
 interface NavItem {
   label: string;
@@ -70,6 +71,11 @@ export function DashboardShell({
   const pathname = usePathname();
   const { user } = useAuth();
   const items = navForRole(role, user?.username);
+  // Only offer the roles this account actually has — a contributor-only
+  // account shouldn't see Maintainer/Sponsor options that land on dashboards
+  // they're not authorised for (the backend 403s them anyway) (#674).
+  const userRoles = user?.roles ?? [];
+  const switchable = roleSwitcher.filter((r) => userRoles.includes(r.role));
 
   return (
     <div className="mx-auto flex max-w-7xl gap-8 px-6 py-10">
@@ -89,7 +95,8 @@ export function DashboardShell({
               // nothing selected (#220).
               const active =
                 pathname === item.href ||
-                (!item.href.startsWith("/dashboard/") && pathname.startsWith(`${item.href}/`));
+                (!item.href.startsWith("/dashboard/") &&
+                  pathname.startsWith(`${item.href}/`));
               return (
                 <Link
                   key={item.label}
@@ -113,7 +120,7 @@ export function DashboardShell({
             Switch role
           </p>
           <nav aria-label="Switch role" className="mt-3 space-y-1">
-            {roleSwitcher.map((r) => (
+            {switchable.map((r) => (
               <Link
                 key={r.role}
                 href={r.href}
@@ -142,7 +149,9 @@ export function DashboardShell({
               {badge}
             </div>
             {subtitle && (
-              <p className="mt-2 max-w-2xl text-slate-500 dark:text-slate-400">{subtitle}</p>
+              <p className="mt-2 max-w-2xl text-slate-500 dark:text-slate-400">
+                {subtitle}
+              </p>
             )}
           </div>
           {action}

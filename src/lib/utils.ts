@@ -15,26 +15,38 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function coerceDecimal(value: string | null | undefined, fallback = 0): number {
+export function coerceDecimal(
+  value: string | null | undefined,
+  fallback = 0,
+): number {
   if (value == null) return fallback;
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return n;
 }
 
-export function coerceNonNegative(value: string | null | undefined, fallback = 0): number {
+export function coerceNonNegative(
+  value: string | null | undefined,
+  fallback = 0,
+): number {
   const n = coerceDecimal(value, fallback);
   return n < 0 ? fallback : n;
 }
 
-export function coerceFraction(value: string | null | undefined, fallback = 0): number {
+export function coerceFraction(
+  value: string | null | undefined,
+  fallback = 0,
+): number {
   const n = coerceDecimal(value, fallback);
   if (n < 0) return 0;
   if (n > 1) return 1;
   return n;
 }
 
-export function coercePercentage(value: string | null | undefined, fallback = 0): number {
+export function coercePercentage(
+  value: string | null | undefined,
+  fallback = 0,
+): number {
   const n = coerceDecimal(value, fallback);
   if (n < 0) return 0;
   if (n > 100) return 100;
@@ -244,8 +256,16 @@ export function daysUntil(dateIso: string) {
   const deadline = new Date(dateIso);
   const now = new Date();
   // Compare UTC calendar dates to avoid DST/off-by-one issues
-  const deadlineUtc = Date.UTC(deadline.getUTCFullYear(), deadline.getUTCMonth(), deadline.getUTCDate());
-  const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const deadlineUtc = Date.UTC(
+    deadline.getUTCFullYear(),
+    deadline.getUTCMonth(),
+    deadline.getUTCDate(),
+  );
+  const nowUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
   return Math.ceil((deadlineUtc - nowUtc) / (1000 * 60 * 60 * 24));
 }
 
@@ -255,14 +275,20 @@ export function daysUntil(dateIso: string) {
  * which is only correct for English (Slovak has four plural categories,
  * Arabic six) — (#456).
  */
-export function formatDaysUntil(days: number | null, locale: string = resolveLocale()): string {
+export function formatDaysUntil(
+  days: number | null,
+  locale: string = resolveLocale(),
+): string {
   if (days === null) return t("deadline.none", {}, locale);
   if (days > 0) return t("deadline.left", { count: days }, locale);
   return t("deadline.passed", {}, locale);
 }
 
 /** Locale-aware integer/count string ("1,234" in en-US, "1.234" in de-DE). */
-export function formatInteger(value: number, locale: string = resolveLocale()): string {
+export function formatInteger(
+  value: number,
+  locale: string = resolveLocale(),
+): string {
   return formatCount(value, locale);
 }
 
@@ -288,20 +314,24 @@ export function coerceStatus(value: string | null | undefined): BountyStatus {
 
 export function validateTeamSplits(
   splits: Array<{ percentage: string | number }>,
-  tolerance = 0.01
+  tolerance = 0.01,
 ): { valid: boolean; sum: number; message?: string } {
   if (!splits || splits.length === 0) return { valid: true, sum: 0 };
   // coerceDecimal degrades a malformed percentage string to 0 instead of
   // NaN, so one bad split can't poison the whole sum into "NaN%" (#198).
   const percentages = splits.map((s) =>
-    typeof s.percentage === "string" ? coerceDecimal(s.percentage) : s.percentage
+    typeof s.percentage === "string"
+      ? coerceDecimal(s.percentage)
+      : s.percentage,
   );
   const sum = percentages.reduce((a, b) => a + b, 0);
   const valid = Math.abs(sum - 100) <= tolerance;
   return {
     valid,
     sum,
-    message: valid ? undefined : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
+    message: valid
+      ? undefined
+      : `Team splits sum to ${sum.toFixed(2)}% (expected 100%)`,
   };
 }
 
@@ -319,8 +349,23 @@ export function generateIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // Fallback for environments without crypto.randomUUID (very unlikely in
-  // modern browsers, but defensive).
+  // crypto.randomUUID is missing on non-secure origins (plain-http staging,
+  // not just rare browsers). Math.random() keys are predictable and collide —
+  // a collision replays someone's cached response instead of executing. Use
+  // crypto.getRandomValues, which IS available on insecure origins, to build
+  // the v4 UUID (#706).
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
+    const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+      "",
+    );
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(
+      16,
+      20,
+    )}-${h.slice(20)}`;
+  }
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
@@ -340,13 +385,16 @@ export function generateIdempotencyKey(): string {
  * don't have representation gaps in the ranges we care about.
  */
 export function toCents(value: string | number, decimals = 2): number {
-  const raw = (typeof value === "number" ? value.toFixed(decimals) : String(value)).trim();
+  const raw = (
+    typeof value === "number" ? value.toFixed(decimals) : String(value)
+  ).trim();
   // Apply the sign to the whole amount: "-12.50" is -1250, not -1200 + 50 (#353).
   const negative = raw.startsWith("-");
   const str = negative || raw.startsWith("+") ? raw.slice(1) : raw;
   const [whole = "0", frac = ""] = str.split(".");
   const padded = frac.padEnd(decimals, "0").slice(0, decimals);
-  const cents = parseInt(whole || "0", 10) * 10 ** decimals + parseInt(padded || "0", 10);
+  const cents =
+    parseInt(whole || "0", 10) * 10 ** decimals + parseInt(padded || "0", 10);
   return negative ? -cents : cents;
 }
 
@@ -362,8 +410,14 @@ export function toMajorUnits(cents: number, decimals = 2): number {
  * Sum monetary amounts without float drift by adding integer minor units
  * (#353). `sumMoney([0.1, 0.2])` is exactly 0.3, unlike `0.1 + 0.2`.
  */
-export function sumMoney(values: ReadonlyArray<string | number>, decimals = 2): number {
-  const cents = values.reduce<number>((total, value) => total + toCents(value, decimals), 0);
+export function sumMoney(
+  values: ReadonlyArray<string | number>,
+  decimals = 2,
+): number {
+  const cents = values.reduce<number>(
+    (total, value) => total + toCents(value, decimals),
+    0,
+  );
   return toMajorUnits(cents, decimals);
 }
 
@@ -371,6 +425,10 @@ export function sumMoney(values: ReadonlyArray<string | number>, decimals = 2): 
  * Subtract monetary amounts (`a - b`) via integer minor units (#353), e.g. a
  * total spent derived from total funded minus budget remaining.
  */
-export function subtractMoney(a: string | number, b: string | number, decimals = 2): number {
+export function subtractMoney(
+  a: string | number,
+  b: string | number,
+  decimals = 2,
+): number {
   return toMajorUnits(toCents(a, decimals) - toCents(b, decimals), decimals);
 }

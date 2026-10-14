@@ -36,7 +36,9 @@ export class EnvValidationError extends Error {
  * The checked-in `.env.example` sets this explicitly, so the documented
  * `cp .env.example .env.local` quickstart never hits the "unset" branch.
  */
-export function validateStellarNetwork(raw: string | undefined): StellarNetwork {
+export function validateStellarNetwork(
+  raw: string | undefined,
+): StellarNetwork {
   if (raw === undefined || raw === "") {
     throw new EnvValidationError(
       'NEXT_PUBLIC_STELLAR_NETWORK is not set. It must be exactly "TESTNET" or "PUBLIC" — ' +
@@ -97,7 +99,10 @@ export function validateApiUrl(raw: string | undefined): string {
     );
   }
 
-  return value;
+  // A trailing slash makes every call `${API_BASE_URL}${path}` produce a
+  // double-slash URL (…/api//bounties) — some proxies route those as 404, and
+  // GITHUB_OAUTH_URL becomes …/api//auth/github (#683). Normalise it away.
+  return value.replace(/\/+$/, "");
 }
 
 export interface ValidatedEnv {
@@ -108,7 +113,9 @@ export interface ValidatedEnv {
 /** Reads and validates every `NEXT_PUBLIC_*` variable this app depends on. */
 export function loadValidatedEnv(): ValidatedEnv {
   return {
-    stellarNetwork: validateStellarNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK),
+    stellarNetwork: validateStellarNetwork(
+      process.env.NEXT_PUBLIC_STELLAR_NETWORK,
+    ),
     apiBaseUrl: validateApiUrl(process.env.NEXT_PUBLIC_API_URL),
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 
 type Theme = "light" | "dark";
 
@@ -25,10 +26,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // client's own hydration render is what actually matters here and always
   // has `document` by then, since the inline script runs before React.
   const [theme, setTheme] = useState<Theme>(() =>
-    typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark")
       ? "dark"
       : "light",
   );
+
+  // Sync the theme across same-origin tabs — a toggle in tab A fires the
+  // `storage` event in tab B; apply it so the two stay consistent (#679). A
+  // null newValue means the theme was reset/cleared → fall back to the
+  // system preference.
+  useCrossTabStorage(THEME_KEY, (newValue) => {
+    const next: Theme =
+      newValue === "dark" || newValue === "light"
+        ? newValue
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+    setTheme(next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+  });
 
   useEffect(() => {
     // Listen for system color scheme changes when no explicit preference is set.
@@ -49,7 +66,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Use addEventListener for broader browser compatibility.
     mediaQuery.addEventListener("change", handleSystemThemeChange);
-    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
+    return () =>
+      mediaQuery.removeEventListener("change", handleSystemThemeChange);
   }, []);
 
   function toggle() {

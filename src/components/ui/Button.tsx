@@ -40,16 +40,30 @@ export function Button({
   size = "md",
   loading = false,
   disabled,
+  type = "button",
   className,
   children,
+  onClick,
   ...props
 }: ButtonProps) {
+  // aria-disabled instead of `disabled` while loading — a natively-disabled
+  // button drops keyboard focus to <body> mid-action, a focus-loss a11y bug
+  // (#685). aria-disabled keeps it focusable; the click is guarded below.
+  const inert = disabled || loading;
   return (
     <button
+      type={type}
       aria-busy={loading || undefined}
-      disabled={disabled || loading}
+      aria-disabled={inert || undefined}
+      onClick={(e) => {
+        if (inert) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
         variantClasses[variant],
         sizeClasses[size],
         className,

@@ -4,6 +4,7 @@ import { GitPullRequest, FilterX } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { BountyCard } from "@/components/bounty/BountyCard";
+import { CanonicalFilterForm } from "@/components/bounty/CanonicalFilterForm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
@@ -48,7 +49,10 @@ const STATUS_FILTERS = [
   { value: "all", label: "All" },
   { value: "open", label: "Open" },
   { value: "in_review", label: "In review" },
-] as const satisfies readonly { value: (typeof STATUS_VALUES)[number]; label: string }[];
+] as const satisfies readonly {
+  value: (typeof STATUS_VALUES)[number];
+  label: string;
+}[];
 
 const DIFFICULTY_LABELS: Record<(typeof DIFFICULTY_VALUES)[number], string> = {
   all: "Any difficulty",
@@ -75,7 +79,12 @@ export default async function IssuesPage({
   const filterActive = isFilterActive(query);
 
   const { data: bounties, source } = await fetchBounties(mockBounties, query);
-  const { items: visible, page, totalPages, filteredCount } = applyBountyQuery(bounties, query);
+  const {
+    items: visible,
+    page,
+    totalPages,
+    filteredCount,
+  } = applyBountyQuery(bounties, query);
   const total = bounties.length;
 
   return (
@@ -101,13 +110,17 @@ export default async function IssuesPage({
       {source === "mock" && <DataSourceNotice className="mb-6" />}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-500 dark:text-slate-400">Status:</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">
+          Status:
+        </span>
         {STATUS_FILTERS.map((f) => {
           const active = f.value === query.status;
           return (
             <Link
               key={f.value}
-              href={buildIssuesHref(params, { status: f.value === "all" ? undefined : f.value })}
+              href={buildIssuesHref(params, {
+                status: f.value === "all" ? undefined : f.value,
+              })}
               aria-current={active ? "true" : undefined}
               className={
                 active
@@ -129,12 +142,16 @@ export default async function IssuesPage({
           bookmarkable URL and the page works with JavaScript disabled. The
           hidden `status` field carries the pill selection above through the
           same submit, since HTML forms only send their own named fields. */}
-      <form
-        method="get"
-        action="/issues"
+      {/* CanonicalFilterForm strips default/empty fields before the GET
+          submit so the URL is the canonical /issues or ?status=open — not
+          ?difficulty=all&asset=all&minReward=&maxReward=&sort=default (#701). */}
+      <CanonicalFilterForm
+        defaults={{ difficulty: "all", asset: "all", sort: "default" }}
         className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40"
       >
-        {query.status !== "all" && <input type="hidden" name="status" value={query.status} />}
+        {query.status !== "all" && (
+          <input type="hidden" name="status" value={query.status} />
+        )}
 
         <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
           Difficulty
@@ -218,7 +235,7 @@ export default async function IssuesPage({
             Clear all
           </Link>
         )}
-      </form>
+      </CanonicalFilterForm>
 
       {visible.length === 0 ? (
         filterActive ? (
@@ -232,7 +249,9 @@ export default async function IssuesPage({
             size="sm"
             headingLevel="h2"
             title={t("empty.issues.filtered.title")}
-            description={t("empty.issues.filtered.description", { total: formatInteger(total) })}
+            description={t("empty.issues.filtered.description", {
+              total: formatInteger(total),
+            })}
             action={
               <Link href="/issues">
                 <Button size="sm" variant="outline">
@@ -270,7 +289,9 @@ export default async function IssuesPage({
               className="mt-8 flex items-center justify-center gap-4"
             >
               <Link
-                href={buildIssuesHref(params, { page: String(Math.max(1, page - 1)) })}
+                href={buildIssuesHref(params, {
+                  page: String(Math.max(1, page - 1)),
+                })}
                 aria-disabled={page <= 1}
                 className={
                   page <= 1

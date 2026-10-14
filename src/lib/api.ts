@@ -12,7 +12,12 @@ import {
   type RawReputationSnapshot,
   type RawUserProfile,
 } from "./adapters";
-import type { Bounty, Milestone, MaintenancePool, ReputationProfile } from "@/types";
+import type {
+  Bounty,
+  Milestone,
+  MaintenancePool,
+  ReputationProfile,
+} from "@/types";
 import { buildBountyQueryString, type BountyQuery } from "./bounty-query";
 
 export class ApiUnavailableError extends Error {}
@@ -36,7 +41,11 @@ export interface FetchResult<T> {
   source: "live" | "mock";
 }
 
-function logFetchError(path: string, kind: "network" | "http" | "parse", detail: string) {
+function logFetchError(
+  path: string,
+  kind: "network" | "http" | "parse",
+  detail: string,
+) {
   console.error(`[api] ${kind} error on ${path}: ${detail}`);
 }
 
@@ -47,7 +56,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     res = await fetch(`${API_BASE_URL}${path}`, {
       cache: "no-store",
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
+      headers: {
+        // Content-Type only when there's a body — a GET with it triggers a
+        // CORS preflight on every read (#686).
+        ...(init?.body != null ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
       signal: init?.signal ?? timeout,
     });
   } catch (err) {
@@ -55,7 +69,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       logFetchError(path, "network", "Request timed out");
       throw new ApiUnavailableError(`Request to ${path} timed out`);
     }
-    logFetchError(path, "network", err instanceof Error ? err.message : String(err));
+    logFetchError(
+      path,
+      "network",
+      err instanceof Error ? err.message : String(err),
+    );
     throw new ApiUnavailableError(`Network error on ${path}`);
   }
   if (!res.ok) {
@@ -65,7 +83,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     return (await res.json()) as T;
   } catch (err) {
-    logFetchError(path, "parse", err instanceof Error ? err.message : String(err));
+    logFetchError(
+      path,
+      "parse",
+      err instanceof Error ? err.message : String(err),
+    );
     throw new ApiUnavailableError(`Invalid JSON from ${path}`);
   }
 }
@@ -85,10 +107,7 @@ function requestKey(method: string, path: string, body?: string): string {
   return `${method}:${path}:${body ?? ""}`;
 }
 
-async function dedupedFetch<T>(
-  key: string,
-  fn: () => Promise<T>,
-): Promise<T> {
+async function dedupedFetch<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const existing = inflight.get(key);
   if (existing) return existing as Promise<T>;
   const promise = fn().finally(() => inflight.delete(key));
@@ -117,7 +136,12 @@ export async function apiRequest<T>(
       res = await fetch(`${API_BASE_URL}${path}`, {
         ...init,
         headers: {
-          "Content-Type": "application/json",
+          // Only declare a JSON body when one's actually sent — a GET with
+          // Content-Type: application/json is a non-"simple" request and
+          // triggers a CORS preflight on every read, doubling latency (#686).
+          ...(bodyStr !== undefined
+            ? { "Content-Type": "application/json" }
+            : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...init?.headers,
         },
@@ -138,7 +162,8 @@ export async function apiRequest<T>(
         ? ` Please wait ${seconds} second${seconds === 1 ? "" : "s"} before trying again.`
         : "";
       throw new ApiRequestError(
-        `You're doing that too fast.${waitMsg}` || `Rate limited. Please try again later.`,
+        `You're doing that too fast.${waitMsg}` ||
+          `Rate limited. Please try again later.`,
         429,
         Number.isFinite(seconds) ? seconds : undefined,
       );
@@ -156,7 +181,10 @@ export async function apiRequest<T>(
       } catch {
         // plain-text error body, use as-is
       }
-      throw new ApiRequestError(message || `Request failed (${res.status})`, res.status);
+      throw new ApiRequestError(
+        message || `Request failed (${res.status})`,
+        res.status,
+      );
     }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;

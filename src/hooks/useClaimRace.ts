@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiPost, fetchBounty } from '@/lib/api';
 import { adaptBounty, type RawBounty } from '@/lib/adapters';
+import { generateIdempotencyKey } from '@/lib/utils';
 import type { Bounty, ClaimResult } from '@/types/bounty';
 
 interface ApiError {
@@ -8,7 +9,10 @@ interface ApiError {
   message?: string;
 }
 
-export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty) => void) {
+export function useClaimRace(
+  bountyId: string,
+  onClaimSuccess?: (bounty: Bounty) => void,
+) {
   const [isClaiming, setIsClaiming] = useState(false);
   const [lastResult, setLastResult] = useState<ClaimResult | null>(null);
   // Mirrors useSmartPolling (#361): the claim request can still be in flight
@@ -31,12 +35,26 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
     return result;
   }, []);
 
+  // The claim needs a stable Idempotency-Key per claim-intent — the backend's
+  // @Idempotent('bounty.claim') interceptor requires the Idempotency-Key UUID
+  // header and 400s without it, so the claim could never succeed (#698). The
+  // key is generated once per intent and REUSED across a retry — that's what
+  // makes the retry idempotent (same key → the backend returns the first
+  // attempt's result instead of a double-claim).
+  const idempotencyKeyRef = useRef<string | null>(null);
+
   const claim = useCallback(async (): Promise<ClaimResult> => {
     setIsClaiming(true);
-    
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = generateIdempotencyKey();
+    }
     try {
-      const raw = await apiPost<RawBounty>(`/bounties/${bountyId}/claim`, {});
-      
+      const raw = await apiPost<RawBounty>(
+        `/bounties/${bountyId}/claim`,
+        {},
+        idempotencyKeyRef.current,
+      );
+
       const bounty = adaptBounty(raw);
       const result: ClaimResult = {
         success: true,
@@ -49,24 +67,24 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
       return result;
     } catch (error) {
       const apiError = error as ApiError;
-      const isAlreadyClaimed = 
-        apiError?.status === 409 || 
-        apiError?.message?.toLowerCase().includes('already claimed') ||
-        apiError?.message?.toLowerCase().includes('claimed by another user');
+      const isAlreadyClaimed =
+        apiError?.status === 409 ||
+        apiError?.message?.toLowerCase().includes("already claimed") ||
+        apiError?.message?.toLowerCase().includes("claimed by another user");
 
       if (isAlreadyClaimed) {
         try {
           const updatedResult = await fetchBounty(bountyId, undefined);
           const result: ClaimResult = {
             success: false,
-            error: 'ALREADY_CLAIMED',
+            error: "ALREADY_CLAIMED",
             bounty: updatedResult?.data,
           };
           return recordResult(result);
         } catch {
           const result: ClaimResult = {
             success: false,
-            error: 'ALREADY_CLAIMED',
+            error: "ALREADY_CLAIMED",
           };
           return recordResult(result);
         }
@@ -74,8 +92,8 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
 
       const result: ClaimResult = {
         success: false,
-        error: 'NETWORK_ERROR',
-        message: apiError?.message || 'Network error occurred',
+        error: "NETWORK_ERROR",
+        message: apiError?.message || "Network error occurred",
       };
       return recordResult(result);
     } finally {
@@ -87,6 +105,8 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
 
   const reset = useCallback(() => {
     setLastResult(null);
+    // A new claim-intent gets a fresh idempotency key.
+    idempotencyKeyRef.current = null;
   }, []);
 
   return {

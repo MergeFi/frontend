@@ -2,6 +2,7 @@ import * as React from "react";
 import { act, renderHook } from "@testing-library/react";
 import { useClaimRace } from "./useClaimRace";
 import { apiPost, fetchBounty } from "@/lib/api";
+import { adaptBounty } from "@/lib/adapters";
 import type { Bounty } from "@/types/bounty";
 
 // Pass-through useState so tests can observe setter calls (see trackSetStateCalls).
@@ -21,6 +22,21 @@ const mockApiPost = apiPost as jest.MockedFunction<typeof apiPost>;
 const mockFetchBounty = fetchBounty as jest.MockedFunction<typeof fetchBounty>;
 
 const bounty = { id: "b1", status: "claimed" } as Bounty;
+
+// The hook adapts apiPost's payload through adaptBounty — a RawBounty
+// fixture whose adapted form equals the `bounty` fixture above.
+const rawBounty = {
+  id: "b1",
+  status: "claimed",
+  asset: "USDC",
+  difficulty: "standard",
+  deadline: null,
+  escrowId: null,
+  amount: 0,
+  issue: undefined,
+} as const;
+
+const adapted = adaptBounty(rawBounty);
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -56,7 +72,7 @@ afterEach(() => mockUseState.mockImplementation(realUseState));
 
 describe("useClaimRace (mounted)", () => {
   it("records a successful claim and calls onClaimSuccess", async () => {
-    mockApiPost.mockResolvedValueOnce({ data: bounty });
+    mockApiPost.mockResolvedValueOnce(rawBounty as never);
     const onClaimSuccess = jest.fn();
     const { result } = renderHook(() => useClaimRace("b1", onClaimSuccess));
 
@@ -65,15 +81,15 @@ describe("useClaimRace (mounted)", () => {
       returned = await result.current.claim();
     });
 
-    expect(returned).toEqual({ success: true, bounty });
-    expect(result.current.lastResult).toEqual({ success: true, bounty });
+    expect(returned).toEqual({ success: true, bounty: adapted });
+    expect(result.current.lastResult).toEqual({ success: true, bounty: adapted });
     expect(result.current.isClaiming).toBe(false);
-    expect(onClaimSuccess).toHaveBeenCalledWith(bounty);
+    expect(onClaimSuccess).toHaveBeenCalledWith(adapted);
   });
 
   it("maps a 409 to ALREADY_CLAIMED with the refreshed bounty", async () => {
     mockApiPost.mockRejectedValueOnce({ status: 409, message: "conflict" });
-    mockFetchBounty.mockResolvedValueOnce({ data: bounty } as never);
+    mockFetchBounty.mockResolvedValueOnce({ data: adapted } as never);
     const { result } = renderHook(() => useClaimRace("b1"));
 
     await act(async () => {
@@ -83,7 +99,30 @@ describe("useClaimRace (mounted)", () => {
     expect(result.current.lastResult).toEqual({
       success: false,
       error: "ALREADY_CLAIMED",
-      bounty,
+      bounty: adapted,
+    });
+  });
+
+  it("maps the real transition-error shape to ALREADY_CLAIMED (#697)", async () => {
+    // The backend's actual already-claimed signal is a 500 from
+    // InvalidBountyTransitionError, not a 409 — the original detection
+    // missed it, so the race-UI never showed.
+    mockApiPost.mockRejectedValueOnce({
+      status: 500,
+      message:
+        'Cannot transition bounty from "claimed" to "claimed" (InvalidBountyTransitionError)',
+    });
+    mockFetchBounty.mockResolvedValueOnce({ data: adapted } as never);
+    const { result } = renderHook(() => useClaimRace("b1"));
+
+    await act(async () => {
+      await result.current.claim();
+    });
+
+    expect(result.current.lastResult).toEqual({
+      success: false,
+      error: "ALREADY_CLAIMED",
+      bounty: adapted,
     });
   });
 
@@ -119,8 +158,11 @@ describe("useClaimRace — unmount while a claim is in flight (#361)", () => {
     unmount();
     state.mounted = false;
 
-    pending.resolve({ data: bounty });
-    await expect(claimPromise).resolves.toEqual({ success: true, bounty });
+    pending.resolve(rawBounty as never);
+    await expect(claimPromise).resolves.toEqual({
+      success: true,
+      bounty: adapted,
+    });
 
     expect(calls.filter((c) => !c.mounted)).toHaveLength(0);
     expect(onClaimSuccess).not.toHaveBeenCalled();
@@ -143,7 +185,7 @@ describe("useClaimRace — unmount while a claim is in flight (#361)", () => {
     unmount();
     state.mounted = false;
 
-    pendingFetch.resolve({ data: bounty });
+    pendingFetch.resolve({ data: adapted });
     await expect(claimPromise).resolves.toMatchObject({ error: "ALREADY_CLAIMED" });
     expect(calls.filter((c) => !c.mounted)).toHaveLength(0);
   });
@@ -167,7 +209,7 @@ describe("useClaimRace — unmount while a claim is in flight (#361)", () => {
   });
 
   it("still updates state after a Strict Mode simulated remount", async () => {
-    mockApiPost.mockResolvedValueOnce({ data: bounty });
+    mockApiPost.mockResolvedValueOnce(rawBounty as never);
     const { result } = renderHook(() => useClaimRace("b1"), {
       wrapper: React.StrictMode,
     });
@@ -176,6 +218,6 @@ describe("useClaimRace — unmount while a claim is in flight (#361)", () => {
       await result.current.claim();
     });
 
-    expect(result.current.lastResult).toEqual({ success: true, bounty });
+    expect(result.current.lastResult).toEqual({ success: true, bounty: adapted });
   });
 });

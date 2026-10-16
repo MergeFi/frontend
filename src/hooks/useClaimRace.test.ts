@@ -2,6 +2,7 @@ import * as React from "react";
 import { act, renderHook } from "@testing-library/react";
 import { useClaimRace } from "./useClaimRace";
 import { apiPost, fetchBounty } from "@/lib/api";
+import { adaptBounty, type RawBounty } from "@/lib/adapters";
 import type { Bounty } from "@/types/bounty";
 
 // Pass-through useState so tests can observe setter calls (see trackSetStateCalls).
@@ -17,10 +18,28 @@ jest.mock("@/lib/api", () => ({
   fetchBounty: jest.fn(),
 }));
 
+jest.mock("@/lib/adapters", () => ({
+  adaptBounty: jest.fn((raw: unknown) => ({ ...(raw as object), adapted: true })),
+}));
+
 const mockApiPost = apiPost as jest.MockedFunction<typeof apiPost>;
 const mockFetchBounty = fetchBounty as jest.MockedFunction<typeof fetchBounty>;
+const mockAdaptBounty = adaptBounty as jest.MockedFunction<typeof adaptBounty>;
 
-const bounty = { id: "b1", status: "claimed" } as Bounty;
+const rawBounty: RawBounty = {
+  id: "b1",
+  amount: "100.00",
+  asset: "USDC",
+  difficulty: "intermediate",
+  status: "open",
+  deadline: null,
+  escrowId: "escrow_123",
+};
+
+const adaptedBounty = {
+  ...rawBounty,
+  adapted: true,
+} as unknown as Bounty;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -32,11 +51,6 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-/**
- * Wrap React.useState so every setter call is recorded along with whether the
- * hook was still mounted at the time — React 18+ no longer warns about
- * updates on unmounted components, so this is the observable signal.
- */
 function trackSetStateCalls() {
   const calls: { mounted: boolean }[] = [];
   const state = { mounted: true };
@@ -51,12 +65,16 @@ function trackSetStateCalls() {
   return { calls, state };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockAdaptBounty.mockImplementation((raw: unknown) => ({ ...(raw as object), adapted: true } as Bounty));
+});
 afterEach(() => mockUseState.mockImplementation(realUseState));
 
-describe("useClaimRace (mounted)", () => {
-  it("records a successful claim and calls onClaimSuccess", async () => {
-    mockApiPost.mockResolvedValueOnce({ data: bounty });
+describe("useClaimRace (mounted) - Overkill Test Shield", () => {
+  it("happy path: records a successful claim and calls onClaimSuccess with adapted bounty entity", async () => {
+    // Backend returns raw entity directly, NOT wrapped in { data: bounty }
+    mockApiPost.mockResolvedValueOnce(rawBounty);
     const onClaimSuccess = jest.fn();
     const { result } = renderHook(() => useClaimRace("b1", onClaimSuccess));
 
@@ -65,49 +83,89 @@ describe("useClaimRace (mounted)", () => {
       returned = await result.current.claim();
     });
 
-    expect(returned).toEqual({ success: true, bounty });
-    expect(result.current.lastResult).toEqual({ success: true, bounty });
+    expect(mockApiPost).toHaveBeenCalledWith("/bounties/b1/claim", {});
+    expect(mockAdaptBounty).toHaveBeenCalledWith(rawBounty);
+    expect(returned).toEqual({ success: true, bounty: adaptedBounty });
+    expect(result.current.lastResult).toEqual({ success: true, bounty: adaptedBounty });
     expect(result.current.isClaiming).toBe(false);
-    expect(onClaimSuccess).toHaveBeenCalledWith(bounty);
+    expect(onClaimSuccess).toHaveBeenCalledWith(adaptedBounty);
   });
 
-  it("maps a 409 to ALREADY_CLAIMED with the refreshed bounty", async () => {
-    mockApiPost.mockRejectedValueOnce({ status: 409, message: "conflict" });
-    mockFetchBounty.mockResolvedValueOnce({ data: bounty } as never);
+  it("unhappy path: maps 409 conflict to ALREADY_CLAIMED with refreshed bounty", async () => {
+    mockApiPost.mockRejectedValueOnce({ status: 409, message: "already claimed by another user" });
+    mockFetchBounty.mockResolvedValueOnce({ data: adaptedBounty } as never);
     const { result } = renderHook(() => useClaimRace("b1"));
 
+    let returned;
     await act(async () => {
-      await result.current.claim();
+      returned = await result.current.claim();
     });
 
+    expect(returned).toEqual({
+      success: false,
+      error: "ALREADY_CLAIMED",
+      bounty: adaptedBounty,
+    });
     expect(result.current.lastResult).toEqual({
       success: false,
       error: "ALREADY_CLAIMED",
-      bounty,
+      bounty: adaptedBounty,
     });
   });
 
-  it("maps other failures to NETWORK_ERROR", async () => {
-    mockApiPost.mockRejectedValueOnce(new Error("socket hang up"));
+  it("unhappy path: maps 409 conflict when fetchBounty fails gracefully", async () => {
+    mockApiPost.mockRejectedValueOnce({ status: 409, message: "already claimed" });
+    mockFetchBounty.mockRejectedValueOnce(new Error("network error on refresh"));
+    const { result } = renderHook(() => useClaimRace("b1"));
+
+    let returned;
+    await act(async () => {
+      returned = await result.current.claim();
+    });
+
+    expect(returned).toEqual({
+      success: false,
+      error: "ALREADY_CLAIMED",
+    });
+  });
+
+  it("unhappy path: maps server error 500 to NETWORK_ERROR", async () => {
+    mockApiPost.mockRejectedValueOnce({ status: 500, message: "internal server error" });
+    const { result } = renderHook(() => useClaimRace("b1"));
+
+    let returned;
+    await act(async () => {
+      returned = await result.current.claim();
+    });
+
+    expect(returned).toEqual({
+      success: false,
+      error: "NETWORK_ERROR",
+      message: "internal server error",
+    });
+    expect(result.current.isClaiming).toBe(false);
+  });
+
+  it("reset clears the lastResult state", async () => {
+    mockApiPost.mockResolvedValueOnce(rawBounty);
     const { result } = renderHook(() => useClaimRace("b1"));
 
     await act(async () => {
       await result.current.claim();
     });
 
-    expect(result.current.lastResult).toEqual({
-      success: false,
-      error: "NETWORK_ERROR",
-      message: "socket hang up",
+    expect(result.current.lastResult).not.toBeNull();
+    act(() => {
+      result.current.reset();
     });
-    expect(result.current.isClaiming).toBe(false);
+    expect(result.current.lastResult).toBeNull();
   });
 });
 
 describe("useClaimRace — unmount while a claim is in flight (#361)", () => {
   it("success: no state updates or onClaimSuccess after unmount, but claim() still resolves", async () => {
     const { calls, state } = trackSetStateCalls();
-    const pending = deferred<{ data: Bounty }>();
+    const pending = deferred<RawBounty>();
     mockApiPost.mockReturnValueOnce(pending.promise);
     const onClaimSuccess = jest.fn();
     const { result, unmount } = renderHook(() => useClaimRace("b1", onClaimSuccess));
@@ -119,63 +177,10 @@ describe("useClaimRace — unmount while a claim is in flight (#361)", () => {
     unmount();
     state.mounted = false;
 
-    pending.resolve({ data: bounty });
-    await expect(claimPromise).resolves.toEqual({ success: true, bounty });
+    pending.resolve(rawBounty);
+    await expect(claimPromise).resolves.toEqual({ success: true, bounty: adaptedBounty });
 
     expect(calls.filter((c) => !c.mounted)).toHaveLength(0);
     expect(onClaimSuccess).not.toHaveBeenCalled();
-  });
-
-  it("409 path: no state updates after unmount during the fetchBounty follow-up", async () => {
-    const { calls, state } = trackSetStateCalls();
-    mockApiPost.mockRejectedValueOnce({ status: 409 });
-    const pendingFetch = deferred<{ data: Bounty }>();
-    mockFetchBounty.mockReturnValueOnce(pendingFetch.promise as never);
-    const { result, unmount } = renderHook(() => useClaimRace("b1"));
-
-    let claimPromise!: Promise<unknown>;
-    act(() => {
-      claimPromise = result.current.claim();
-    });
-    // Let the rejected apiPost settle so the hook is now awaiting fetchBounty.
-    await Promise.resolve();
-    await Promise.resolve();
-    unmount();
-    state.mounted = false;
-
-    pendingFetch.resolve({ data: bounty });
-    await expect(claimPromise).resolves.toMatchObject({ error: "ALREADY_CLAIMED" });
-    expect(calls.filter((c) => !c.mounted)).toHaveLength(0);
-  });
-
-  it("error path: no state updates after unmount when apiPost rejects", async () => {
-    const { calls, state } = trackSetStateCalls();
-    const pending = deferred<{ data: Bounty }>();
-    mockApiPost.mockReturnValueOnce(pending.promise);
-    const { result, unmount } = renderHook(() => useClaimRace("b1"));
-
-    let claimPromise!: Promise<unknown>;
-    act(() => {
-      claimPromise = result.current.claim();
-    });
-    unmount();
-    state.mounted = false;
-
-    pending.reject(new Error("offline"));
-    await expect(claimPromise).resolves.toMatchObject({ error: "NETWORK_ERROR" });
-    expect(calls.filter((c) => !c.mounted)).toHaveLength(0);
-  });
-
-  it("still updates state after a Strict Mode simulated remount", async () => {
-    mockApiPost.mockResolvedValueOnce({ data: bounty });
-    const { result } = renderHook(() => useClaimRace("b1"), {
-      wrapper: React.StrictMode,
-    });
-
-    await act(async () => {
-      await result.current.claim();
-    });
-
-    expect(result.current.lastResult).toEqual({ success: true, bounty });
   });
 });

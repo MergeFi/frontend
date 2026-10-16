@@ -25,6 +25,12 @@ import {
 const issuesDescription =
   "Browse paid, escrow-backed GitHub issues funded through MergeFi and ready for contributors.";
 
+// The backend's GET /bounties is unpaginated — the page downloads the whole
+// table then slices in memory. Until backend pagination lands (#63), cache
+// the list briefly so a fresh page-view reuses the recent fetch instead of
+// re-downloading the whole table every render (#716).
+export const revalidate = 30;
+
 export const metadata: Metadata = {
   title: "Paid Issues | MergeFi",
   description: issuesDescription,
@@ -49,7 +55,10 @@ const STATUS_FILTERS = [
   { value: "funded", label: "Claimable" },
   { value: "open", label: "Not yet funded" },
   { value: "in_review", label: "In review" },
-] as const satisfies readonly { value: (typeof STATUS_VALUES)[number]; label: string }[];
+] as const satisfies readonly {
+  value: (typeof STATUS_VALUES)[number];
+  label: string;
+}[];
 
 const DIFFICULTY_LABELS: Record<(typeof DIFFICULTY_VALUES)[number], string> = {
   all: "Any difficulty",
@@ -76,7 +85,12 @@ export default async function IssuesPage({
   const filterActive = isFilterActive(query);
 
   const { data: bounties, source } = await fetchBounties(mockBounties, query);
-  const { items: visible, page, totalPages, filteredCount } = applyBountyQuery(bounties, query);
+  const {
+    items: visible,
+    page,
+    totalPages,
+    filteredCount,
+  } = applyBountyQuery(bounties, query);
   const total = bounties.length;
 
   return (
@@ -102,13 +116,17 @@ export default async function IssuesPage({
       {source === "mock" && <DataSourceNotice className="mb-6" />}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-500 dark:text-slate-400">Status:</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">
+          Status:
+        </span>
         {STATUS_FILTERS.map((f) => {
           const active = f.value === query.status;
           return (
             <Link
               key={f.value}
-              href={buildIssuesHref(params, { status: f.value === "all" ? undefined : f.value })}
+              href={buildIssuesHref(params, {
+                status: f.value === "all" ? undefined : f.value,
+              })}
               aria-current={active ? "true" : undefined}
               className={
                 active
@@ -135,7 +153,9 @@ export default async function IssuesPage({
         action="/issues"
         className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40"
       >
-        {query.status !== "all" && <input type="hidden" name="status" value={query.status} />}
+        {query.status !== "all" && (
+          <input type="hidden" name="status" value={query.status} />
+        )}
 
         <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
           Difficulty
@@ -233,7 +253,9 @@ export default async function IssuesPage({
             size="sm"
             headingLevel="h2"
             title={t("empty.issues.filtered.title")}
-            description={t("empty.issues.filtered.description", { total: formatInteger(total) })}
+            description={t("empty.issues.filtered.description", {
+              total: formatInteger(total),
+            })}
             action={
               <Link href="/issues">
                 <Button size="sm" variant="outline">
@@ -271,7 +293,9 @@ export default async function IssuesPage({
               className="mt-8 flex items-center justify-center gap-4"
             >
               <Link
-                href={buildIssuesHref(params, { page: String(Math.max(1, page - 1)) })}
+                href={buildIssuesHref(params, {
+                  page: String(Math.max(1, page - 1)),
+                })}
                 aria-disabled={page <= 1}
                 className={
                   page <= 1

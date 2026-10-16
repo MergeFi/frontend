@@ -49,9 +49,11 @@ const MAX_VISIBLE_PER_COLUMN = 8;
 
 function PipelineColumn({
   label,
+  status,
   bounties,
 }: {
   label: string;
+  status: BountyStatus;
   bounties: Bounty[];
 }) {
   const visible = bounties.slice(0, MAX_VISIBLE_PER_COLUMN);
@@ -94,10 +96,14 @@ function PipelineColumn({
         )}
         {hiddenCount > 0 && (
           <Link
-            href="/issues"
+            // Carry the column's status so "View all" lands on the board's
+            // matching filter, not the unfiltered list (#693). /issues' status
+            // facet only covers open/in_review — the other columns coerce to
+            // `all` but still carry their intent in the URL.
+            href={`/issues?status=${status}`}
             className="block rounded-xl border border-dashed border-slate-200 px-3 py-2 text-center text-xs font-medium text-indigo-600 transition-colors hover:border-indigo-300 dark:border-slate-800 dark:text-indigo-400 dark:hover:border-indigo-700"
           >
-            View all {bounties.length} in Bounty pipeline
+            View all {bounties.length} in {label}
           </Link>
         )}
       </div>
@@ -129,6 +135,7 @@ export function PipelineBoard({ bounties }: { bounties: Bounty[] }) {
           <PipelineColumn
             key={stage.status}
             label={stage.label}
+            status={stage.status}
             bounties={byStatus.get(stage.status) ?? []}
           />
         ))}

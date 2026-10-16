@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
 import { formatInteger } from "@/lib/utils";
 import { messages, t } from "@/lib/messages";
+import { IssuesFilterForm } from "./IssuesFilterForm";
 import {
   applyBountyQuery,
   buildIssuesHref,
@@ -125,12 +126,13 @@ export default async function IssuesPage({
         </span>
       </div>
 
-      {/* Difficulty/asset/reward-range/sort are exposed as a plain GET form
-          rather than client-side state — every combination stays a shareable,
-          bookmarkable URL and the page works with JavaScript disabled. The
+      {/* Difficulty/asset/reward-range/sort are exposed as a GET form wrapped in
+          IssuesFilterForm to omit default and empty parameters on submit (#701).
+          Every combination stays a shareable, bookmarkable URL matching
+          buildIssuesHref, and the page works even if JavaScript is disabled. The
           hidden `status` field carries the pill selection above through the
           same submit, since HTML forms only send their own named fields. */}
-      <form
+      <IssuesFilterForm
         method="get"
         action="/issues"
         className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40"
@@ -219,7 +221,7 @@ export default async function IssuesPage({
             Clear all
           </Link>
         )}
-      </form>
+      </IssuesFilterForm>
 
       {visible.length === 0 ? (
         filterActive ? (

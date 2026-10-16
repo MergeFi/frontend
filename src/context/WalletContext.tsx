@@ -318,10 +318,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const connection = await freighterConnect();
       // A different account than the one on file must never silently replace
       // the payout wallet (#32). Hold it as pending and let the UI ask.
-      if (
-        user?.stellarAddress &&
-        user.stellarAddress !== connection.address
-      ) {
+      if (user?.stellarAddress && user.stellarAddress !== connection.address) {
         setPendingRelinkAddress(connection.address);
         return null;
       }
@@ -379,20 +376,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // only reset lived inside connect().
     updateError(null);
     if (user) {
-      // Best-effort unlink, mirroring connect()'s PATCH — the local
-      // disconnect (clearing UI/localStorage state) already succeeded
-      // synchronously above regardless of whether this call does, so a
-      // signed-in user's "disconnected" UI never lies about local state.
-      // If this fails, AuthUser.stellarAddress on the backend still holds
-      // the old address until the user connects again (#230).
+      // Unlink the on-file address via DELETE — the old PATCH {stellarAddress:
+      // null} was rejected by the address-validator every time (400), and the
+      // error was swallowed, so the backend kept the address and the wallet
+      // re-adopted it on the next sync (#714). DELETE is the real unlink.
       apiRequest(`/users/${user.id}/stellar-address`, {
-        method: "PATCH",
-        body: JSON.stringify({ stellarAddress: null }),
+        method: "DELETE",
       })
         .then(() => {
           void refresh();
         })
-        .catch(() => {});
+        .catch(() => {
+          // Surface the failure instead of swallowing it — the local wallet
+          // is disconnected, but the on-file address didn't clear, so the
+          // user should know payouts may still route to the old address.
+          updateError(
+            "Disconnected locally, but the saved address on your account " +
+              "couldn't be cleared. Your previous address may still receive " +
+              "payouts — try again or contact support.",
+          );
+        });
     }
   }, [user, refresh, updateError]);
 
@@ -443,7 +446,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+  return (
+    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+  );
 }
 
 export function useWallet() {

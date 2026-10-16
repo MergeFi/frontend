@@ -8,7 +8,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { getToken, setToken as persistToken, clearToken, TOKEN_KEY } from "@/lib/auth";
+import {
+  getToken,
+  setToken as persistToken,
+  clearToken,
+  TOKEN_KEY,
+} from "@/lib/auth";
 import { apiRequest, ApiRequestError } from "@/lib/api";
 import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 import type { AuthUser } from "@/types";
@@ -88,13 +93,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setDegraded(false);
       return null;
     }
+    // The JWT's `sub` claim IS the user id — decode it client-side to skip
+    // the /auth/me round-trip (every page load paid two sequential requests:
+    // /auth/me then /users/:id) (#704). Fall back to /auth/me if the token
+    // shape is unexpected.
+    const userIdFromToken = ((): string | null => {
+      try {
+        const payload = JSON.parse(
+          atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+        );
+        return typeof payload.sub === "string" ? payload.sub : null;
+      } catch {
+        return null;
+      }
+    })();
+
     const MAX_RETRIES = 3;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const session = await apiRequest<{ userId: string; username: string }>(
-          "/auth/me",
-        );
-        const profile = await apiRequest<AuthUser>(`/users/${session.userId}`);
+        const userId =
+          userIdFromToken ??
+          (await apiRequest<{ userId: string }>("/auth/me")).userId;
+        const profile = await apiRequest<AuthUser>(`/users/${userId}`);
         setUser(profile);
         setDegraded(false);
         return profile;
@@ -103,7 +123,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Network errors, timeouts, and transient server errors should
         // retry — silently logging the user out on a flaky connection
         // was a significant UX issue (#4).
-        if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
+        if (
+          err instanceof ApiRequestError &&
+          (err.status === 401 || err.status === 403)
+        ) {
           clearToken();
           setUser(null);
           setDegraded(false);
@@ -179,7 +202,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, degraded, login, logout, refresh }}>
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh, degraded }}>
       {children}
     </AuthContext.Provider>
   );

@@ -48,17 +48,11 @@ describe("robots.txt", () => {
     expect(disallow.join(" ")).not.toContain("/reputation");
   });
 
-  it("advertises the chunked sitemap files", async () => {
-    mockFetchHandles.mockResolvedValue({
-      data: Array.from({ length: 60_000 }, (_, i) => `c-${i}`),
-      source: "mock",
-    });
+  it("points to the stable sitemap URL without awaiting backend calls (#715)", () => {
+    const result = robots();
 
-    const result = await robots();
-
-    expect(result.sitemap).toEqual([
-      expect.stringMatching(/\/sitemaps\/0\.xml$/),
-      expect.stringMatching(/\/sitemaps\/1\.xml$/),
-    ]);
+    expect(result.sitemap).toMatch(/\/sitemap\.xml$/);
+    expect(mockFetchBounties).not.toHaveBeenCalled();
+    expect(mockFetchHandles).not.toHaveBeenCalled();
   });
 });

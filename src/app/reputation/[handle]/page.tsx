@@ -5,6 +5,7 @@ import { mockReputationProfiles } from "@/lib/mock-data";
 import { profileIsIndexable } from "@/lib/seo-policy";
 import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
 import { ReputationProfileView } from "./ReputationProfileView";
+import { SelfReputationProfile } from "./SelfReputationProfile";
 
 export async function generateMetadata({
   params,
@@ -16,7 +17,10 @@ export async function generateMetadata({
     Object.values(mockReputationProfiles).find(
       (p) => p.handle.toLowerCase() === handle.toLowerCase(),
     ) ?? null;
-  const { data: profile } = await fetchReputationByUsername(handle, mockFallback);
+  const { data: profile } = await fetchReputationByUsername(
+    handle,
+    mockFallback,
+  );
 
   if (!profile) {
     return { title: "Profile not found | MergeFi" };
@@ -71,7 +75,13 @@ export default async function ReputationPage({
     ) ?? null;
   const { data: profile, source } = await fetchReputationByUsername(handle, mockFallback);
 
-  if (!profile) notFound();
+  if (!profile) {
+    // The live /users lookup fails server-side (no JWT), so a real signed-in
+    // user's own handle lands here on the mock fallback. Render the
+    // client-side own-profile path — the browser carries the token — so a
+    // real user clicking "Reputation" doesn't 404 (#713).
+    return <SelfReputationProfile handle={handle} />;
+  }
 
   return (
     <>

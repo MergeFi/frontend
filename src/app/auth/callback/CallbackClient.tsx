@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from "@/lib/config";
 import type { UserRole } from "@/types";
 
 const ROLE_REDIRECT_MAP: Record<UserRole, string> = {
@@ -12,7 +13,11 @@ const ROLE_REDIRECT_MAP: Record<UserRole, string> = {
 };
 
 /** Multi-role precedence for the *landing* page only. */
-const ROLE_PRECEDENCE: readonly UserRole[] = ["maintainer", "sponsor", "contributor"];
+const ROLE_PRECEDENCE: readonly UserRole[] = [
+  "maintainer",
+  "sponsor",
+  "contributor",
+];
 
 /**
  * Where to land after sign-in.
@@ -43,7 +48,10 @@ function redirectForRoles(roles: UserRole[] | undefined): string {
  * without this a user who signed in from the connect page could never finish
  * connecting. Send them straight back instead.
  */
-function shouldFinishConnect(roles: UserRole[] | undefined, stellarAddress: string | null): boolean {
+function shouldFinishConnect(
+  roles: UserRole[] | undefined,
+  stellarAddress: string | null,
+): boolean {
   return stellarAddress === null || stellarAddress === undefined;
 }
 
@@ -67,6 +75,9 @@ export function CallbackClient() {
     async function handleCallback() {
       // Try code-based handoff first (backend redirects with ?code=)
       if (code) {
+        // Strip the one-time code from history so it doesn't persist in
+        // browser history, referrer headers, or server logs (#9).
+        window.history.replaceState({}, "", window.location.pathname);
         try {
           const response = await fetch("/api/auth/handoff", {
             method: "POST",
@@ -85,8 +96,19 @@ export function CallbackClient() {
             throw new Error("No access token in response");
           }
 
-          await login(accessToken);
-          router.replace("/dashboard/contributor");
+          const resolvedUser = await login(accessToken);
+          // A null user here means the token exchange did not resolve a
+          // profile. Landing on a dashboard would render that dashboard's
+          // demo/mock data as if it were real, so surface the failure instead.
+          if (!resolvedUser) {
+            setError("Could not complete sign-in. Please try again.");
+            return;
+          }
+          router.replace(
+            shouldFinishConnect(resolvedUser.roles, resolvedUser.stellarAddress)
+              ? "/connect"
+              : redirectForRoles(resolvedUser.roles)
+          );
           return;
         } catch {
           setError("Could not complete sign-in. Please try again.");
@@ -97,8 +119,16 @@ export function CallbackClient() {
       // Fallback: direct token auth
       if (token) {
         try {
-          await login(token);
-          router.replace("/dashboard/contributor");
+          const resolvedUser = await login(token);
+          if (!resolvedUser) {
+            setError("Could not complete sign-in. Please try again.");
+            return;
+          }
+          router.replace(
+            shouldFinishConnect(resolvedUser.roles, resolvedUser.stellarAddress)
+              ? "/connect"
+              : redirectForRoles(resolvedUser.roles)
+          );
         } catch {
           setError("Could not complete sign-in. Please try again.");
         }
@@ -116,11 +146,28 @@ export function CallbackClient() {
       return;
     }
 
-    // Strip the JWT from the URL immediately so it doesn't persist in
+    // Strip the code from the URL immediately so it doesn't persist in
     // browser history, referrer headers, or server logs (#9).
     window.history.replaceState({}, "", window.location.pathname);
 
-    login(token)
+    // Exchange the single-use code for the JWT.
+    const exchange = async (): Promise<string | null> => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/handoff`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as { token?: string };
+        return data.token ?? null;
+      } catch {
+        return null;
+      }
+    };
+
+    exchange()
+      .then((token) => (token ? login(token) : Promise.resolve(null)))
       .then((resolvedUser) => {
         // A null user here means the token exchange did not resolve a
         // profile. Landing on a dashboard would render that dashboard's
@@ -153,11 +200,19 @@ export function CallbackClient() {
     <div className="mx-auto max-w-md px-6 py-24 text-center">
       {error ? (
         <>
-          <p role="alert" className="font-medium text-rose-600">{copy.title}</p>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{copy.body}</p>
+          <p role="alert" className="font-medium text-rose-600">
+            {copy.title}
+          </p>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            {copy.body}
+          </p>
         </>
       ) : (
-        <p role="status" aria-live="polite" className="text-slate-500 dark:text-slate-400">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-slate-500 dark:text-slate-400"
+        >
           Finishing sign-in…
         </p>
       )}

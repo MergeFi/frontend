@@ -87,4 +87,24 @@ describe("stripMarkdownToPlainText", () => {
       "Line one Line two Line three",
     );
   });
+
+  it("strips GFM task-list checkbox markers (#682)", () => {
+    const input = "- [ ] Add tests\n- [x] Add lint\n- normal bullet";
+    expect(stripMarkdownToPlainText(input)).toBe(
+      "Add tests Add lint normal bullet",
+    );
+  });
+
+  it("strips GFM table rows and separators to cell text (#682)", () => {
+    const input = "| col a | col b |\n|---|---|\n| 1 | 2 |\nAfter";
+    expect(stripMarkdownToPlainText(input)).toBe("col a col b 1 2 After");
+  });
+
+  it("handles a mixed task-list and table body (#682)", () => {
+    const input =
+      "## Plan\n- [ ] repro\n- [x] fix\n\n| Step | Owner |\n|---|---|\n| test | me |";
+    expect(stripMarkdownToPlainText(input)).toBe(
+      "Plan repro fix Step Owner test me",
+    );
+  });
 });

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatCurrency } from "@/lib/utils";
 import { PipelineBoard, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
+import { GitHubSyncPanel } from "./GitHubSyncPanel";
 
 export const metadata = {
   title: "Maintainer Dashboard | MergeFi",
@@ -92,6 +93,12 @@ export default async function MaintainerDashboardPage() {
       </div>
 
       <PipelineBoard bounties={bounties} />
+
+      {/* #637 — GitHub repository sync UI so maintainers can bring their
+          issues onto the platform without manual API calls. */}
+      <div className="mt-8">
+        <GitHubSyncPanel />
+      </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div>

@@ -10,6 +10,13 @@ export type BountyStatus =
   | 'refunded'
   | 'expired';
 
+/** Statuses that never change again — polling should stop once observed. */
+export const TERMINAL_STATUSES: ReadonlySet<BountyStatus> = new Set([
+  'paid',
+  'refunded',
+  'expired',
+]);
+
 export interface Bounty {
   id: string;
   title: string;

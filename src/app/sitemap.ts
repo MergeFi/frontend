@@ -11,13 +11,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchReputationHandles(Object.keys(mockReputationProfiles)),
   ]);
 
-  const issueRoutes = bountiesRes.data.map((bounty) => `/issues/${encodeURIComponent(bounty.id)}`);
-  const reputationRoutes = handlesRes.data.map(
-    (handle) => `/reputation/${encodeURIComponent(handle)}`,
+  // #635 — static routes have no meaningful "last modified" timestamp;
+  // omit lastModified so crawlers don't see a fake change date on every rebuild.
+  const staticEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
+    url: `${BASE_URL}${route}`,
+  }));
+
+  // Bounty pages use the bounty's updatedAt timestamp so crawlers can
+  // tell what actually changed between rebuilds.
+  const issueEntries: MetadataRoute.Sitemap = bountiesRes.data.map((bounty) => ({
+    url: `${BASE_URL}/issues/${encodeURIComponent(bounty.id)}`,
+    lastModified: new Date(
+      (bounty as { updatedAt?: string }).updatedAt ?? Date.now(),
+    ),
+  }));
+
+  // Reputation pages use the snapshot's computedAt timestamp when available.
+  const reputationEntries: MetadataRoute.Sitemap = handlesRes.data.map(
+    (handle) => {
+      const profile = mockReputationProfiles[handle];
+      const computedAt = (profile as { computedAt?: string } | undefined)
+        ?.computedAt;
+      return {
+        url: `${BASE_URL}/reputation/${encodeURIComponent(handle)}`,
+        ...(computedAt ? { lastModified: new Date(computedAt) } : {}),
+      };
+    },
   );
 
-  return [...staticRoutes, ...issueRoutes, ...reputationRoutes].map((route) => ({
-    url: `${BASE_URL}${route}`,
-    lastModified: new Date(),
-  }));
+  return [...staticEntries, ...issueEntries, ...reputationEntries];
 }

@@ -383,16 +383,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // disconnect (clearing UI/localStorage state) already succeeded
       // synchronously above regardless of whether this call does, so a
       // signed-in user's "disconnected" UI never lies about local state.
-      // If this fails, AuthUser.stellarAddress on the backend still holds
-      // the old address until the user connects again (#230).
+      // Uses DELETE /users/:id/stellar-address (#714) and surfaces any failure
+      // to the user via updateError instead of silently swallowing the error.
       apiRequest(`/users/${user.id}/stellar-address`, {
-        method: "PATCH",
-        body: JSON.stringify({ stellarAddress: null }),
+        method: "DELETE",
       })
         .then(() => {
           void refresh();
         })
-        .catch(() => {});
+        .catch((err) => {
+          updateError(
+            err instanceof Error ? err.message : "Failed to unlink wallet address",
+          );
+        });
     }
   }, [user, refresh, updateError]);
 

@@ -496,13 +496,12 @@ describe("WalletContext — disconnect() (#230, #231)", () => {
 
     // Local state clears synchronously regardless of the backend call...
     expect(screen.getByTestId("address")).toHaveTextContent("disconnected");
-    // ...and the unlink PATCH is fired.
+    // ...and the unlink DELETE is fired (#714).
     await waitFor(() =>
       expect(mockApiRequest).toHaveBeenCalledWith(
         "/users/user-1/stellar-address",
         expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ stellarAddress: null }),
+          method: "DELETE",
         }),
       ),
     );
@@ -535,6 +534,38 @@ describe("WalletContext — disconnect() (#230, #231)", () => {
 
     expect(screen.getByTestId("address")).toHaveTextContent("disconnected");
     expect(window.localStorage.getItem(WALLET_KEY)).toBeNull();
+  });
+
+  it("surfaces error state when backend unlink fails (#714)", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1" },
+      loading: false,
+      refresh: mockRefresh,
+    });
+    mockConnectWallet.mockResolvedValue({
+      address: "GNEWADDRESS",
+      network: "TESTNET",
+    });
+
+    render(
+      <WalletProvider>
+        <TestConsumer />
+      </WalletProvider>,
+    );
+
+    fireEvent.click(screen.getByText("connect"));
+    await waitFor(() =>
+      expect(screen.getByTestId("address")).toHaveTextContent("GNEWADDRESS"),
+    );
+    mockApiRequest.mockRejectedValue(new Error("Failed to unlink wallet address"));
+
+    fireEvent.click(screen.getByText("disconnect"));
+
+    expect(screen.getByTestId("address")).toHaveTextContent("disconnected");
+    expect(window.localStorage.getItem(WALLET_KEY)).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId("error")).toHaveTextContent("Failed to unlink wallet address"),
+    );
   });
 });
 

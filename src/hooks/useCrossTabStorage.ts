@@ -18,6 +18,14 @@ export function useCrossTabStorage(
 ) {
   useEffect(() => {
     function handleStorage(event: StorageEvent) {
+      // localStorage.clear() fires `storage` with key === null (no specific
+      // key) — the old `event.key !== key` check missed it, so a clear() left
+      // the other tabs holding a stale value (#675). A null key means "the
+      // store was cleared" → this key is gone.
+      if (event.key === null) {
+        onChange(null);
+        return;
+      }
       if (event.key !== key) return;
       onChange(event.newValue);
     }

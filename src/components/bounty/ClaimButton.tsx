@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useReducer } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useClaimRace } from '@/hooks/useClaimRace';
-import { useBountyStatus } from '@/hooks/useBountyStatus';
-import { useAuth } from '@/context/AuthContext';
-import type { Bounty } from '@/types/bounty';
+import React, { useEffect, useRef, useReducer } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useClaimRace } from "@/hooks/useClaimRace";
+import { useBountyStatus } from "@/hooks/useBountyStatus";
+import { useAuth } from "@/context/AuthContext";
+import type { Bounty } from "@/types/bounty";
 
 interface ClaimButtonProps {
   bountyId: string;
@@ -20,12 +20,12 @@ type ClaimState = {
   claimSuccess: boolean;
 };
 
-type ClaimAction = 
-  | { type: 'SHOW_RACE_MESSAGE' }
-  | { type: 'HIDE_RACE_MESSAGE' }
-  | { type: 'SHOW_CLAIM_SUCCESS' }
-  | { type: 'HIDE_CLAIM_SUCCESS' }
-  | { type: 'RESET' };
+type ClaimAction =
+  | { type: "SHOW_RACE_MESSAGE" }
+  | { type: "HIDE_RACE_MESSAGE" }
+  | { type: "SHOW_CLAIM_SUCCESS" }
+  | { type: "HIDE_CLAIM_SUCCESS" }
+  | { type: "RESET" };
 
 const initialState: ClaimState = {
   showRaceMessage: false,
@@ -34,26 +34,26 @@ const initialState: ClaimState = {
 
 function claimReducer(state: ClaimState, action: ClaimAction): ClaimState {
   switch (action.type) {
-    case 'SHOW_RACE_MESSAGE':
+    case "SHOW_RACE_MESSAGE":
       return { ...state, showRaceMessage: true };
-    case 'HIDE_RACE_MESSAGE':
+    case "HIDE_RACE_MESSAGE":
       return { ...state, showRaceMessage: false };
-    case 'SHOW_CLAIM_SUCCESS':
+    case "SHOW_CLAIM_SUCCESS":
       return { ...state, claimSuccess: true };
-    case 'HIDE_CLAIM_SUCCESS':
+    case "HIDE_CLAIM_SUCCESS":
       return { ...state, claimSuccess: false };
-    case 'RESET':
+    case "RESET":
       return initialState;
     default:
       return state;
   }
 }
 
-export function ClaimButton({ 
-  bountyId, 
+export function ClaimButton({
+  bountyId,
   fallbackBounty,
-  onClaimSuccess, 
-  className = '' 
+  onClaimSuccess,
+  className = "",
 }: ClaimButtonProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -88,22 +88,28 @@ export function ClaimButton({
       timerRef.current = null;
     }
 
-    const { refetch: doRefetch, reset: doReset, onClaimSuccess: notify } =
-      callbacksRef.current;
+    const {
+      refetch: doRefetch,
+      reset: doReset,
+      onClaimSuccess: notify,
+    } = callbacksRef.current;
 
-    if (lastResult?.success === false && lastResult.error === 'ALREADY_CLAIMED') {
-      dispatch({ type: 'SHOW_RACE_MESSAGE' });
+    if (
+      lastResult?.success === false &&
+      lastResult.error === "ALREADY_CLAIMED"
+    ) {
+      dispatch({ type: "SHOW_RACE_MESSAGE" });
       doRefetch();
       timerRef.current = setTimeout(() => {
-        dispatch({ type: 'HIDE_RACE_MESSAGE' });
+        dispatch({ type: "HIDE_RACE_MESSAGE" });
         doReset();
       }, 15000);
     } else if (lastResult?.success === true) {
-      dispatch({ type: 'SHOW_CLAIM_SUCCESS' });
+      dispatch({ type: "SHOW_CLAIM_SUCCESS" });
       doRefetch();
       notify?.();
       timerRef.current = setTimeout(() => {
-        dispatch({ type: 'HIDE_CLAIM_SUCCESS' });
+        dispatch({ type: "HIDE_CLAIM_SUCCESS" });
         doReset();
       }, 5000);
     }
@@ -122,10 +128,15 @@ export function ClaimButton({
     // from the JWT), so a signed-out click goes to /connect rather than
     // firing a request that can only 401.
     if (!user) {
-      router.push('/connect');
+      // Return-to the bounty after sign-in (#700) — /connect stashes this as
+      // the OAuth returnTo so the callback brings the user back to the bounty
+      // they were trying to claim, not a generic dashboard.
+      router.push(
+        `/connect?returnTo=${encodeURIComponent(`/issues/${bountyId}`)}`,
+      );
       return;
     }
-    dispatch({ type: 'RESET' });
+    dispatch({ type: "RESET" });
     reset();
     await claim();
   };
@@ -142,11 +153,11 @@ export function ClaimButton({
    * easily miss.
    */
   const claimErrorMessage =
-    lastResult?.success === false && lastResult.error !== 'ALREADY_CLAIMED'
-      ? (lastResult.message ?? 'Something went wrong.')
+    lastResult?.success === false && lastResult.error !== "ALREADY_CLAIMED"
+      ? (lastResult.message ?? "Something went wrong.")
       : null;
 
-  const isDisabled = isClaiming || status === 'claimed';
+  const isDisabled = isClaiming || status === "claimed";
 
   /**
    * Signed in, but no payout address on file — block the claim outright.
@@ -185,11 +196,14 @@ export function ClaimButton({
    */
   const needsPayoutWallet = !!user && !user.stellarAddress;
 
-  if (status === 'claimed') {
+  if (status === "claimed") {
     return (
-      <div className={`p-4 bg-gray-50 border border-gray-200 rounded-lg ${className}`}>
+      <div
+        className={`p-4 bg-gray-50 border border-gray-200 rounded-lg ${className}`}
+      >
         <p className="text-gray-600">
-          This bounty has already been <span className="font-medium">{status}</span>
+          This bounty has already been{" "}
+          <span className="font-medium">{status}</span>
         </p>
         {bounty?.claimedBy && (
           <p className="text-sm text-gray-500 mt-1">
@@ -236,11 +250,11 @@ export function ClaimButton({
                 Someone else claimed this bounty first!
               </h4>
               <p className="text-red-600 text-sm mt-1">
-                The bounty has been claimed by another contributor. 
-                The status has been updated below.
+                The bounty has been claimed by another contributor. The status
+                has been updated below.
               </p>
-              <button 
-                onClick={() => dispatch({ type: 'HIDE_RACE_MESSAGE' })}
+              <button
+                onClick={() => dispatch({ type: "HIDE_RACE_MESSAGE" })}
                 className="mt-2 text-sm text-red-500 hover:text-red-700 underline"
               >
                 Dismiss
@@ -255,7 +269,9 @@ export function ClaimButton({
           <div className="flex items-start gap-3">
             <span className="text-2xl">✅</span>
             <div>
-              <h4 className="text-green-700 font-semibold">Successfully claimed!</h4>
+              <h4 className="text-green-700 font-semibold">
+                Successfully claimed!
+              </h4>
               <p className="text-green-600 text-sm mt-1">
                 You have claimed this bounty. Good luck!
               </p>
@@ -269,7 +285,9 @@ export function ClaimButton({
           className="p-4 bg-red-50 border border-red-200 rounded-lg"
           role="alert"
         >
-          <p className="text-red-700 font-semibold">Couldn&apos;t claim this bounty</p>
+          <p className="text-red-700 font-semibold">
+            Couldn&apos;t claim this bounty
+          </p>
           <p className="text-red-600 text-sm mt-1">{claimErrorMessage}</p>
         </div>
       )}
@@ -279,21 +297,35 @@ export function ClaimButton({
         disabled={isDisabled}
         className={`
           w-full py-3 px-4 rounded-lg font-semibold transition-all
-          ${isDisabled 
-            ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
-            : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'}
+          ${
+            isDisabled
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]"
+          }
         `}
       >
         {isClaiming ? (
           <span className="flex items-center justify-center gap-2">
             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
             </svg>
             Processing claim...
           </span>
         ) : (
-          'Claim Bounty'
+          "Claim Bounty"
         )}
       </button>
 

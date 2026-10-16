@@ -3,7 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { DollarSign, GitMerge, TrendingUp, ListChecks, GitPullRequest } from "lucide-react";
+import {
+  DollarSign,
+  GitMerge,
+  TrendingUp,
+  ListChecks,
+  GitPullRequest,
+} from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
 import { StatCard, type StatCardStatus } from "@/components/ui/StatCard";
@@ -71,9 +77,13 @@ export default function ContributorDashboardClient() {
   const [bounties, setBounties] = useState<Bounty[]>(mockBounties);
   const [statsSource, setStatsSource] = useState<DataSource>("loading");
   const [bountiesSource, setBountiesSource] = useState<DataSource>("loading");
-  const [tab, setTabState] = useState<"active" | "completed">(
-    (searchParams.get("tab") as "active" | "completed") || "active"
-  );
+  // Validate ?tab= against the real set — `as "active"|"completed"` cast any
+  // string, so ?tab=foo left no tab aria-selected (the tablist unreachable by
+  // keyboard) (#692).
+  const [tab, setTabState] = useState<"active" | "completed">(() => {
+    const raw = searchParams.get("tab");
+    return raw === "active" || raw === "completed" ? raw : "active";
+  });
   // Explicit fetch status: starts "loading" so cards shimmer rather than
   // flashing zeroes while the auth check + API call are in flight.
   const [fetchStatus, setFetchStatus] = useState<StatCardStatus>("loading");
@@ -118,12 +128,13 @@ export default function ContributorDashboardClient() {
     const reputationResult = apiRequest<ReputationSnapshot | null>(
       `/reputation/${user.id}`,
     ).then(
-      (snapshot) => ({
-        handle: user.username,
-        lifetimeEarnings: snapshot ? Number(snapshot.totalEarnings) : 0,
-        mergedPRs: snapshot ? snapshot.mergedPrCount : 0,
-        completionRate: snapshot ? Number(snapshot.completionRate) / 100 : 0,
-      } as DashboardStats | null),
+      (snapshot) =>
+        ({
+          handle: user.username,
+          lifetimeEarnings: snapshot ? Number(snapshot.totalEarnings) : 0,
+          mergedPRs: snapshot ? snapshot.mergedPrCount : 0,
+          completionRate: snapshot ? Number(snapshot.completionRate) / 100 : 0,
+        }) as DashboardStats | null,
       () => null,
     );
 
@@ -159,21 +170,31 @@ export default function ContributorDashboardClient() {
      labelled live while half of it is the bundled fixture. While either
      source is still in flight, keep the badge on its initial "Demo data"
      rather than guessing. */
-  const sourcesSettled = statsSource !== "loading" && bountiesSource !== "loading";
+  const sourcesSettled =
+    statsSource !== "loading" && bountiesSource !== "loading";
   const allLive = statsSource === "live" && bountiesSource === "live";
   const allMock = statsSource === "mock" && bountiesSource === "mock";
-  const badgeLabel = !sourcesSettled ? "Demo data" : allLive ? "Live data" : allMock ? "Demo data" : "Mixed data";
+  const badgeLabel = !sourcesSettled
+    ? "Demo data"
+    : allLive
+      ? "Live data"
+      : allMock
+        ? "Demo data"
+        : "Mixed data";
   const isLive = badgeLabel === "Live data";
   /* Only called out sectionally in the partial-failure case: on a
      signed-out demo the page badge already says "Demo data", so repeating
      the chip on every list would be noise rather than information. */
-  const showBountySampleChip = sourcesSettled && bountiesSource === "mock" && statsSource !== "mock";
+  const showBountySampleChip =
+    sourcesSettled && bountiesSource === "mock" && statsSource !== "mock";
 
   // Derive display handle: show username if live, else demo handle.
-  const handle = stats?.handle ?? (user?.username ?? "you");
+  const handle = stats?.handle ?? user?.username ?? "you";
 
   const mine = bounties.filter((b) => b.claimedBy === handle);
-  const activeClaims = mine.filter((b) => !["paid", "refunded", "expired"].includes(b.status));
+  const activeClaims = mine.filter(
+    (b) => !["paid", "refunded", "expired"].includes(b.status),
+  );
   const completedClaims = mine.filter((b) => b.status === "paid");
   const available = bounties.filter((b) => b.status === "open");
   const shownClaims = tab === "active" ? activeClaims : completedClaims;
@@ -192,7 +213,11 @@ export default function ContributorDashboardClient() {
     <DashboardShell
       role="contributor"
       title={`Welcome back, @${handle}`}
-      subtitle={user ? undefined : "Sign in with GitHub to see your own earnings and claims."}
+      subtitle={
+        user
+          ? undefined
+          : "Sign in with GitHub to see your own earnings and claims."
+      }
       badge={
         <span
           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
@@ -222,7 +247,9 @@ export default function ContributorDashboardClient() {
           status={fetchStatus}
           icon={DollarSign}
           trend={fetchStatus === "loaded" ? 12 : undefined}
-          sparkline={fetchStatus === "loaded" ? contributorEarningsHistory : undefined}
+          sparkline={
+            fetchStatus === "loaded" ? contributorEarningsHistory : undefined
+          }
           zeroLabel="No earnings yet"
         />
         <StatCard
@@ -232,7 +259,9 @@ export default function ContributorDashboardClient() {
           status={fetchStatus}
           icon={GitMerge}
           trend={fetchStatus === "loaded" ? 8 : undefined}
-          sparkline={fetchStatus === "loaded" ? contributorSparkline : undefined}
+          sparkline={
+            fetchStatus === "loaded" ? contributorSparkline : undefined
+          }
           zeroLabel="No merged PRs yet"
         />
         <StatCard
@@ -260,7 +289,9 @@ export default function ContributorDashboardClient() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <div className="flex items-center gap-2">
-            <h2 className="font-medium text-slate-900 dark:text-white">Earnings, last 8 weeks</h2>
+            <h2 className="font-medium text-slate-900 dark:text-white">
+              Earnings, last 8 weeks
+            </h2>
             {isLive && <SampleDataChip />}
           </div>
           <div className="mt-6">
@@ -273,7 +304,9 @@ export default function ContributorDashboardClient() {
         </Card>
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="font-medium text-slate-900 dark:text-white">Recent activity</h2>
+            <h2 className="font-medium text-slate-900 dark:text-white">
+              Recent activity
+            </h2>
             {isLive && <SampleDataChip />}
           </div>
           <div className="mt-4">
@@ -284,7 +317,9 @@ export default function ContributorDashboardClient() {
 
       <div className="mt-10 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Your claims</h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+            Your claims
+          </h2>
           {/* Marked in place when this list is the mock fallback but the
               stats above it are real — the page badge alone can't say which
               half of a "Mixed data" page you're looking at. */}
@@ -293,7 +328,11 @@ export default function ContributorDashboardClient() {
         <Tabs
           tabs={[
             { key: "active", label: "Active", count: activeClaims.length },
-            { key: "completed", label: "Completed", count: completedClaims.length },
+            {
+              key: "completed",
+              label: "Completed",
+              count: completedClaims.length,
+            },
           ]}
           active={tab}
           onChange={setTab}
@@ -319,7 +358,11 @@ export default function ContributorDashboardClient() {
           tone="neutral"
           className="md:col-span-2"
           headingLevel="h3"
-          title={t(tab === "active" ? "empty.claims.active.title" : "empty.claims.completed.title")}
+          title={t(
+            tab === "active"
+              ? "empty.claims.active.title"
+              : "empty.claims.completed.title",
+          )}
           description={t(
             tab === "active"
               ? "empty.claims.active.description"
@@ -332,7 +375,11 @@ export default function ContributorDashboardClient() {
               href="#open-bounties"
               className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
             >
-              {t(tab === "active" ? "empty.claims.active.cta" : "empty.claims.completed.cta")}
+              {t(
+                tab === "active"
+                  ? "empty.claims.active.cta"
+                  : "empty.claims.completed.cta",
+              )}
             </a>
           }
         />

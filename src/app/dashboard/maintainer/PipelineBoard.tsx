@@ -69,11 +69,13 @@ function PipelineColumn({
       </div>
       <div className="mt-3 space-y-2">
         {visible.map((b) => (
+          {/* No aria-label — it would override the link's text content and
+              hide the `org/repo #N` line (the main way maintainers identify
+              an issue) from screen readers (#694). Let the content announce. */}
           <Link
             key={b.id}
             href={`/issues/${b.id}`}
             title={b.title}
-            aria-label={`${b.title}, ${formatCurrency(b.reward, b.asset)}`}
             className="block rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-indigo-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-700"
           >
             <p className="truncate text-xs text-slate-400 dark:text-slate-500">

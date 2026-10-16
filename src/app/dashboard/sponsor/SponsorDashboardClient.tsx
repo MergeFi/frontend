@@ -2,7 +2,14 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { Wallet, Receipt, Lock, FolderGit2, Inbox, CheckCircle2 } from "lucide-react";
+import {
+  Wallet,
+  Receipt,
+  Lock,
+  FolderGit2,
+  Inbox,
+  CheckCircle2,
+} from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
 import { StatCard, type StatCardStatus } from "@/components/ui/StatCard";
@@ -19,7 +26,7 @@ import { adaptBounty, type RawBounty, type RawMilestone } from "@/lib/adapters";
 import {
   mockSponsorSummary,
   mockBounties,
-  recentActivity,
+  getRecentActivity,
   sponsorSpendHistory,
   sponsorSpendByRepo,
   budgetSparkline,
@@ -107,7 +114,9 @@ export default function SponsorDashboardClient() {
       .then((raw) => {
         if (generation !== fetchGeneration.current) return;
         const activeBounties = raw.activeBounties.map(adaptBounty);
-        const repoCount = new Set(activeBounties.map((b) => `${b.org}/${b.repo}`)).size;
+        const repoCount = new Set(
+          activeBounties.map((b) => `${b.org}/${b.repo}`),
+        ).size;
         setData({
           activeBounties,
           totalSpent: raw.totalSpent,
@@ -151,7 +160,11 @@ export default function SponsorDashboardClient() {
   return (
     <DashboardShell
       role="sponsor"
-      title={user ? `${user.displayName ?? user.username}'s sponsorships` : mockSponsorSummary.name}
+      title={
+        user
+          ? `${user.displayName ?? user.username}'s sponsorships`
+          : mockSponsorSummary.name
+      }
       subtitle={
         isLive
           ? "Track spending, active bounties, and escrowed budget across the repositories you fund."
@@ -219,7 +232,9 @@ export default function SponsorDashboardClient() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <div className="flex items-center gap-2">
-            <h2 className="font-medium text-slate-900 dark:text-white">Spend, last 8 weeks</h2>
+            <h2 className="font-medium text-slate-900 dark:text-white">
+              Spend, last 8 weeks
+            </h2>
             {isLive && <SampleDataChip />}
           </div>
           <div className="mt-6">
@@ -232,14 +247,18 @@ export default function SponsorDashboardClient() {
         </Card>
         <Card>
           <div className="flex items-center gap-2">
-            <h2 className="font-medium text-slate-900 dark:text-white">Spend by repository</h2>
+            <h2 className="font-medium text-slate-900 dark:text-white">
+              Spend by repository
+            </h2>
             {isLive && <SampleDataChip />}
           </div>
           <div className="mt-5 space-y-3">
             {sponsorSpendByRepo.map((r) => (
               <div key={r.repo}>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">{r.repo}</span>
+                  <span className="text-slate-600 dark:text-slate-300">
+                    {r.repo}
+                  </span>
                   <span className="font-medium text-slate-900 dark:text-white">
                     {formatCurrency(r.amount)}
                   </span>
@@ -256,13 +275,15 @@ export default function SponsorDashboardClient() {
         </Card>
       </div>
 
-      <h2 className="mt-10 text-xl font-semibold text-slate-900 dark:text-white">Active bounties</h2>
+      <h2 className="mt-10 text-xl font-semibold text-slate-900 dark:text-white">
+        Active bounties
+      </h2>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {(data?.activeBounties ?? []).map((bounty) => (
           <BountyCard key={bounty.id} bounty={bounty} />
         ))}
       </div>
-      {data?.activeBounties?.length === 0 && (
+      {data?.activeBounties?.length === 0 &&
         /* Two genuinely different situations collapse into the same
            "0 active bounties" count, and the previous single copy treated
            both as "fund something", which is the wrong advice for a sponsor
@@ -270,7 +291,7 @@ export default function SponsorDashboardClient() {
              - never funded anything   → needs a "fund your first" CTA
              - everything has settled   → this is the success state, and
                                          suggesting they fund more is noise */
-        sponsorHasHistory ? (
+        (sponsorHasHistory ? (
           <EmptyState
             icon={CheckCircle2}
             tone="success"
@@ -293,8 +314,7 @@ export default function SponsorDashboardClient() {
               </Link>
             }
           />
-        )
-      )}
+        ))}
 
       <div className="mt-10 flex items-center gap-2">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Recent activity</h2>
@@ -336,7 +356,7 @@ export default function SponsorDashboardClient() {
             ))}
           </div>
         ) : (
-          <ActivityList events={recentActivity.slice(0, 5)} />
+          <ActivityList events={getRecentActivity().slice(0, 5)} />
         )}
       </div>
 

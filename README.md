@@ -163,7 +163,7 @@ Both `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_STELLAR_NETWORK` are validated at bu
 | `Referrer-Policy`           | `strict-origin-when-cross-origin` | The GitHub OAuth callback (`/auth/callback`) carries a short-lived token in its query string; this keeps the full URL out of the `Referer` header on cross-origin requests.                                                                                      |
 | `Strict-Transport-Security` | `max-age=86400`                   | Deliberately conservative to start (no `includeSubDomains`, no `preload`) — HSTS is effectively irreversible once cached by a browser. Raise `max-age` and add `includeSubDomains` after a stable production run, and only add `preload` once that's stable too. |
 
-`Content-Security-Policy` is intentionally not set here — it's tracked separately so it can compose correctly with the theme-init inline script in `layout.tsx` rather than this change guessing at a nonce/hash strategy.
+`Content-Security-Policy` **is** set in `next.config.ts` — `default-src 'self'`, `script-src 'self'`, `frame-ancestors` for the embed policy. The theme-init inline script in `layout.tsx` is accounted for in that policy.
 
 None of these headers affect the Freighter wallet bridge or the GitHub OAuth flow: Freighter communicates via an injected browser-extension content script (`@stellar/freighter-api`), which framing/MIME/referrer/transport headers have no bearing on, and the OAuth `fetch` calls to the backend are unaffected since these headers only change what's _disclosed_, not whether a request succeeds.
 
@@ -203,7 +203,7 @@ Sitemaps are split into 50,000-URL files (`/sitemaps/<id>.xml`, with a permanent
 
 ## Example user journey
 
-1. A maintainer connects a GitHub repository from `/connect`.
+1. A maintainer signs in with GitHub from `/connect` and links their Stellar wallet.
 2. From their dashboard, they mark an issue with a **100 USDC** reward.
 3. A sponsor funds the bounty from `/dashboard/sponsor` — the backend locks the funds in a Soroban escrow contract.
 4. A contributor browses `/issues`, claims the bounty, and opens a pull request.
@@ -214,6 +214,6 @@ Sitemaps are split into 50,000-URL files (`/sitemaps/<id>.xml`, with a permanent
 ## Roadmap
 
 - Wire the contributor/maintainer dashboards to authenticated sessions instead of a hardcoded demo handle.
-- Real-time bounty/escrow status via websockets or polling once the backend emits webhook-driven events.
+- ~~Real-time bounty/escrow status via polling~~ — implemented via `useSmartPolling`/`useBountyStatus` (bounty pages poll for status changes). Websockets remain a follow-up once the backend emits push events.
 - AI-powered issue recommendations based on a contributor's language/repo history.
 - Organization verification badges and cross-repository reputation aggregation.

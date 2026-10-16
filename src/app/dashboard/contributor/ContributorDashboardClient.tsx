@@ -71,8 +71,9 @@ export default function ContributorDashboardClient() {
   const [bounties, setBounties] = useState<Bounty[]>(mockBounties);
   const [statsSource, setStatsSource] = useState<DataSource>("loading");
   const [bountiesSource, setBountiesSource] = useState<DataSource>("loading");
+  const tabParam = searchParams.get("tab");
   const [tab, setTabState] = useState<"active" | "completed">(
-    (searchParams.get("tab") as "active" | "completed") || "active"
+    tabParam === "completed" ? "completed" : "active"
   );
   // Explicit fetch status: starts "loading" so cards shimmer rather than
   // flashing zeroes while the auth check + API call are in flight.

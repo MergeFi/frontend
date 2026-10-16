@@ -24,10 +24,11 @@ jest.mock("@/lib/api", () => ({
   fetchBounties: jest.fn(),
 }));
 jest.mock("@/context/AuthContext", () => ({ useAuth: jest.fn() }));
+let mockSearchParams = new URLSearchParams();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ replace: jest.fn(), refresh: jest.fn() }),
   usePathname: () => "/dashboard/contributor",
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -63,6 +64,7 @@ function deferred<T>() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSearchParams = new URLSearchParams();
   mockFetchBounties.mockResolvedValue({
     data: mockBounties,
     source: "live",
@@ -165,3 +167,44 @@ describe("ContributorDashboardClient — out-of-order response guard", () => {
     expect(await screen.findByText("Live data")).toBeInTheDocument();
   });
 });
+
+describe("ContributorDashboardClient — tab query param validation (#692)", () => {
+  it("defaults to active tab when ?tab= is missing", async () => {
+    mockSearchParams = new URLSearchParams();
+    await act(async () => {
+      render(<ContributorDashboardClient />);
+    });
+    expect(screen.getByRole("tab", { name: /Active/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("selects completed tab when ?tab=completed is passed", async () => {
+    mockSearchParams = new URLSearchParams({ tab: "completed" });
+    await act(async () => {
+      render(<ContributorDashboardClient />);
+    });
+    expect(screen.getByRole("tab", { name: /Completed/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("falls back to active tab when an invalid ?tab= value is provided", async () => {
+    mockSearchParams = new URLSearchParams({ tab: "foo" });
+    await act(async () => {
+      render(<ContributorDashboardClient />);
+    });
+    expect(screen.getByRole("tab", { name: /Active/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: /Completed/ })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+});
+
+

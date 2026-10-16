@@ -69,8 +69,12 @@ export function BarChart({
               className="group flex flex-1 flex-col items-center gap-2"
             >
               <div className="relative flex w-full flex-1 items-end justify-center">
+                {/* No tabIndex — this bar lives inside aria-hidden="true", so
+                    making it focusable violates axe's aria-hidden-focus rule:
+                    keyboard focus lands on elements SR users are told don't
+                    exist. The sr-only data table already conveys the values
+                    (#708). */}
                 <div
-                  tabIndex={0}
                   className={
                     isNegative
                       ? "w-full max-w-8 rounded-t-md bg-rose-600/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 dark:bg-rose-400/70 dark:focus-visible:outline-rose-400"

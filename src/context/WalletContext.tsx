@@ -132,7 +132,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // so this provider (mounted on every route) doesn't add to the
     // critical path to interactivity for routes that don't need it yet.
     const id = window.setTimeout(() => {
-      const stored = window.localStorage.getItem(WALLET_KEY);
+      // localStorage throws where storage access is blocked (Safari private
+      // mode, blocked site data) — the read is best-effort like auth.ts so a
+      // throw can't leave `initializing` stuck true (#705).
+      let stored: string | null = null;
+      try {
+        stored = window.localStorage.getItem(WALLET_KEY);
+      } catch {
+        stored = null;
+      }
       if (stored) {
         setAddress(stored);
         // This app only ever signs against the build's configured network,
@@ -205,7 +213,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authLoading) return;
     if (user === null && addressRef.current !== null) {
-      window.localStorage.removeItem(WALLET_KEY);
+      // removeItem throws where storage is blocked — best-effort clear so the
+      // logout-sync can't throw mid-effect (#705).
+      try {
+        window.localStorage.removeItem(WALLET_KEY);
+      } catch {}
       setNetwork(null);
       setAddress(null);
       setAddressMismatch(false);
@@ -287,7 +299,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setNetwork(STELLAR_NETWORK);
       setAddressMismatch(false);
       setNetworkMismatch(false);
-      window.localStorage.setItem(WALLET_KEY, walletAddress);
+      // setItem throws where storage is blocked — best-effort persist so a
+      // throw can't abort before the link runs (#705).
+      try {
+        window.localStorage.setItem(WALLET_KEY, walletAddress);
+      } catch {}
 
       if (user) {
         try {
@@ -318,10 +334,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const connection = await freighterConnect();
       // A different account than the one on file must never silently replace
       // the payout wallet (#32). Hold it as pending and let the UI ask.
-      if (
-        user?.stellarAddress &&
-        user.stellarAddress !== connection.address
-      ) {
+      if (user?.stellarAddress && user.stellarAddress !== connection.address) {
         setPendingRelinkAddress(connection.address);
         return null;
       }
@@ -443,7 +456,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+  return (
+    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+  );
 }
 
 export function useWallet() {

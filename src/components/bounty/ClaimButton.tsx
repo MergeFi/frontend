@@ -186,6 +186,35 @@ export function ClaimButton({
   const needsPayoutWallet = !!user && !user.stellarAddress;
 
   if (status === 'claimed') {
+    const isClaimedByMe =
+      !!user &&
+      ((bounty?.claimedById && bounty.claimedById === user.id) ||
+        (bounty?.claimedBy && bounty.claimedBy === user.username));
+
+    if (isClaimedByMe) {
+      const issueRef = bounty?.issueNumber
+        ? `Fixes #${bounty.issueNumber}`
+        : 'Fixes #<issue-number>';
+
+      return (
+        <div
+          className={`p-4 bg-emerald-50 border border-emerald-200 rounded-lg dark:bg-emerald-950/20 dark:border-emerald-800 ${className}`}
+          role="status"
+        >
+          <h4 className="text-emerald-800 dark:text-emerald-300 font-semibold">
+            You&apos;re working on this bounty
+          </h4>
+          <p className="text-emerald-700 dark:text-emerald-400 text-sm mt-1">
+            Open a pull request that says{' '}
+            <code className="font-mono font-semibold bg-emerald-100 dark:bg-emerald-900/40 px-1 py-0.5 rounded text-xs">
+              {issueRef}
+            </code>{' '}
+            to link your work. Payout is released automatically when your pull request is merged.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className={`p-4 bg-gray-50 border border-gray-200 rounded-lg ${className}`}>
         <p className="text-gray-600">

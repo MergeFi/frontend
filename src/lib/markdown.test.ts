@@ -87,4 +87,32 @@ describe("stripMarkdownToPlainText", () => {
       "Line one Line two Line three",
     );
   });
+
+  it("strips HTML comments entirely (#680)", () => {
+    expect(
+      stripMarkdownToPlainText("Visible <!-- hidden --> also visible."),
+    ).toBe("Visible also visible.");
+  });
+
+  it("strips a multi-line HTML comment (#680)", () => {
+    expect(
+      stripMarkdownToPlainText(
+        "Note <!-- this is\na multi-line\ncomment --> done.",
+      ),
+    ).toBe("Note done.");
+  });
+
+  it("keeps inner text while dropping HTML tags (#680)", () => {
+    expect(
+      stripMarkdownToPlainText("<p>Para <strong>bold</strong> text</p>"),
+    ).toBe("Para bold text");
+  });
+
+  it("handles a GitHub-style body with embedded HTML markup (#680)", () => {
+    const input =
+      "## Steps\n<!-- todo: fill this -->\n- reproduce\n<kbd>Ctrl</kbd>+<kbd>R</kbd>";
+    expect(stripMarkdownToPlainText(input)).toBe(
+      "Steps reproduce Ctrl+R",
+    );
+  });
 });

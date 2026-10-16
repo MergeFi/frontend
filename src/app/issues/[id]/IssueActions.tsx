@@ -234,16 +234,20 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
           </Button>
         )}
       </div>
-      {notice && (
-        <p role="status" aria-live="polite" className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
-          {notice}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="mt-3 text-sm text-rose-600">
-          {error}
-        </p>
-      )}
+      {/*
+        The live regions stay mounted — a screen reader only announces a
+        region that exists in the DOM before the text lands (#711).
+      */}
+      <p
+        role="status"
+        aria-live="polite"
+        className="mt-3 text-sm text-emerald-600 dark:text-emerald-400"
+      >
+        {notice ?? ""}
+      </p>
+      <p role="alert" className="mt-3 text-sm text-rose-600">
+        {error ?? ""}
+      </p>
       <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
         Funding and claiming write to the live mergefi-backend API. Merge
         detection and payout release happen automatically via GitHub

@@ -15,6 +15,14 @@
  */
 export function stripMarkdownToPlainText(markdown: string): string {
   return markdown
+    // HTML comments — GitHub issue templates are full of
+    // "<!-- Describe the bug here -->" placeholders that otherwise render
+    // verbatim in card previews and OG descriptions (#680).
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    // HTML tags — <details><summary>, <br>, <img> etc. keep inner text,
+    // drop the markup (#680). Runs before the markdown rules so markdown
+    // inside tags still processes.
+    .replace(/<\/?[a-zA-Z][^>]*>/g, " ")
     // Fenced code blocks -> their inner content, unfenced.
     .replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, "$1")
     // Fallback for an unterminated fence (opened but never closed, e.g. a

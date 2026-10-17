@@ -186,6 +186,26 @@ export function ClaimButton({
   const needsPayoutWallet = !!user && !user.stellarAddress;
 
   if (status === 'claimed') {
+    const isClaimant = !!user && !!bounty?.claimedById && bounty.claimedById === user.id;
+    if (isClaimant) {
+      // The person who claimed it gets their own state, not the
+      // "somebody beat you to it" copy — plus the next step (#699).
+      return (
+        <div
+          className={`p-4 bg-blue-50 border border-blue-200 rounded-lg ${className}`}
+          role="status"
+        >
+          <p className="font-medium text-blue-800">
+            You&apos;re working on this bounty
+          </p>
+          <p className="text-sm text-blue-700 mt-1">
+            Open a pull request that says{" "}
+            <code className="rounded bg-blue-100 px-1 py-0.5">Fixes #{bounty.id}</code>{" "}
+            to link it — merging releases the escrow automatically.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className={`p-4 bg-gray-50 border border-gray-200 rounded-lg ${className}`}>
         <p className="text-gray-600">

@@ -102,6 +102,45 @@ describe("ClaimButton", () => {
     expect(screen.getByText("Claimed by: bob")).toBeInTheDocument();
   });
 
+  it("shows the claimant their working state with PR instructions (#699)", () => {
+    mockAuth({ id: "user-1", stellarAddress: "GSTELLAR" });
+    mockHooks(
+      {},
+      {
+        status: "claimed",
+        bounty: {
+          id: "42",
+          status: "claimed",
+          claimedBy: "me",
+          claimedById: "user-1",
+        },
+      },
+    );
+    render(<ClaimButton bountyId="42" />);
+    expect(screen.getByText(/working on this bounty/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fixes #42/)).toBeInTheDocument();
+    expect(screen.queryByText(/already been/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the loser-of-the-race copy for a different claimant (#699)", () => {
+    mockAuth({ id: "user-1", stellarAddress: "GSTELLAR" });
+    mockHooks(
+      {},
+      {
+        status: "claimed",
+        bounty: {
+          id: "42",
+          status: "claimed",
+          claimedBy: "bob",
+          claimedById: "user-9",
+        },
+      },
+    );
+    render(<ClaimButton bountyId="42" />);
+    expect(screen.getByText(/This bounty has already been/)).toBeInTheDocument();
+    expect(screen.queryByText(/working on this bounty/)).not.toBeInTheDocument();
+  });
+
   it("omits the claimant line when claimedBy is missing", () => {
     mockHooks({}, { status: "claimed", bounty: { id: "b1", status: "claimed" } });
     render(<ClaimButton bountyId="b1" />);

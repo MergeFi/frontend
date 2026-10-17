@@ -71,6 +71,7 @@ Next.js (App Router)                 this repo
 - **Data fetching**: Per-resource fetchers in `src/lib/api.ts` (`fetchBounties`, `fetchMilestones`, …) try the live API and fall back to `src/lib/mock-data.ts` if it's unreachable — the app is fully browsable without the backend running. Each fetcher returns a `FetchResult` with a `source` field (`"api"` or `"mock"`) so callers can tell where the data came from.
 - **Wallet integration**: `src/lib/wallet.ts` wraps `@stellar/freighter-api` for connecting a Stellar wallet and signing transactions (escrow funding, milestone deposits) client-side.
 - **GitHub auth**: The "Connect GitHub" button redirects to the backend's OAuth endpoint (`NEXT_PUBLIC_API_URL/auth/github`); the frontend itself holds no GitHub credentials.
+- **Bounty status polling**: Bounty pages ship real-time status today — `useBountyStatus` polls `/bounties/:id` every 5 s (and `ClaimButton` tightens to 2 s while a claim race is in flight) via `useSmartPolling`. Unchanged responses back the interval off multiplicatively (default ×1.5) to keep idle pages cheap; polling stops entirely once a terminal status (`merged`, `paid`, `refunded`, `expired`) is observed, and `enabled: false` performs a single fetch with no repeating poll. Load profile: one `GET /bounties/:id` per open bounty page per interval — scale that out when sizing the backend.
 
 ### Directory layout
 
@@ -214,6 +215,6 @@ Sitemaps are split into 50,000-URL files (`/sitemaps/<id>.xml`, with a permanent
 ## Roadmap
 
 - Wire the contributor/maintainer dashboards to authenticated sessions instead of a hardcoded demo handle.
-- Real-time bounty/escrow status via websockets or polling once the backend emits webhook-driven events.
+- Push-based bounty/escrow status via websockets, once the backend emits webhook-driven events (replaces today's 5 s/2 s client polling — see Architecture).
 - AI-powered issue recommendations based on a contributor's language/repo history.
 - Organization verification badges and cross-repository reputation aggregation.

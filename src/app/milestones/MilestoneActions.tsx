@@ -10,13 +10,8 @@ import {
   generateIdempotencyKey,
   formatCurrency,
 } from "@/lib/utils";
+import { t } from "@/lib/messages";
 
-/** #592 — generate a UUID for the Idempotency-Key header. */
-function generateIdempotencyKey(): string {
-  return crypto.randomUUID();
-}
-
-export function MilestoneFundButton({ milestoneId }: { milestoneId: string }) {
 /**
  * parseMoneyInput is the single source of truth for "is this a usable amount"
  * (non-empty, finite, > 0, within the asset's decimal precision) — reused
@@ -39,7 +34,9 @@ function validateFundingAmount(
   if (max !== undefined && Number(result.normalized) > max) {
     return {
       valid: false,
-      error: `Amount exceeds the remaining ${formatCurrency(max, asset)} budget.`,
+      error: t("milestone.fund.amountExceedsBudget", {
+        budget: formatCurrency(max, asset),
+      }),
     };
   }
   return result;
@@ -86,22 +83,12 @@ export function MilestoneFundButton({
     // Re-validate at submit time in case state drifted
     const result = validateFundingAmount(amount, asset, remainingBudget);
     if (!result.valid) {
-      setError(result.error ?? "Invalid amount.");
+      setError(result.error ?? t("milestone.fund.invalidAmount"));
       return;
     }
 
     setPending(true);
     try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        setError(getWalletError() ?? "Connect a Stellar wallet to fund this milestone.");
-        return;
-      }
-      // #594 — backend FundMilestoneDto only accepts funderAddress; no amount field.
-      await apiPost(
-        `/milestones/${milestoneId}/fund`,
-        { funderAddress: walletAddress },
-        generateIdempotencyKey(),
       const walletResult = await runWithWallet(
         (walletAddress) =>
           apiPost(`/milestones/${milestoneId}/fund`, {
@@ -113,19 +100,17 @@ export function MilestoneFundButton({
             funderAddress: walletAddress,
             idempotencyKey: generateIdempotencyKey(),
           }),
-        "Connect a Stellar wallet to fund this milestone.",
+        t("milestone.fund.connectWallet"),
       );
       if (!walletResult.ok) {
         setError(walletResult.error);
         return;
       }
-      setNotice(
-        "Milestone funded successfully. The funds are now locked in escrow.",
-      );
+      setNotice(t("milestone.fund.fundedNotice"));
       router.refresh();
     } catch (err) {
       setError(
-        err instanceof ApiRequestError ? err.message : "Something went wrong.",
+        err instanceof ApiRequestError ? err.message : t("issue.actions.genericError"),
       );
     } finally {
       setPending(false);
@@ -144,11 +129,11 @@ export function MilestoneFundButton({
   return (
     <div className="mt-4 flex items-center gap-2">
       <label htmlFor={inputId} className="sr-only">
-        Funding amount
+        {t("milestone.fund.amountLabel")}
       </label>
       {hasHint && (
         <p id={hintId} className="sr-only">
-          Remaining budget: {formatCurrency(remainingBudget, asset)}.
+          {t("milestone.fund.remainingBudget", { budget: formatCurrency(remainingBudget, asset) })}
         </p>
       )}
       <input
@@ -170,10 +155,15 @@ export function MilestoneFundButton({
         loading={pending || connecting}
         disabled={!inputValid}
         aria-label={
-          milestoneName ? `Fund milestone: ${milestoneName}` : "Fund milestone"
+          milestoneName
+            ? t("milestone.fund.buttonNamed", { name: milestoneName })
+            : t("milestone.fund.button")
         }
+        // Accessible name is always "Fund milestone..." — the visible label
+        // abbreviates during pending ("Confirming in wallet..."), so the
+        // aria-label carries the action context (and the milestone name).
       >
-        {pending || connecting ? "Confirming in wallet..." : "Fund milestone"}
+        {pending || connecting ? t("milestone.fund.confirming") : t("milestone.fund.button")}
       </Button>
       {error && (
         <p id={errorId} role="alert" className="text-xs text-rose-600">
@@ -224,22 +214,12 @@ export function PoolDepositButton({
     // Re-validate at submit time in case state drifted
     const result = parseMoneyInput(amount, asset);
     if (!result.valid) {
-      setError(result.error ?? "Invalid amount.");
+      setError(result.error ?? t("milestone.fund.invalidAmount"));
       return;
     }
 
     setPending(true);
     try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        setError(getWalletError() ?? "Connect a Stellar wallet to deposit.");
-        return;
-      }
-      await apiPost(
-        `/maintenance-pools/${poolId}/deposit`,
-        { amount, funderAddress: walletAddress },
-        generateIdempotencyKey(),
-      );
       const walletResult = await runWithWallet(
         (walletAddress) =>
           apiPost(`/maintenance-pools/${poolId}/deposit`, {
@@ -247,7 +227,7 @@ export function PoolDepositButton({
             funderAddress: walletAddress,
             idempotencyKey: generateIdempotencyKey(),
           }),
-        "Connect a Stellar wallet to deposit.",
+        t("pool.deposit.connectWallet"),
       );
       if (!walletResult.ok) {
         setError(walletResult.error);
@@ -257,7 +237,7 @@ export function PoolDepositButton({
       router.refresh();
     } catch (err) {
       setError(
-        err instanceof ApiRequestError ? err.message : "Something went wrong.",
+        err instanceof ApiRequestError ? err.message : t("issue.actions.genericError"),
       );
     } finally {
       setPending(false);
@@ -271,7 +251,7 @@ export function PoolDepositButton({
   return (
     <div className="mt-4 flex items-center gap-2">
       <label htmlFor={inputId} className="sr-only">
-        Deposit amount
+        {t("pool.deposit.amountLabel")}
       </label>
       <input
         id={inputId}
@@ -291,10 +271,12 @@ export function PoolDepositButton({
         loading={pending || connecting}
         disabled={!inputValid}
         aria-label={
-          poolRepo ? `Deposit to pool: ${poolRepo}` : "Deposit to pool"
+          poolRepo
+            ? t("pool.deposit.buttonNamed", { repo: poolRepo })
+            : t("pool.deposit.aria")
         }
       >
-        {pending || connecting ? "Confirming..." : "Deposit"}
+        {pending || connecting ? t("pool.deposit.confirming") : t("pool.deposit.button")}
       </Button>
       {error && (
         <p id={errorId} role="alert" className="text-xs text-rose-600">
@@ -307,7 +289,7 @@ export function PoolDepositButton({
           aria-live="polite"
           className="text-xs text-emerald-600"
         >
-          Deposit successful.
+          {t("pool.deposit.success")}
         </p>
       )}
     </div>
@@ -335,7 +317,7 @@ export function CreateMilestoneButton() {
       setOpen(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create milestone");
+      setError(err instanceof Error ? err.message : t("milestone.create.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -344,27 +326,27 @@ export function CreateMilestoneButton() {
   return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
-        Create milestone
+        {t("milestone.create.button")}
       </Button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-              Create milestone
+              {t("milestone.create.title")}
             </h3>
             <div className="mt-4 space-y-3">
               <input
                 type="text"
                 value={repo}
                 onChange={(e) => setRepo(e.target.value)}
-                placeholder="owner/repo"
+                placeholder={t("milestone.create.repoPlaceholder")}
                 className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Milestone name"
+                placeholder={t("milestone.create.namePlaceholder")}
                 className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
             </div>
@@ -373,10 +355,10 @@ export function CreateMilestoneButton() {
             )}
             <div className="mt-4 flex gap-2">
               <Button size="sm" onClick={handleCreate} disabled={submitting || !name || !repo}>
-                {submitting ? "Creating…" : "Create"}
+                {submitting ? t("milestone.create.creating") : t("milestone.create.confirm")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+                {t("milestone.create.cancel")}
               </Button>
             </div>
           </div>
@@ -404,7 +386,7 @@ export function AttachIssueButton({ milestoneId }: { milestoneId: string }) {
       setOpen(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to attach issue");
+      setError(err instanceof Error ? err.message : t("milestone.attach.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -413,20 +395,20 @@ export function AttachIssueButton({ milestoneId }: { milestoneId: string }) {
   return (
     <>
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        Attach issue
+        {t("milestone.attach.button")}
       </Button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-              Attach issue to milestone
+              {t("milestone.attach.title")}
             </h3>
             <div className="mt-4">
               <input
                 type="text"
                 value={issueId}
                 onChange={(e) => setIssueId(e.target.value)}
-                placeholder="issue-id"
+                placeholder={t("milestone.attach.placeholder")}
                 className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
             </div>
@@ -435,10 +417,10 @@ export function AttachIssueButton({ milestoneId }: { milestoneId: string }) {
             )}
             <div className="mt-4 flex gap-2">
               <Button size="sm" onClick={handleAttach} disabled={submitting || !issueId}>
-                {submitting ? "Attaching…" : "Attach"}
+                {submitting ? t("milestone.attach.attaching") : t("milestone.attach.confirm")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+                {t("milestone.attach.cancel")}
               </Button>
             </div>
           </div>
@@ -469,7 +451,7 @@ export function ResolveIssueButton({
       await apiPost(`/milestones/${milestoneId}/issues/${issueId}/resolve`, undefined, generateIdempotencyKey());
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resolve issue");
+      setError(err instanceof Error ? err.message : t("milestone.resolve.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -478,7 +460,7 @@ export function ResolveIssueButton({
   return (
     <div>
       <Button size="sm" variant="outline" onClick={handleResolve} disabled={submitting}>
-        {submitting ? "Resolving…" : "Resolve & pay"}
+        {submitting ? t("milestone.resolve.resolving") : t("milestone.resolve.button")}
       </Button>
       {error && (
         <p role="alert" className="mt-1 text-xs text-rose-600">{error}</p>

@@ -136,6 +136,149 @@ export const messages = {
   "deadline.none": "No deadline",
   "deadline.passed": "Deadline passed",
   "deadline.left": "{count, plural, one {# day} other {# days}} left",
+
+  // ─── Issue detail (#673) ──────────────────────────────────────────────
+  "issue.detail.notFoundTitle": "Issue not found | MergeFi",
+  "issue.detail.fallbackDescription": "Fund or claim this bounty on MergeFi.",
+  "issue.detail.escrowStatus": "Escrow status",
+  "issue.detail.deadline": "Deadline",
+  "issue.detail.claimedBy": "Claimed by",
+  "issue.detail.unclaimed": "Unclaimed",
+  "issue.detail.milestone": "Milestone",
+  "issue.detail.partOfFundedMilestone": "Part of a funded milestone",
+  "issue.detail.teamPayoutSplit": "Team payout split",
+  "issue.detail.splitMismatchTitle": "This payout split doesn't add up",
+  "issue.detail.splitMismatchAdvice":
+    "the listed shares don't cover the full reward, so don't rely on them until the team's split has been corrected.",
+  "issue.detail.splitSumFallback": "Team splits sum to {sum}% (expected 100%)",
+
+  // ─── Issue actions (#670) ────────────────────────────────────────────
+  "issue.actions.fund": "Fund this bounty",
+  "issue.actions.submitting": "Submitting...",
+  "issue.actions.awaitingFunding": "Awaiting sponsor funding",
+  "issue.actions.fundedNotice":
+    "Escrow funded on-chain. This bounty is now open for claims.",
+  "issue.actions.connectWallet": "Connect a Stellar wallet to continue.",
+  "issue.actions.claimedNotice":
+    "You've claimed this issue. Open a pull request to get started.",
+  "issue.actions.refundConfirm":
+    "Are you sure you want to refund this bounty? This will return {amount} to the sponsor and cannot be undone.",
+  "issue.actions.refundedNotice": "Escrowed funds were refunded to the sponsor.",
+  "issue.actions.refund": "Refund sponsor",
+  "issue.actions.refundDeadline": "Refund sponsor (deadline passed)",
+  "issue.actions.payoutComplete": "Payout complete",
+  "issue.actions.awaitingMerge": "Awaiting PR merge",
+  "issue.actions.payoutPending": "Payout pending",
+  "issue.actions.payoutFailed": "Payout failed — contact support",
+  "issue.actions.noAction": "No action available",
+  "issue.actions.deadlinePassed": "Deadline passed",
+  "issue.actions.genericError": "Something went wrong.",
+  "issue.actions.webhookNote":
+    "Funding and claiming write to the live mergefi-backend API. Merge detection and payout release happen automatically via GitHub webhooks once a linked pull request is merged.",
+
+  // ─── Milestones & pools (#671) ───────────────────────────────────────
+  "milestone.fund.amountExceedsBudget": "Amount exceeds the remaining {budget} budget.",
+  "milestone.fund.amountLabel": "Funding amount",
+  "milestone.fund.remainingBudget": "Remaining budget: {budget}.",
+  "milestone.fund.invalidAmount": "Invalid amount.",
+  "milestone.fund.connectWallet": "Connect a Stellar wallet to fund this milestone.",
+  "milestone.fund.fundedNotice":
+    "Milestone funded successfully. The funds are now locked in escrow.",
+  "milestone.fund.confirming": "Confirming in wallet...",
+  "milestone.fund.button": "Fund milestone",
+  "milestone.fund.buttonNamed": "Fund milestone: {name}",
+  "pool.deposit.amountLabel": "Deposit amount",
+  "pool.deposit.connectWallet": "Connect a Stellar wallet to deposit.",
+  "pool.deposit.confirming": "Confirming...",
+  "pool.deposit.button": "Deposit",
+  "pool.deposit.aria": "Deposit to pool",
+  "pool.deposit.buttonNamed": "Deposit to pool: {repo}",
+  "pool.deposit.success": "Deposit successful.",
+  "milestone.create.button": "Create milestone",
+  "milestone.create.title": "Create milestone",
+  "milestone.create.repoPlaceholder": "owner/repo",
+  "milestone.create.namePlaceholder": "Milestone name",
+  "milestone.create.failed": "Failed to create milestone",
+  "milestone.create.creating": "Creating…",
+  "milestone.create.confirm": "Create",
+  "milestone.create.cancel": "Cancel",
+  "milestone.attach.button": "Attach issue",
+  "milestone.attach.title": "Attach issue to milestone",
+  "milestone.attach.placeholder": "issue-id",
+  "milestone.attach.failed": "Failed to attach issue",
+  "milestone.attach.attaching": "Attaching…",
+  "milestone.attach.confirm": "Attach",
+  "milestone.attach.cancel": "Cancel",
+  "milestone.resolve.resolving": "Resolving…",
+  "milestone.resolve.button": "Resolve & pay",
+  "milestone.resolve.failed": "Failed to resolve issue",
+
+  // ─── Home page (#672) ────────────────────────────────────────────────
+  "home.network.mainnet": "Built for Stellar Mainnet",
+  "home.network.testnet": "Built for Stellar (Testnet)",
+  "home.hero.headline": "Merge code.",
+  "home.hero.headlineAccent": "Earn instantly.",
+  "home.hero.subtitle":
+    "MergeFi is the financial infrastructure for open source. Sponsors fund issues, contributors get paid the moment their pull request is merged, and Soroban smart contracts on Stellar handle the escrow.",
+  "home.hero.browseCta": "Browse paid issues",
+  "home.hero.sponsorCta": "Sponsor a repository",
+  "home.hero.joinedBy": "Joined by {count} contributors already earning",
+  "home.trustedBy": "Trusted by open-source teams on Stellar",
+  "home.stats.totalPaidOut": "Total paid out",
+  "home.stats.bountiesCompleted": "Bounties completed",
+  "home.stats.activeContributors": "Active contributors",
+  "home.stats.avgPayoutTime": "Avg. payout time",
+  "home.stats.avgPayoutValue": "{minutes} min",
+  "home.features.kicker": "Platform",
+  "home.features.heading": "Everything you need to fund and get paid for open source",
+  "home.feature.repoSync.title": "Repository sync",
+  "home.feature.repoSync.description":
+    "Connect GitHub and MergeFi imports repositories, issues, pull requests, and contributors automatically.",
+  "home.feature.smartEscrow.title": "Smart escrow",
+  "home.feature.smartEscrow.description":
+    "Funds move into a Soroban smart contract the moment a bounty is funded. No one can withdraw until the work is verified.",
+  "home.feature.instantPayouts.title": "Instant payouts",
+  "home.feature.instantPayouts.description":
+    "Merges are detected via GitHub webhooks and trigger automatic on-chain payment release in seconds.",
+  "home.feature.teamBounties.title": "Team bounties",
+  "home.feature.teamBounties.description":
+    "Split rewards across multiple contributors by role, like frontend, backend, and testing, paid out automatically.",
+  "home.feature.reputation.title": "Reputation & analytics",
+  "home.feature.reputation.description":
+    "Build a financial contribution profile: lifetime earnings, merge rate, review time, and top clients.",
+  "home.feature.sponsorDashboards.title": "Sponsor dashboards",
+  "home.feature.sponsorDashboards.description":
+    "Track spending, active bounties, contributor performance, and budget remaining in real time.",
+  "home.journey.heading": "A typical bounty, start to finish",
+  "home.journey.step1": "Maintainer connects a GitHub repository.",
+  "home.journey.step2": "Issue #42 is marked with a 100 USDC reward.",
+  "home.journey.step3": "A sponsor funds the bounty, and funds lock into a Soroban escrow contract.",
+  "home.journey.step4": "A contributor claims the issue and opens a pull request.",
+  "home.journey.step5": "The maintainer reviews and merges it.",
+  "home.journey.step6": "MergeFi detects the merge via GitHub webhook.",
+  "home.journey.step7": "The escrow contract automatically releases payment to the contributor.",
+  "home.journey.step8": "The contributor's reputation and earnings profile update instantly.",
+  "home.topContributors.heading": "Top contributors this month",
+  "home.topContributors.mergedPrs": "{count} merged PRs · {language}",
+  "home.live.heading": "Live on the platform",
+  "home.faq.kicker": "FAQ",
+  "home.faq.heading": "Common questions",
+  "home.stellar.heading": "Why Stellar and Soroban?",
+  "home.stellar.body":
+    "Very low transaction costs make micro-bounties practical, fast settlement means contributors aren't waiting days for payment, and Soroban smart contracts handle escrow, splits, and milestone payouts natively on-chain.",
+  "home.stellar.cta": "Get started",
+
+  // ─── Escrow status labels (#673) ─────────────────────────────────────
+  "escrow.status.open": "Awaiting funding",
+  "escrow.status.funded": "Funds locked",
+  "escrow.status.claimed": "Funds locked",
+  "escrow.status.in_review": "Funds locked",
+  "escrow.status.merged": "Funds locked",
+  "escrow.status.release_failed": "Payout failed — funds still locked",
+  "escrow.status.paid": "Paid out",
+  "escrow.status.refunded": "Refunded to sponsor",
+  "escrow.status.expired": "Expired, unclaimed",
+  "escrow.status.unknown": "Status unavailable",
 } as const;
 
 /** Every message key, as a union — used to keep `t()` calls honest. */
@@ -265,7 +408,7 @@ function parsePluralBranches(body: string): Map<string, string> {
     // `i` is the index of the matching close brace, or body.length when the
     // body is malformed — in which case we take the remainder.
     const end = depth === 0 ? i : body.length;
-    branches.set(selector, body.slice(start, end));
+    branches.set(selector ?? "", body.slice(start, end));
     pattern.lastIndex = end + 1;
   }
   return branches;

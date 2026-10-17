@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- jest.mock factories take the real components' prop bags verbatim */
 /**
  * SponsorDashboardClient.test.tsx
  *
@@ -36,8 +37,10 @@ jest.mock("@/lib/adapters", () => ({
 
 // Mock DashboardShell to avoid complex nesting
 jest.mock("@/components/dashboard/DashboardShell", () => ({
-  DashboardShell: ({ children, badge }: any) => (
+  DashboardShell: ({ children, badge, title, subtitle }: any) => (
     <div data-testid="dashboard-shell">
+      {title}
+      {subtitle}
       {badge}
       {children}
     </div>

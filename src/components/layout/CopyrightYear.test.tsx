@@ -10,8 +10,9 @@
  *  3. Renders only a number, no extra markup
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- the Date mock must interop with Date's constructor union */
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { CopyrightYear } from "./CopyrightYear";
 
 // ─── 1. Renders current year ─────────────────────────────────────────────────
@@ -44,10 +45,8 @@ describe("CopyrightYear — hydration correction", () => {
     let callCount = 0;
     class MockDate extends Date {
       constructor(...args: any[]) {
-        if (args.length === 0 && callCount === 0) {
+        if (args.length === 0) {
           callCount++;
-          super(realYear, 0, 1);
-        } else if (args.length === 0) {
           super(realYear, 0, 1);
         } else {
           // @ts-expect-error - spread for constructor

@@ -47,7 +47,7 @@ export const metadata: Metadata = {
 const STATUS_FILTERS = [
   { value: "all", label: "All" },
   { value: "funded", label: "Claimable" },
-  { value: "open", label: "Not yet funded" },
+  { value: "open", label: "Open" },
   { value: "in_review", label: "In review" },
 ] as const satisfies readonly { value: (typeof STATUS_VALUES)[number]; label: string }[];
 
@@ -99,7 +99,7 @@ export default async function IssuesPage({
           whose fallback list is empty is both "nothing to show" and "we could
           not reach the server". Both signals render, rather than one hiding
           the other. */}
-      {source === "mock" && <DataSourceNotice className="mb-6" />}
+      {source === "mock" && <DataSourceNotice variant="banner" className="mb-6" />}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-sm text-slate-500 dark:text-slate-400">Status:</span>

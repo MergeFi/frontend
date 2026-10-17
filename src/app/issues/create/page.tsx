@@ -25,7 +25,7 @@ export default function CreateBountyPage() {
     setError(null);
 
     const validation = parseMoneyInput(amount, asset);
-    if (!validation.ok) {
+    if (!validation.valid) {
       setError(validation.error ?? "Invalid amount");
       return;
     }
@@ -34,7 +34,7 @@ export default function CreateBountyPage() {
     try {
       await apiPost("/bounties", {
         issue,
-        amount: validation.amount,
+        amount: validation.normalized,
         asset,
         difficulty,
         deadline: deadline || undefined,

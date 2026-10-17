@@ -22,9 +22,8 @@
  * always available via the title attribute (keyboard-navigable, hover tooltip).
  */
 
-import { cn, formatCurrency, getNumberFormat } from "@/lib/utils";
 import { cn, formatCurrency, formatInteger, formatPercent } from "@/lib/utils";
-import { isRTLLocale, resolveLocale } from "@/lib/locale";
+import { resolveLocale } from "@/lib/locale";
 import { ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sparkline } from "./Sparkline";
@@ -93,8 +92,6 @@ function formatValue(
       return { display: pct, exact: pct };
     }
     case "count": {
-      // Use cached formatter to avoid hydration mismatch (#656).
-      const s = getNumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
       // Was `value.toLocaleString("en-US", …)` — a second, divergent money
       // formatting path in the same component that also called
       // `formatCurrency`, so counts and currencies disagreed on separators.

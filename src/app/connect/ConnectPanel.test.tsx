@@ -213,7 +213,7 @@ describe("ConnectPanel — a browser-only connection is not a linked one", () =>
     setWallet({ address: ADDRESS, network: "TESTNET", linkState: "local" });
     render(<ConnectPanel />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Disconnect wallet" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Disconnect wallet" })[0]!);
     expect(true).toBe(true);
   });
 

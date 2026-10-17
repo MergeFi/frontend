@@ -93,7 +93,7 @@ export function isRTLLocale(locale: string): boolean {
   } catch {
     // Malformed tag — fall through to the subtag check below.
   }
-  return RTL_LANGUAGE_SUBTAGS.has(locale.split("-")[0].toLowerCase());
+  return RTL_LANGUAGE_SUBTAGS.has((locale.split("-")[0] ?? "").toLowerCase());
 }
 
 /**

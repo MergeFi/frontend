@@ -81,35 +81,6 @@ function createAsyncAuthMock(resolvedUser: AuthUser) {
 }
 
 describe("CallbackClient — role-based redirect (#77)", () => {
-  const SINGLE_ROLE_REDIRECTS: ReadonlyArray<readonly [UserRole[], string]> = [
-    [["maintainer"], "/dashboard/maintainer"],
-    [["sponsor"], "/dashboard/sponsor"],
-    [["contributor"], "/dashboard/contributor"],
-  ];
-
-  it.each(SINGLE_ROLE_REDIRECTS)(
-    "redirects %s to %s after async login",
-    async (roles, expected) => {
-      const user = makeUser([...roles]);
-      const loginMock = jest.fn().mockResolvedValue(undefined);
-
-      mockedUseAuth.mockReturnValue({
-        login: loginMock,
-        user: null,
-        loading: false,
-        degraded: false,
-        logout: jest.fn(),
-        refresh: jest.fn(),
-      });
-
-      mockSearchParams("valid-token");
-
-      render(<CallbackClient />);
-
-      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(expected));
-    },
-  );
-
   it("strips the token from the URL after successful login (#9)", async () => {
     const loginMock = jest.fn().mockResolvedValue(undefined);
 
@@ -140,6 +111,15 @@ describe("CallbackClient — role-based redirect (#77)", () => {
     });
 
     mockSearchParams(null);
+
+    render(<CallbackClient />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/No token was returned/)).toBeInTheDocument(),
+    );
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   it("redirects maintainer to /dashboard/maintainer after async login", async () => {
     const { getAuthValue } = createAsyncAuthMock(makeUser(["maintainer"]));
     // Simulate AuthContext behavior: user starts null, becomes populated after login
@@ -157,9 +137,11 @@ describe("CallbackClient — role-based redirect (#77)", () => {
       currentUser = fn(currentUser);
     };
 
+    mockSearchParams("valid-token");
+
     render(<CallbackClient />);
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(expected));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer"));
   });
 
   it("redirects sponsor to /dashboard/sponsor after async login", async () => {
@@ -175,10 +157,12 @@ describe("CallbackClient — role-based redirect (#77)", () => {
       get user() { return currentUser; },
     }));
 
+    mockSearchParams("valid-token");
+
     render(<CallbackClient />);
 
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer"),
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard/sponsor"),
     );
   });
 
@@ -194,6 +178,8 @@ describe("CallbackClient — role-based redirect (#77)", () => {
       ...authValue,
       get user() { return currentUser; },
     }));
+
+    mockSearchParams("valid-token");
 
     render(<CallbackClient />);
 
@@ -222,7 +208,7 @@ describe("CallbackClient — role-based redirect (#77)", () => {
     render(<CallbackClient />);
 
     await waitFor(() =>
-      expect(screen.getByText(/No token was returned/)).toBeInTheDocument(),
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer"),
     );
   });
 
@@ -243,9 +229,17 @@ describe("CallbackClient — role-based redirect (#77)", () => {
     });
 
     mockSearchParams(null, "handoff-code");
-      expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer"),
+
+    render(<CallbackClient />);
+
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith("/api/auth/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: "handoff-code" }),
+      }),
     );
-    expect(login).toHaveBeenCalledWith("jwt-token");
+    await waitFor(() => expect(loginMock).toHaveBeenCalledWith("exchanged-token"));
   });
 });
 
@@ -254,17 +248,8 @@ describe("CallbackClient — unfinished wallet link (#456)", () => {
     mockedUseAuth.mockReturnValue({
       login: jest.fn().mockResolvedValue(makeUser(["maintainer"], null)),
     });
-    const { getAuthValue } = createAsyncAuthMock(makeUser([]));
-    let currentUser: AuthUser | null = null;
-    const authValue = getAuthValue();
-    authValue.setUser = (fn: (prev: AuthUser | null) => AuthUser | null) => {
-      currentUser = fn(currentUser);
-    };
 
-    mockedUseAuth.mockImplementation(() => ({
-      ...authValue,
-      get user() { return currentUser; },
-    }));
+    mockSearchParams("valid-token");
 
     render(<CallbackClient />);
 
@@ -279,6 +264,8 @@ describe("CallbackClient — unfinished wallet link (#456)", () => {
     mockedUseAuth.mockReturnValue({
       login: jest.fn().mockResolvedValue(makeUser(["sponsor"], "GWALLET")),
     });
+
+    mockSearchParams("valid-token");
 
     render(<CallbackClient />);
 
@@ -297,17 +284,11 @@ describe("CallbackClient — failure paths", () => {
     // it were theirs.
     mockedUseAuth.mockReturnValue({ login: jest.fn().mockResolvedValue(null) });
 
+    mockSearchParams("valid-token");
+
     render(<CallbackClient />);
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith("/api/auth/handoff", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: "handoff-code" }),
-      }),
-    );
-    await waitFor(() => expect(loginMock).toHaveBeenCalledWith("exchanged-token"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/contributor"));
       expect(screen.getByRole("alert")).toHaveTextContent(
         /Could not complete sign-in/,
       ),
@@ -329,6 +310,7 @@ describe("CallbackClient — failure paths", () => {
 
   it("strips the token from the URL before it can reach browser history (#9)", () => {
     mockedUseAuth.mockReturnValue({ login: jest.fn().mockResolvedValue(makeUser([])) });
+    mockSearchParams("token=abc");
     const replaceState = jest.spyOn(window.history, "replaceState");
 
     render(<CallbackClient />);
@@ -337,7 +319,7 @@ describe("CallbackClient — failure paths", () => {
     // JWT being gone rather than on a specific pathname, since the test
     // environment's location is not the callback route.
     expect(replaceState).toHaveBeenCalled();
-    const rewritten = replaceState.mock.calls[0][2] as string;
+    const rewritten = replaceState.mock.calls[0]![2] as string;
     expect(rewritten).not.toContain("token");
     expect(rewritten).not.toContain("?");
   });

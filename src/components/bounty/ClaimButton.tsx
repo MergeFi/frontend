@@ -93,14 +93,14 @@ export function ClaimButton({
 
     if (lastResult?.success === false && lastResult.error === 'ALREADY_CLAIMED') {
       dispatch({ type: 'SHOW_RACE_MESSAGE' });
-      doRefetch();
+      void doRefetch();
       timerRef.current = setTimeout(() => {
         dispatch({ type: 'HIDE_RACE_MESSAGE' });
         doReset();
       }, 15000);
     } else if (lastResult?.success === true) {
       dispatch({ type: 'SHOW_CLAIM_SUCCESS' });
-      doRefetch();
+      void doRefetch();
       notify?.();
       timerRef.current = setTimeout(() => {
         dispatch({ type: 'HIDE_CLAIM_SUCCESS' });

@@ -23,6 +23,8 @@ function makeMilestone(overrides: Partial<Milestone> = {}): Milestone {
     budget: 6000,
     distributed: 2100,
     asset: "USDC",
+    status: "open",
+    deadline: null,
     issueCount: 5,
     completedCount: 2,
     ...overrides,

@@ -7,13 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useWalletAction } from "@/hooks/useWalletAction";
 import { apiPost, ApiRequestError } from "@/lib/api";
 import { formatCurrency, generateIdempotencyKey } from "@/lib/utils";
+import { t } from "@/lib/messages";
 import { ClaimButton } from "@/components/bounty/ClaimButton";
 import type { Bounty } from "@/types";
-
-/** #592 — generate a UUID for the Idempotency-Key header. */
-function generateIdempotencyKey(): string {
-  return crypto.randomUUID();
-}
 
 export function IssueActions({ bounty }: { bounty: Bounty }) {
   const router = useRouter();
@@ -70,68 +66,29 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     setNotice(null);
     setPending(true);
     try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        setError(getWalletError() ?? "Connect a Stellar wallet to continue.");
       const result = await runWithWallet(async (walletAddress) => {
         await apiPost(`/bounties/${bounty.id}/fund`, {
           funderAddress: walletAddress,
           idempotencyKey: fundKey,
         });
-        setNotice("Escrow funded on-chain. This bounty is now open for claims.");
+        setNotice(t("issue.actions.fundedNotice"));
         // Rotate key after definitive success so next fund attempt is fresh
         setFundKey(generateIdempotencyKey());
-          idempotencyKey: generateIdempotencyKey(),
-        });
-        setNotice("Escrow funded on-chain. This bounty is now open for claims.");
-      }, "Connect a Stellar wallet to continue.");
+      }, t("issue.actions.connectWallet"));
       if (!result.ok) {
         setError(result.error);
         return;
       }
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
+      setError(err instanceof ApiRequestError ? err.message : t("issue.actions.genericError"));
     } finally {
       setPending(false);
     }
   }
 
-  async function handleFund() {
-    await withWallet(async (walletAddress) => {
-      await apiPost(
-        `/bounties/${bounty.id}/fund`,
-        { funderAddress: walletAddress },
-        generateIdempotencyKey(),
-      );
-      setNotice("Escrow funded on-chain. This bounty is now open for claims.");
-    });
-  }
-
-  async function handleClaim() {
-    setError(null);
-    setNotice(null);
-    if (!user) {
-      router.push("/connect");
-      return;
-    }
-    setPending(true);
-    try {
-      await apiPost(
-        `/bounties/${bounty.id}/claim`,
-        { contributorId: user.id },
-        generateIdempotencyKey(),
-      );
-      setNotice("You've claimed this issue. Open a pull request to get started.");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
-    } finally {
-      setPending(false);
-    }
-  }
   const handleClaimSuccess = () => {
-    setNotice("You've claimed this issue. Open a pull request to get started.");
+    setNotice(t("issue.actions.claimedNotice"));
     router.refresh();
   };
 
@@ -148,7 +105,9 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
    */
   async function handleRefund() {
     const confirmed = window.confirm(
-      `Are you sure you want to refund this bounty? This will return ${formatCurrency(bounty.reward, bounty.asset)} to the sponsor and cannot be undone.`,
+      t("issue.actions.refundConfirm", {
+        amount: formatCurrency(bounty.reward, bounty.asset),
+      }),
     );
     if (!confirmed) return;
 
@@ -156,17 +115,15 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     setNotice(null);
     setPending(true);
     try {
-      await apiPost(`/bounties/${bounty.id}/refund`, undefined, generateIdempotencyKey());
       await apiPost(`/bounties/${bounty.id}/refund`, {
         idempotencyKey: refundKey,
-        idempotencyKey: generateIdempotencyKey(),
       });
-      setNotice("Escrowed funds were refunded to the sponsor.");
+      setNotice(t("issue.actions.refundedNotice"));
       // Rotate key after definitive success
       setRefundKey(generateIdempotencyKey());
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Something went wrong.");
+      setError(err instanceof ApiRequestError ? err.message : t("issue.actions.genericError"));
     } finally {
       setPending(false);
     }
@@ -177,12 +134,12 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
       <div className="flex flex-wrap gap-3">
         {bounty.status === "open" && isSponsor && (
           <Button size="lg" onClick={handleFund} loading={pending || connecting}>
-            {pending || connecting ? "Submitting..." : "Fund this bounty"}
+            {pending || connecting ? t("issue.actions.submitting") : t("issue.actions.fund")}
           </Button>
         )}
         {bounty.status === "open" && !isSponsor && (
           <Button size="lg" variant="outline" disabled>
-            Awaiting sponsor funding
+            {t("issue.actions.awaitingFunding")}
           </Button>
         )}
         {bounty.status === "funded" && (
@@ -199,38 +156,24 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
         */}
         {isSponsor && (bounty.status === "funded" || bounty.status === "claimed") && (
           <Button size="lg" variant="outline" onClick={handleRefund} loading={pending}>
-            Refund sponsor
+            {t("issue.actions.refund")}
           </Button>
         )}
         {["in_review", "merged", "release_failed", "paid", "refunded", "expired", "unknown"].includes(
-        {/*
-          Expired bounties: the backend's state machine allows EXPIRED →
-          REFUNDED so sponsors can reclaim escrow after the deadline sweep,
-          which does not refund automatically (#603).
-        */}
-        {isSponsor && bounty.status === "expired" && (
-          <Button size="lg" variant="outline" onClick={handleRefund} loading={pending}>
-            Refund sponsor (deadline passed)
-          </Button>
-        )}
-        {["in_review", "merged", "paid", "refunded"].includes(
           bounty.status,
         ) && (
           <Button size="lg" variant="outline" disabled>
-            {bounty.status === "paid"
-              ? "Payout complete"
-              : bounty.status === "in_review"
-                ? "Awaiting PR merge"
-                : bounty.status === "merged"
-                  ? "Payout pending"
-                  : bounty.status === "release_failed"
-                    ? "Payout failed — contact support"
-                    : "No action available"}
-          </Button>
-        )}
-        {bounty.status === "expired" && !isSponsor && (
-          <Button size="lg" variant="outline" disabled>
-            Deadline passed
+            {bounty.status === "expired" && !isSponsor
+              ? t("issue.actions.deadlinePassed")
+              : bounty.status === "paid"
+                ? t("issue.actions.payoutComplete")
+                : bounty.status === "in_review"
+                  ? t("issue.actions.awaitingMerge")
+                  : bounty.status === "merged"
+                    ? t("issue.actions.payoutPending")
+                    : bounty.status === "release_failed"
+                      ? t("issue.actions.payoutFailed")
+                      : t("issue.actions.noAction")}
           </Button>
         )}
       </div>
@@ -245,9 +188,7 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
         </p>
       )}
       <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
-        Funding and claiming write to the live mergefi-backend API. Merge
-        detection and payout release happen automatically via GitHub
-        webhooks once a linked pull request is merged.
+        {t("issue.actions.webhookNote")}
       </p>
     </div>
   );

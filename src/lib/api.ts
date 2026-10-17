@@ -171,6 +171,14 @@ export function apiPost<T>(path: string, body?: unknown, idempotencyKey?: string
   });
 }
 
+export function apiPatch<T>(path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
+  return apiRequest<T>(path, {
+    method: "PATCH",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+  });
+}
+
 /**
  * Live-data fetchers that adapt mergefi-backend's nested TypeORM entity JSON
  * into the flat shapes the UI renders, falling back to mock data (already in
@@ -318,7 +326,6 @@ export const fetchReputationByUsername = cache(
  */
 export const fetchIndexableReputationHandles = cache(
   async (fallback: string[]): Promise<FetchResult<string[]>> => {
-): Promise<FetchResult<string[]>> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
     // The backend's PublicUserDto currently has no isProfilePublic field,

@@ -18,11 +18,33 @@ interface PollerEntry {
   interval: number;
   loading: boolean;
   error: Error | null;
+  // useSyncExternalStore requires the snapshot to be referentially stable
+  // between notifications — a fresh object per getSnapshot() call loops
+  // forever. Rebuilt only inside notify(), when state actually changed.
+  snapshot: {
+    bounty: Bounty | null;
+    source: 'live' | 'mock' | null;
+    loading: boolean;
+    error: Error | null;
+  };
 }
 
 const registry = new Map<string, PollerEntry>();
 
+const EMPTY_SNAPSHOT: PollerEntry["snapshot"] = {
+  bounty: null,
+  source: null,
+  loading: false,
+  error: null,
+};
+
 function notify(entry: PollerEntry): void {
+  entry.snapshot = {
+    bounty: entry.bounty,
+    source: entry.source,
+    loading: entry.loading,
+    error: entry.error,
+  };
   for (const listener of entry.listeners) {
     listener();
   }
@@ -42,7 +64,7 @@ function startPolling(id: string, entry: PollerEntry, interval: number): void {
       entry.loading = true;
       notify(entry);
 
-      const result = await fetchBounty(id);
+      const result = await fetchBounty(id, undefined);
       entry.bounty = result.data ?? null;
       entry.source = result.source;
       entry.error = null;
@@ -59,8 +81,10 @@ function startPolling(id: string, entry: PollerEntry, interval: number): void {
     }
   };
 
-  tick();
-  entry.intervalId = setInterval(tick, interval);
+  void tick();
+  // interval <= 0 means "load once, don't poll" — subscribers that pass it
+  // still get the initial fetch and every notification it produces.
+  if (interval > 0) entry.intervalId = setInterval(() => void tick(), interval);
 }
 
 function stopPolling(entry: PollerEntry): void {
@@ -77,12 +101,7 @@ export function getBountySnapshot(id: string): {
   error: Error | null;
 } {
   const entry = registry.get(id);
-  return {
-    bounty: entry?.bounty ?? null,
-    source: entry?.source ?? null,
-    loading: entry?.loading ?? false,
-    error: entry?.error ?? null,
-  };
+  return entry?.snapshot ?? EMPTY_SNAPSHOT;
 }
 
 export function subscribeBounty(
@@ -100,14 +119,20 @@ export function subscribeBounty(
       interval,
       loading: true,
       error: null,
+      snapshot: { bounty: null, source: null, loading: true, error: null },
     };
     registry.set(id, entry);
     startPolling(id, entry, interval);
   }
 
   entry.listeners.add(listener);
-  // Use the minimum interval of all subscribers
-  if (interval < entry.interval && entry.intervalId) {
+  if (!entry.intervalId) {
+    // Entry exists but isn't polling (all listeners left, or a 0-interval
+    // one-shot completed): refetch so re-mounts never serve a stale
+    // snapshot from a dead subscription.
+    startPolling(id, entry, interval);
+  } else if (interval > 0 && interval < entry.interval) {
+    // Use the minimum interval of all subscribers
     clearInterval(entry.intervalId);
     entry.intervalId = null;
     startPolling(id, entry, interval);

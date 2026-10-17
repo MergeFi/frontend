@@ -153,13 +153,13 @@ describe("BountyDescription — content fidelity", () => {
 
     const ths = container.querySelectorAll("th");
     expect(ths.length).toBe(2);
-    expect(ths[0].textContent).toBe("Token");
-    expect(ths[1].textContent).toBe("Amount");
+    expect(ths[0]!.textContent).toBe("Token");
+    expect(ths[1]!.textContent).toBe("Amount");
 
     const tds = container.querySelectorAll("td");
     expect(tds.length).toBe(4);
-    expect(tds[0].textContent).toBe("USDC");
-    expect(tds[1].textContent).toBe("100");
+    expect(tds[0]!.textContent).toBe("USDC");
+    expect(tds[1]!.textContent).toBe("100");
   });
 });
 

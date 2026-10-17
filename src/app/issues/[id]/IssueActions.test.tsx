@@ -99,7 +99,7 @@ describe("IssueActions — action buttons per bounty.status", () => {
     expect(buttons[0]).toHaveTextContent("Awaiting sponsor funding");
     expect(buttons[0]).toBeDisabled();
     expect(
-      screen.queryByRole("button", { name: /fund/i }),
+      screen.queryByRole("button", { name: "Fund this bounty" }),
     ).not.toBeInTheDocument();
   });
 
@@ -136,6 +136,7 @@ describe("IssueActions — action buttons per bounty.status", () => {
   );
 
   it("expired (non-sponsor) shows a disabled 'Deadline passed' button", () => {
+    mockUser({ id: "someone-else", stellarAddress: null });
     render(<IssueActions bounty={makeBounty("expired")} />);
     const buttons = screen.getAllByRole("button");
     expect(buttons).toHaveLength(1);
@@ -338,9 +339,11 @@ describe("IssueActions — refund (confirm-gated)", () => {
       "/bounties/bounty-1/refund",
       expect.objectContaining({ idempotencyKey: expect.any(String) }),
     );
-    expect(confirmSpy.mock.invocationCallOrder[0]).toBeLessThan(
-      mockApiPost.mock.invocationCallOrder[0],
-    );
+    const confirmOrder = confirmSpy.mock.invocationCallOrder[0];
+    const postOrder = mockApiPost.mock.invocationCallOrder[0];
+    expect(confirmOrder).toBeDefined();
+    expect(postOrder).toBeDefined();
+    expect(confirmOrder!).toBeLessThan(postOrder!);
     expect(await screen.findByRole("status")).toHaveTextContent(
       /refunded to the sponsor/,
     );

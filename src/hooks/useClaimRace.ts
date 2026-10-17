@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiPost, fetchBounty } from '@/lib/api';
-import { adaptBounty, type RawBounty } from '@/lib/adapters';
 import type { Bounty, ClaimResult } from '@/types/bounty';
 
 interface ApiError {
@@ -35,9 +34,9 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
     setIsClaiming(true);
     
     try {
-      const raw = await apiPost<RawBounty>(`/bounties/${bountyId}/claim`, {});
-      
-      const bounty = adaptBounty(raw);
+      const raw = await apiPost<{ data: Bounty }>(`/bounties/${bountyId}/claim`, {});
+
+      const bounty = raw.data;
       const result: ClaimResult = {
         success: true,
         bounty,

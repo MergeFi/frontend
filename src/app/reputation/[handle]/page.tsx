@@ -75,7 +75,7 @@ export default async function ReputationPage({
 
   return (
     <>
-      {source === "mock" && <DataSourceNotice className="mb-6" />}
+      {source === "mock" && <DataSourceNotice variant="banner" className="mb-6" />}
       <ReputationProfileView profile={profile} />
     </>
   );

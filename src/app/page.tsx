@@ -27,8 +27,8 @@ import {
   faqs,
 } from "@/lib/mock-data";
 import { formatCurrency, formatInteger } from "@/lib/utils";
+import { t, type MessageKey } from "@/lib/messages";
 import { STELLAR_NETWORK } from "@/lib/config";
-import type { PlatformStats } from "@/lib/api";
 
 const integrations = [
   { icon: Code2, label: "GitHub" },
@@ -37,53 +37,48 @@ const integrations = [
   { icon: Coins, label: "USDC / XLM" },
 ];
 
-const journey = [
-  "Maintainer connects a GitHub repository.",
-  "Issue #42 is marked with a 100 USDC reward.",
-  "A sponsor funds the bounty, and funds lock into a Soroban escrow contract.",
-  "A contributor claims the issue and opens a pull request.",
-  "The maintainer reviews and merges it.",
-  "MergeFi detects the merge via GitHub webhook.",
-  "The escrow contract automatically releases payment to the contributor.",
-  "The contributor's reputation and earnings profile update instantly.",
+// Keys, not literals — copy lives in messages.ts (#672).
+const journey: MessageKey[] = [
+  "home.journey.step1",
+  "home.journey.step2",
+  "home.journey.step3",
+  "home.journey.step4",
+  "home.journey.step5",
+  "home.journey.step6",
+  "home.journey.step7",
+  "home.journey.step8",
 ];
 
-const features = [
+const features: { icon: typeof GitPullRequest; title: MessageKey; description: MessageKey }[] = [
   {
     icon: GitPullRequest,
-    title: "Repository sync",
-    description:
-      "Connect GitHub and MergeFi imports repositories, issues, pull requests, and contributors automatically.",
+    title: "home.feature.repoSync.title",
+    description: "home.feature.repoSync.description",
   },
   {
     icon: ShieldCheck,
-    title: "Smart escrow",
-    description:
-      "Funds move into a Soroban smart contract the moment a bounty is funded. No one can withdraw until the work is verified.",
+    title: "home.feature.smartEscrow.title",
+    description: "home.feature.smartEscrow.description",
   },
   {
     icon: Zap,
-    title: "Instant payouts",
-    description:
-      "Merges are detected via GitHub webhooks and trigger automatic on-chain payment release in seconds.",
+    title: "home.feature.instantPayouts.title",
+    description: "home.feature.instantPayouts.description",
   },
   {
     icon: Users,
-    title: "Team bounties",
-    description:
-      "Split rewards across multiple contributors by role, like frontend, backend, and testing, paid out automatically.",
+    title: "home.feature.teamBounties.title",
+    description: "home.feature.teamBounties.description",
   },
   {
     icon: BarChart3,
-    title: "Reputation & analytics",
-    description:
-      "Build a financial contribution profile: lifetime earnings, merge rate, review time, and top clients.",
+    title: "home.feature.reputation.title",
+    description: "home.feature.reputation.description",
   },
   {
     icon: Wallet,
-    title: "Sponsor dashboards",
-    description:
-      "Track spending, active bounties, contributor performance, and budget remaining in real time.",
+    title: "home.feature.sponsorDashboards.title",
+    description: "home.feature.sponsorDashboards.description",
   },
 ];
 
@@ -120,39 +115,32 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-6 pb-20 pt-20 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            {STELLAR_NETWORK === "PUBLIC" ? "Built for Stellar Mainnet" : "Built for Stellar (Testnet)"}
+            {STELLAR_NETWORK === "PUBLIC" ? t("home.network.mainnet") : t("home.network.testnet")}
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl dark:text-white">
-            Merge code.
+            {t("home.hero.headline")}
             <br />
-            <span className="text-gradient">Earn instantly.</span>
+            <span className="text-gradient">{t("home.hero.headlineAccent")}</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-300">
-            MergeFi is the financial infrastructure for open source. Sponsors
-            fund issues, contributors get paid the moment their pull request
-            is merged, and Soroban smart contracts on Stellar handle the
-            escrow.
+            {t("home.hero.subtitle")}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/issues">
               <Button size="lg" className="gap-2">
-                Browse paid issues <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                {t("home.hero.browseCta")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </Link>
             <Link href="/connect">
               <Button size="lg" variant="outline">
-                Sponsor a repository
+                {t("home.hero.sponsorCta")}
               </Button>
             </Link>
           </div>
           <div className="mt-8 flex items-center justify-center gap-3 text-sm text-slate-500 dark:text-slate-400">
             <AvatarStack seeds={topContributors.map((c) => c.handle)} />
             <span>
-              Joined by{" "}
-              <strong className="text-slate-900 dark:text-white">
-                {formatInteger(platformStats.activeContributors)} contributors
-              </strong>{" "}
-              already earning
+              {t("home.hero.joinedBy", { count: formatInteger(stats.activeContributors) })}
             </span>
           </div>
         </div>
@@ -161,7 +149,7 @@ export default async function HomePage() {
       <section className="border-b border-slate-200 bg-white py-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6">
           <p className="text-center text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
-            Trusted by open-source teams on Stellar
+            {t("home.trustedBy")}
           </p>
           <ul role="list" className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             {trustedOrgs.map((org) => (
@@ -186,38 +174,38 @@ export default async function HomePage() {
       </section>
 
       <div className="mx-auto max-w-6xl px-6 py-16">
-        {statsSource === "mock" && <DataSourceNotice className="mb-6" />}
+        {statsSource === "mock" && <DataSourceNotice variant="banner" className="mb-6" />}
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard
-            label="Total paid out"
+            label={t("home.stats.totalPaidOut")}
             value={stats.totalPaidOut}
             format="currency"
           />
           <StatCard
-            label="Bounties completed"
+            label={t("home.stats.bountiesCompleted")}
             value={stats.bountiesCompleted}
             format="count"
           />
           <StatCard
-            label="Active contributors"
+            label={t("home.stats.activeContributors")}
             value={stats.activeContributors}
             format="count"
           />
           {/* Avg. payout time is a duration (minutes), not a currency/count/percent —
               no existing StatCardFormat covers it, so keep as pre-formatted string. */}
           <StatCard
-            label="Avg. payout time"
-            value={`${stats.avgPayoutTimeMinutes} min`}
+            label={t("home.stats.avgPayoutTime")}
+            value={t("home.stats.avgPayoutValue", { minutes: stats.avgPayoutTimeMinutes })}
           />
         </section>
 
         <section className="mt-24">
           <div className="text-center">
             <p className="text-sm font-medium uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-              Platform
+              {t("home.features.kicker")}
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
-              Everything you need to fund and get paid for open source
+              {t("home.features.heading")}
             </h2>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -229,8 +217,8 @@ export default async function HomePage() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900">
                   <Icon className="h-5 w-5 text-white" aria-hidden="true" />
                 </span>
-                <h3 className="mt-4 font-medium text-slate-900 dark:text-white">{title}</h3>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+                <h3 className="mt-4 font-medium text-slate-900 dark:text-white">{t(title)}</h3>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t(description)}</p>
               </Card>
             ))}
           </div>
@@ -239,7 +227,7 @@ export default async function HomePage() {
         <section className="mt-24 grid gap-8 lg:grid-cols-[1.1fr_1fr]">
           <Card padding="xl">
             <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
-              A typical bounty, start to finish
+              {t("home.journey.heading")}
             </h2>
             <ol className="mt-8 space-y-4">
               {journey.map((step, i) => (
@@ -247,7 +235,7 @@ export default async function HomePage() {
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-medium text-indigo-600 ring-1 ring-inset ring-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400">
                     {i + 1}
                   </span>
-                  <p className="pt-0.5 text-slate-600 dark:text-slate-300">{step}</p>
+                  <p className="pt-0.5 text-slate-600 dark:text-slate-300">{t(step)}</p>
                 </li>
               ))}
             </ol>
@@ -257,7 +245,7 @@ export default async function HomePage() {
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-500" aria-hidden="true" />
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                Top contributors this month
+                {t("home.topContributors.heading")}
               </h2>
             </div>
             <ul className="mt-6 space-y-1">
@@ -277,7 +265,7 @@ export default async function HomePage() {
                           @{c.handle}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {c.mergedPRs} merged PRs · {c.topLanguage}
+                          {t("home.topContributors.mergedPrs", { count: c.mergedPRs, language: c.topLanguage })}
                         </p>
                       </div>
                     </div>
@@ -295,7 +283,7 @@ export default async function HomePage() {
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-emerald-500" aria-hidden="true" />
             <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
-              Live on the platform
+              {t("home.live.heading")}
             </h2>
           </div>
           <div className="mt-6">
@@ -306,10 +294,10 @@ export default async function HomePage() {
         <section className="mt-24">
           <div className="text-center">
             <p className="text-sm font-medium uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-              FAQ
+              {t("home.faq.kicker")}
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
-              Common questions
+              {t("home.faq.heading")}
             </h2>
           </div>
           <div className="mx-auto mt-10 max-w-3xl space-y-3">
@@ -334,18 +322,15 @@ export default async function HomePage() {
 
         <section className="bg-spice-gradient mt-24 overflow-hidden rounded-2xl border border-slate-200 px-8 py-14 text-center dark:border-slate-800">
           <h2 className="text-3xl font-semibold text-white">
-            Why Stellar and Soroban?
+            {t("home.stellar.heading")}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-slate-300">
-            Very low transaction costs make micro-bounties practical, fast
-            settlement means contributors aren&apos;t waiting days for
-            payment, and Soroban smart contracts handle escrow, splits, and
-            milestone payouts natively on-chain.
+            {t("home.stellar.body")}
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Link href="/issues">
               <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
-                Get started
+                {t("home.stellar.cta")}
               </Button>
             </Link>
           </div>

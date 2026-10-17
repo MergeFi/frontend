@@ -9,13 +9,31 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BountyStatus } from "./BountyStatus";
 import { useBountyStatus } from "@/hooks/useBountyStatus";
+import type { Bounty } from "@/types";
 
 jest.mock("@/hooks/useBountyStatus");
 
 const mockUseBountyStatus = useBountyStatus as jest.MockedFunction<typeof useBountyStatus>;
 
+
+const testBounty = (overrides: Partial<Bounty> = {}): Bounty => ({
+  id: "1",
+  title: "Test bounty",
+  description: "",
+  reward: 100,
+  asset: "USDC",
+  difficulty: "beginner",
+  status: "open",
+  org: "mergefi",
+  repo: "frontend",
+  issueNumber: 1,
+  labels: [],
+  deadline: null,
+  ...overrides,
+});
+
 const defaultMock = {
-  bounty: { id: "1", status: "open", claimedBy: null },
+  bounty: testBounty({ status: "open" }),
   isLoading: false,
   error: null,
   isPolling: false,
@@ -80,7 +98,7 @@ describe("BountyStatus", () => {
   });
 
   it("shows claimed-by when bounty.claimedBy is set", () => {
-    mockUseBountyStatus.mockReturnValue({ ...defaultMock, bounty: { id: "1", status: "claimed", claimedBy: "alice" } });
+    mockUseBountyStatus.mockReturnValue({ ...defaultMock, bounty: testBounty({ status: "claimed", claimedBy: "alice" }) });
     render(<BountyStatus bountyId="1" />);
     expect(screen.getByText("Claimed by:")).toBeInTheDocument();
     expect(screen.getByText("alice")).toBeInTheDocument();
@@ -91,24 +109,21 @@ describe("BountyStatus", () => {
     const labels = ["Open", "Funded", "Claimed", "In Review", "Merged", "Paid", "Refunded", "Expired"];
 
     statuses.forEach((status, i) => {
-      mockUseBountyStatus.mockReturnValue({ ...defaultMock, status, bounty: { id: "1", status, claimedBy: null } });
+      mockUseBountyStatus.mockReturnValue({ ...defaultMock, status, bounty: testBounty({ status }) });
       const { unmount } = render(<BountyStatus bountyId="1" />);
-      expect(screen.getByText(labels[i])).toBeInTheDocument();
+      expect(screen.getByText(labels[i]!)).toBeInTheDocument();
       unmount();
     });
   });
-jest.mock("@/hooks/useBountyStatus", () => ({
-  useBountyStatus: jest.fn(),
-}));
+});
 
-const mockUseBountyStatus = useBountyStatus as jest.MockedFunction<typeof useBountyStatus>;
 type HookResult = ReturnType<typeof useBountyStatus>;
 
 const refetch = jest.fn();
 
 function mockHook(overrides: Partial<Record<keyof HookResult, unknown>> = {}) {
   mockUseBountyStatus.mockReturnValue({
-    bounty: { id: "b1", status: "open" },
+    bounty: testBounty({ id: "b1" }),
     isLoading: false,
     error: null,
     isPolling: false,

@@ -180,14 +180,14 @@ describe("formatRelativeTime", () => {
 
 describe("formatAbsoluteDate", () => {
   it("renders a locale-appropriate date", () => {
-    const iso = "2026-03-12T00:00:00.000Z";
+    const iso = "2026-03-12T12:00:00.000Z";
     expect(formatAbsoluteDate(iso, "en-US")).toBe("Mar 12, 2026");
     // de-DE abbreviates the month to a full noun ("März"), not a numeric field.
     expect(formatAbsoluteDate(iso, "de-DE")).toBe("12. März 2026");
   });
 
   it("differs structurally between locales rather than just in wording", () => {
-    const iso = "2026-03-12T00:00:00.000Z";
+    const iso = "2026-03-12T12:00:00.000Z";
     const en = formatAbsoluteDate(iso, "en-US", {
       year: "numeric",
       month: "2-digit",

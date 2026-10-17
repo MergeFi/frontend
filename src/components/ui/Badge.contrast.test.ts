@@ -20,13 +20,13 @@ const HEX = {
 
 type RGB = [number, number, number];
 const rgb = (h: string): RGB => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as RGB;
-const over = (fg: RGB, a: number, bg: RGB): RGB => fg.map((c, i) => c * a + bg[i] * (1 - a)) as RGB;
+const over = (fg: RGB, a: number, bg: RGB): RGB => fg.map((c, i) => c * a + bg[i]! * (1 - a)) as RGB;
 const lum = ([r, g, b]: RGB) => {
   const f = (c: number) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 };
 const ratio = (a: RGB, b: RGB) => {
-  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  const [hi = 0, lo = 0] = [lum(a), lum(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 };
 

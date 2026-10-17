@@ -1,5 +1,4 @@
-import { useSyncExternalStore, useCallback } from 'react';
-import { fetchBounty } from '@/lib/api';
+import { useSyncExternalStore, useCallback, useEffect, useRef } from 'react';
 import type { Bounty, BountyStatus } from '@/types/bounty';
 import { TERMINAL_STATUSES } from '@/types/bounty';
 import {
@@ -33,17 +32,14 @@ interface UseBountyStatusResult {
  *
  * Stops polling once a terminal status is observed (#632).
  */
-export function useBountyStatus({
-  bountyId,
-  fallbackBounty,
-  interval = 5000,
-  enabled = true,
-  onStatusChange,
-}: UseBountyStatusOptions): UseBountyStatusResult {
+export function useBountyStatus({ bountyId, interval = 5000, enabled = true, onStatusChange }: UseBountyStatusOptions): UseBountyStatusResult {
+  // `enabled` gates the repeating poll, not the initial load — a mounted
+  // component still needs one fetch to render status, or it hangs on the
+  // fallback forever (#632 semantics).
   const snapshot = useSyncExternalStore(
     useCallback(
       (onStoreChange: () => void) =>
-        enabled ? subscribeBounty(bountyId, onStoreChange, interval) : () => {},
+        subscribeBounty(bountyId, onStoreChange, enabled ? interval : 0),
       [bountyId, enabled, interval],
     ),
     () => getBountySnapshot(bountyId),
@@ -55,6 +51,18 @@ export function useBountyStatus({
   }, [bountyId]);
 
   const status = snapshot.bounty?.status ?? null;
+
+  // Fire only on transitions — a refetch returning the same status is not a
+  // change, and a mount with no data yet (null) is not either.
+  const prevStatusRef = useRef<typeof status>(null);
+  useEffect(() => {
+    if (status !== null && status !== prevStatusRef.current) {
+      prevStatusRef.current = status;
+      onStatusChange?.(status);
+    } else if (status !== null) {
+      prevStatusRef.current = status;
+    }
+  }, [status, onStatusChange]);
 
   return {
     bounty: snapshot.bounty,

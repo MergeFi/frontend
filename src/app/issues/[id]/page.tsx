@@ -10,20 +10,23 @@ import { Card } from "@/components/ui/Card";
 import { BountyDescription } from "@/components/bounty/BountyDescription";
 import { LiveBountyStatus } from "@/components/bounty/LiveBountyStatus";
 import { formatCurrency, daysUntil, formatDaysUntil } from "@/lib/utils";
+import { t, type MessageKey } from "@/lib/messages";
 import type { BountyStatus } from "@/types";
 import { IssueActions } from "./IssueActions";
 
-const ESCROW_STATUS_LABELS: Record<BountyStatus, string> = {
-  open: "Awaiting funding",
-  funded: "Funds locked",
-  claimed: "Funds locked",
-  in_review: "Funds locked",
-  merged: "Funds locked",
-  release_failed: "Payout failed — funds still locked",
-  paid: "Paid out",
-  refunded: "Refunded to sponsor",
-  expired: "Expired, unclaimed",
-  unknown: "Status unavailable",
+// Keys, not literals — the strings live in messages.ts so they can be
+// localised and cannot drift from the shared copy (#673).
+const ESCROW_STATUS_LABELS: Record<BountyStatus, MessageKey> = {
+  open: "escrow.status.open",
+  funded: "escrow.status.funded",
+  claimed: "escrow.status.claimed",
+  in_review: "escrow.status.in_review",
+  merged: "escrow.status.merged",
+  release_failed: "escrow.status.release_failed",
+  paid: "escrow.status.paid",
+  refunded: "escrow.status.refunded",
+  expired: "escrow.status.expired",
+  unknown: "escrow.status.unknown",
 };
 
 export async function generateMetadata({
@@ -38,13 +41,13 @@ export async function generateMetadata({
   );
 
   if (!bounty) {
-    return { title: "Issue not found | MergeFi" };
+    return { title: t("issue.detail.notFoundTitle") };
   }
 
   const title = `${bounty.title} — ${formatCurrency(bounty.reward, bounty.asset)} | MergeFi`;
   // #629: Strip markdown and truncate to ~160 chars on a word boundary for
   // clean OG/Twitter descriptions and search snippets.
-  const rawDesc = bounty.description || `Fund or claim this bounty on MergeFi.`;
+  const rawDesc = bounty.description || t("issue.detail.fallbackDescription");
   const plainDesc = stripMarkdownToPlainText(rawDesc);
   const description = plainDesc.length <= 160
     ? plainDesc
@@ -93,12 +96,12 @@ export default async function IssueDetailPage({
   const splitsWarning =
     bounty.teamSplitsValid?.valid === false
       ? (bounty.teamSplitsValid.message ??
-        `Team splits sum to ${bounty.teamSplitsValid.sum.toFixed(2)}% (expected 100%)`)
+        t("issue.detail.splitSumFallback", { sum: bounty.teamSplitsValid.sum.toFixed(2) }))
       : null;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
-      {source === "mock" && <DataSourceNotice className="mb-6" />}
+      {source === "mock" && <DataSourceNotice variant="banner" className="mb-6" />}
       <p className="text-sm text-slate-500 dark:text-slate-400">
         {bounty.org}/{bounty.repo} #{bounty.issueNumber}
       </p>
@@ -126,16 +129,16 @@ export default async function IssueDetailPage({
         <Card padding="sm">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-            <span className="text-sm">Escrow status</span>
+            <span className="text-sm">{t("issue.detail.escrowStatus")}</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
-            {ESCROW_STATUS_LABELS[bounty.status]}
+            {t(ESCROW_STATUS_LABELS[bounty.status])}
           </p>
         </Card>
         <Card padding="sm">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-            <span className="text-sm">Deadline</span>
+            <span className="text-sm">{t("issue.detail.deadline")}</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
             {formatDaysUntil(days)}
@@ -144,20 +147,20 @@ export default async function IssueDetailPage({
         <Card padding="sm">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <GitBranch className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-            <span className="text-sm">Claimed by</span>
+            <span className="text-sm">{t("issue.detail.claimedBy")}</span>
           </div>
           <p className="mt-2 font-medium text-slate-900 dark:text-white">
-            {bounty.claimedBy ?? "Unclaimed"}
+            {bounty.claimedBy ?? t("issue.detail.unclaimed")}
           </p>
         </Card>
         {bounty.milestoneId && (
           <Card padding="sm">
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <MilestoneIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-              <span className="text-sm">Milestone</span>
+              <span className="text-sm">{t("issue.detail.milestone")}</span>
             </div>
             <p className="mt-2 font-medium text-slate-900 dark:text-white">
-              Part of a funded milestone
+              {t("issue.detail.partOfFundedMilestone")}
             </p>
           </Card>
         )}
@@ -165,7 +168,7 @@ export default async function IssueDetailPage({
 
       {bounty.teamSplits && bounty.teamSplits.length > 0 && (
         <div className="mt-8">
-          <h2 className="font-medium text-slate-900 dark:text-white">Team payout split</h2>
+          <h2 className="font-medium text-slate-900 dark:text-white">{t("issue.detail.teamPayoutSplit")}</h2>
           {splitsWarning && (
             <div
               role="alert"
@@ -173,11 +176,9 @@ export default async function IssueDetailPage({
             >
               <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
-                <p className="font-medium">This payout split doesn&apos;t add up</p>
+                <p className="font-medium">{t("issue.detail.splitMismatchTitle")}</p>
                 <p className="mt-1">
-                  {splitsWarning} — the listed shares don&apos;t cover the full
-                  reward, so don&apos;t rely on them until the team&apos;s split
-                  has been corrected.
+                  {splitsWarning} — {t("issue.detail.splitMismatchAdvice")}
                 </p>
               </div>
             </div>

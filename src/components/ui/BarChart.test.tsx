@@ -77,8 +77,8 @@ describe("BarChart accessibility", () => {
     const { container } = render(<BarChart data={DATA} title="Spend" />);
 
     const bars = Array.from(container.querySelectorAll<HTMLElement>("[tabindex='0']"));
-    expect(bars[1].style.backgroundImage).toContain("repeating-linear-gradient");
-    expect(bars[0].style.backgroundImage).toBe("");
+    expect(bars[1]!.style.backgroundImage).toContain("repeating-linear-gradient");
+    expect(bars[0]!.style.backgroundImage).toBe("");
   });
 
   it("uses label colours that pass AA in both themes", () => {

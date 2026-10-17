@@ -51,6 +51,8 @@ function pollingReducer(state: PollingState, action: PollingAction): PollingStat
   }
 }
 
+const defaultCompare = <T,>(a: T, b: T) => JSON.stringify(a) === JSON.stringify(b);
+
 export function useSmartPolling<T>({
   fetchFn,
   interval = 5000,
@@ -58,7 +60,7 @@ export function useSmartPolling<T>({
   backoffMultiplier = 1.5,
   maxBackoff = 30000,
   unchangedThreshold = 3,
-  compareFn = (a, b) => JSON.stringify(a) === JSON.stringify(b),
+  compareFn = defaultCompare,
   onDataChange,
 }: UseSmartPollingOptions<T>): UseSmartPollingResult<T> {
   const [data, setData] = useState<T | null>(null);
@@ -72,6 +74,9 @@ export function useSmartPolling<T>({
   const isMountedRef = useRef(true);
   const previousDataRef = useRef<T | null>(null);
   const isBackgroundedRef = useRef(false);
+  // Latest fetchData in a ref — the interval closes over the ref, never the
+  // callback, so a re-render can't tear down the timer mid-flight (#568).
+  const fetchDataRef = useRef<() => Promise<void>>(async () => {});
 
   const fetchData = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -119,6 +124,13 @@ export function useSmartPolling<T>({
       }
     }
   }, [fetchFn, compareFn, interval, backoffMultiplier, maxBackoff, unchangedThreshold, onDataChange]);
+  // Assign inside an effect (every render) — mutating a ref during render is
+  // a react-hooks/refs violation. This effect is declared BEFORE the polling
+  // effect below, so it always runs first: the interval can never observe a
+  // stale fetchData.
+  useEffect(() => {
+    fetchDataRef.current = fetchData;
+  });
 
   const refetch = useCallback(async () => {
     currentIntervalRef.current = interval;
@@ -131,7 +143,7 @@ export function useSmartPolling<T>({
   useEffect(() => {
     const handleVisibilityChange = () => {
       isBackgroundedRef.current = document.hidden;
-      
+
       if (document.hidden) {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
@@ -140,11 +152,11 @@ export function useSmartPolling<T>({
         dispatch({ type: 'STOP_POLLING' });
       } else if (enabled) {
         dispatch({ type: 'START_POLLING' });
-        fetchData();
+        void fetchDataRef.current();
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }
-        intervalRef.current = setInterval(fetchData, currentIntervalRef.current);
+        intervalRef.current = setInterval(() => void fetchDataRef.current(), currentIntervalRef.current);
       }
     };
 
@@ -152,25 +164,30 @@ export function useSmartPolling<T>({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [enabled, fetchData]);
+  }, [enabled]);
 
-  // Main polling effect - use a ref to track initial mount
-  const hasInitialized = useRef(false);
-
+  // Main polling effect — keyed on `enabled` only. `fetchData` identity churn
+  // (a new fetchFn/compareFn per render) must never clear and re-arm the
+  // interval, or every re-render resets the poll clock (#568). The interval
+  // dereferences fetchDataRef so it always calls the latest version.
   useEffect(() => {
     isMountedRef.current = true;
 
     if (!enabled) {
+      dispatch({ type: 'STOP_POLLING' });
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       return;
     }
 
-    // Only start polling on initial mount or when enabled changes
-    if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      dispatch({ type: 'START_POLLING' });
-      fetchData();
-      intervalRef.current = setInterval(fetchData, currentIntervalRef.current);
-    }
+    dispatch({ type: 'START_POLLING' });
+    void fetchDataRef.current();
+    intervalRef.current = setInterval(
+      () => void fetchDataRef.current(),
+      currentIntervalRef.current,
+    );
 
     return () => {
       isMountedRef.current = false;
@@ -180,7 +197,7 @@ export function useSmartPolling<T>({
       }
       // Don't dispatch STOP_POLLING here to avoid state updates during unmount
     };
-  }, [enabled, fetchData]);
+  }, [enabled]);
 
   return {
     data,

@@ -72,11 +72,6 @@ export function getNumberFormat(locale: string, options: Intl.NumberFormatOption
 // Use explicit "en-US" locale so server and client always produce identical
 // output regardless of the viewer's system locale.
 
-const currencyFormat2 = getNumberFormat("en-US", { maximumFractionDigits: 2 });
-const currencyFormat7 = getNumberFormat("en-US", { maximumFractionDigits: 7 });
-const countFormat = getNumberFormat("en-US", { maximumFractionDigits: 0 });
-const parseNormalizeFormat2 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-const parseNormalizeFormat7 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 7 });
 
 /**
  * Format a numeric amount as a currency string with the specified asset label.
@@ -121,10 +116,6 @@ export function formatCurrency(
   // is true, so testing the ceiling first would render a non-finite amount as
   // "0 USDC ⚠" instead of the plain "0 USDC" the contract promises.
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  const fmt = asset === "XLM" ? currencyFormat7 : currencyFormat2;
-  const formatted = fmt.format(amount);
-  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
-  return `${formatted} ${asset}`;
   const formatted = formatCryptoAmount(amount, asset, locale);
   if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ⚠`;
   return formatted;
@@ -186,7 +177,6 @@ export function parseMoneyInput(
 
   // Use Number only for range checks, not for normalization.
   // Normalization is done string-based to avoid precision loss on large amounts.
-  const num = Number(trimmed);
   const { group, decimal } = localeSeparators(locale);
 
   // Two notations have to be accepted, and they conflict on exactly one
@@ -228,7 +218,7 @@ export function parseMoneyInput(
   }
 
   const maxDecimals = asset === "XLM" ? 7 : 2;
-  const decimalPart = canonical.includes(".") ? canonical.split(".")[1] : "";
+  const decimalPart = canonical.includes(".") ? (canonical.split(".")[1] ?? "") : "";
 
   if (decimalPart.length > maxDecimals) {
     return {
@@ -237,24 +227,6 @@ export function parseMoneyInput(
     };
   }
 
-  // Normalize: string-based normalization to avoid precision loss.
-  // Trim trailing zeros and pad to maxDecimals if needed.
-  let normalized = trimmed;
-  if (normalized.includes(".")) {
-    // Trim trailing zeros after decimal point
-    normalized = normalized.replace(/\.?0+$/, "");
-    // If we removed everything after decimal, remove the decimal too
-    if (normalized.endsWith(".")) {
-      normalized = normalized.slice(0, -1);
-    }
-  }
-
-  return { valid: true, normalized };
-  // Normalize: convert to a canonical decimal string with the right precision.
-  // Use a cached Intl.NumberFormat with fixed fraction digits to get a clean
-  // representation, then strip thousands separators.
-  const fmt = asset === "XLM" ? parseNormalizeFormat7 : parseNormalizeFormat2;
-  const normalized = fmt.format(num).replace(/,/g, "");
   // Normalize to the canonical dot-decimal wire form, dropping any trailing
   // zeros the viewer's locale added ("12,50" → "12.5"). `toFixed` is the
   // correct primitive here precisely because it is locale-independent.
@@ -304,11 +276,6 @@ export function daysUntil(dateIso: string) {
   return Math.ceil((deadlineUtc - nowUtc) / (1000 * 60 * 60 * 24));
 }
 
-export function formatDaysUntil(days: number | null): string {
-  if (days === null) return "No deadline";
-  if (days > 0) return `${days} day${days === 1 ? "" : "s"} left`;
-  if (days === 0) return "Due today";
-  return "Deadline passed";
 /**
  * Human deadline label. Pluralization goes through `Intl.PluralRules` via the
  * message catalog rather than the previous `days === 1 ? "" : "s"` ternary,

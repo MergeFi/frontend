@@ -81,7 +81,7 @@ describe("splitIntoSitemaps — scale", () => {
     );
 
     expect(chunks).toHaveLength(1);
-    expect(chunks[0]).toHaveLength(MAX_URLS_PER_SITEMAP);
+    expect(chunks[0]!).toHaveLength(MAX_URLS_PER_SITEMAP);
   });
 
   it("rejects a non-positive chunk size instead of looping forever", () => {
@@ -99,15 +99,15 @@ describe("splitIntoSitemaps — scale", () => {
     const chunks = splitIntoSitemaps(entries);
 
     expect(chunks).toHaveLength(2);
-    expect(chunks[0]).toHaveLength(MAX_URLS_PER_SITEMAP);
-    expect(chunks[1]).toHaveLength(1);
+    expect(chunks[0]!).toHaveLength(MAX_URLS_PER_SITEMAP);
+    expect(chunks[1]!).toHaveLength(1);
     // Checked positionally rather than with a deep-equality over 50k objects:
     // the first and last entries of each file are the ones a slicing bug would
     // drop or duplicate, and it keeps the suite fast enough that a parallel
     // test run isn't starved by it.
-    expect(chunks[0][0]).toBe(entries[0]);
-    expect(chunks[0][MAX_URLS_PER_SITEMAP - 1]).toBe(entries[MAX_URLS_PER_SITEMAP - 1]);
-    expect(chunks[1][0]).toBe(entries[MAX_URLS_PER_SITEMAP]);
+    expect(chunks[0]![0]).toBe(entries[0]!);
+    expect(chunks[0]![MAX_URLS_PER_SITEMAP - 1]).toBe(entries[MAX_URLS_PER_SITEMAP - 1]);
+    expect(chunks[1]![0]).toBe(entries[MAX_URLS_PER_SITEMAP]);
   });
 
   it("never emits a file above the limit for a large user base", async () => {
@@ -129,10 +129,10 @@ describe("splitIntoSitemaps — scale", () => {
     // Nothing dropped or duplicated: the per-file counts add back up to the
     // total, and consecutive files meet exactly at the boundary.
     expect(chunks.reduce((sum, c) => sum + c.length, 0)).toBe(entries.length);
-    expect(chunks[0][0]).toBe(entries[0]);
-    expect(chunks[chunks.length - 1].at(-1)).toBe(entries.at(-1));
+    expect(chunks[0]![0]).toBe(entries[0]!);
+    expect(chunks[chunks.length - 1]!.at(-1)).toBe(entries.at(-1));
     for (let i = 1; i < chunks.length; i++) {
-      expect(chunks[i][0]).toBe(entries[(i - 1) * MAX_URLS_PER_SITEMAP + MAX_URLS_PER_SITEMAP]);
+      expect(chunks[i]![0]).toBe(entries[(i - 1) * MAX_URLS_PER_SITEMAP + MAX_URLS_PER_SITEMAP]);
     }
   });
 
@@ -151,7 +151,7 @@ describe("sitemapUrls", () => {
     const urls = await sitemapUrls();
 
     expect(urls).toHaveLength(2);
-    expect(urls[0]).toMatch(/\/sitemaps\/0\.xml$/);
-    expect(urls[1]).toMatch(/\/sitemaps\/1\.xml$/);
+    expect(urls[0]!).toMatch(/\/sitemaps\/0\.xml$/);
+    expect(urls[1]!).toMatch(/\/sitemaps\/1\.xml$/);
   });
 });

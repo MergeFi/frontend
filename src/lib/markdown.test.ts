@@ -87,4 +87,34 @@ describe("stripMarkdownToPlainText", () => {
       "Line one Line two Line three",
     );
   });
+
+  it("strips GitHub-issue-template HTML comments (#680)", () => {
+    expect(
+      stripMarkdownToPlainText(
+        "<!-- Please describe the problem --> The login button crashes on submit",
+      ),
+    ).toBe("The login button crashes on submit");
+  });
+
+  it("strips multi-line HTML comments (#680)", () => {
+    expect(
+      stripMarkdownToPlainText(
+        "Steps:\n<!--\n1. do this\n2. then that\n--> It fails at step 2",
+      ),
+    ).toBe("Steps: It fails at step 2");
+  });
+
+  it("drops HTML tags while keeping their inner text (#680)", () => {
+    expect(
+      stripMarkdownToPlainText(
+        "<details><summary>Logs</summary>\nError output here\n</details>\nAlso <b>this</b> stays",
+      ),
+    ).toBe("Logs Error output here Also this stays");
+  });
+
+  it("drops void/self-closing tags entirely (#680)", () => {
+    expect(
+      stripMarkdownToPlainText("Intro <br><img src=\"x.png\" alt=\"pic\"> outro"),
+    ).toBe("Intro outro");
+  });
 });

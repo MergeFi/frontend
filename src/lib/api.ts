@@ -44,8 +44,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   let res: Response;
   try {
+    // Callers may opt into a short shared cache via `next.revalidate` (#716);
+    // when they do, `cache: "no-store"` must be dropped — the two options
+    // conflict and no-store silently wins.
+    const wantsRevalidate = init?.next?.revalidate !== undefined;
     res = await fetch(`${API_BASE_URL}${path}`, {
-      cache: "no-store",
+      ...(wantsRevalidate ? {} : { cache: "no-store" as const }),
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
       signal: init?.signal ?? timeout,
@@ -171,6 +175,14 @@ export function apiPost<T>(path: string, body?: unknown, idempotencyKey?: string
   });
 }
 
+export function apiPatch<T>(path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
+  return apiRequest<T>(path, {
+    method: "PATCH",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+  });
+}
+
 /**
  * Live-data fetchers that adapt mergefi-backend's nested TypeORM entity JSON
  * into the flat shapes the UI renders, falling back to mock data (already in
@@ -191,7 +203,14 @@ export const fetchBounties = cache(
   ): Promise<FetchResult<Bounty[]>> => {
     const qs = query ? buildBountyQueryString(query) : "";
     try {
-      const raw = await request<RawBounty[]>(`/bounties${qs}`);
+      // `next.revalidate: 30` — the backend's GET /bounties is unpaginated,
+      // so every board view pays the whole-table cost. A 30 s cache is the
+      // agreed interim until backend pagination lands (#716, blocked by
+      // MergeFi/backend#63) — bounties churn slowly enough that a brief
+      // lag is invisible vs serialising the entire table per request.
+      const raw = await request<RawBounty[]>(`/bounties${qs}`, {
+        next: { revalidate: 30 },
+      });
       return { data: raw.map(adaptBounty), source: "live" };
     } catch {
       return { data: fallback, source: "mock" };
@@ -318,7 +337,6 @@ export const fetchReputationByUsername = cache(
  */
 export const fetchIndexableReputationHandles = cache(
   async (fallback: string[]): Promise<FetchResult<string[]>> => {
-): Promise<FetchResult<string[]>> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
     // The backend's PublicUserDto currently has no isProfilePublic field,

@@ -34,7 +34,7 @@ export async function buildSitemapEntries(): Promise<SitemapEntry[]> {
   // generates URLs that 404 or render sample data once the backend is back.
   const isProduction = process.env.NODE_ENV === "production";
   const bounties = isProduction
-    ? bountiesRes.data.filter((b) => bountiesRes.source !== "mock")
+    ? bountiesRes.data.filter(() => bountiesRes.source !== "mock")
     : bountiesRes.data;
 
   const entries: SitemapEntry[] = [

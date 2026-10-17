@@ -23,7 +23,7 @@ describe("reputation page robots metadata", () => {
 
   it("marks a profile that has not opted in as noindex, nofollow", async () => {
     mockFetch.mockResolvedValue({
-      data: { ...mockReputationProfiles.priyaeth, indexable: false },
+      data: { ...mockReputationProfiles.priyaeth!, indexable: false },
       source: "live",
     });
 
@@ -32,7 +32,7 @@ describe("reputation page robots metadata", () => {
 
   it("allows indexing for a profile that has opted in", async () => {
     mockFetch.mockResolvedValue({
-      data: { ...mockReputationProfiles.priyaeth, indexable: true },
+      data: { ...mockReputationProfiles.priyaeth!, indexable: true },
       source: "live",
     });
 
@@ -40,7 +40,7 @@ describe("reputation page robots metadata", () => {
   });
 
   it("treats a missing opt-in flag as not indexable", async () => {
-    const withoutFlag = { ...mockReputationProfiles.priyaeth };
+    const withoutFlag = { ...mockReputationProfiles.priyaeth! };
     delete withoutFlag.indexable;
     mockFetch.mockResolvedValue({ data: withoutFlag, source: "live" });
 
@@ -49,7 +49,7 @@ describe("reputation page robots metadata", () => {
 
   it("keeps the title and social metadata intact for a non-indexed profile", async () => {
     mockFetch.mockResolvedValue({
-      data: { ...mockReputationProfiles.priyaeth, indexable: false },
+      data: { ...mockReputationProfiles.priyaeth!, indexable: false },
       source: "live",
     });
 

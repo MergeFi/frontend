@@ -72,6 +72,6 @@ describe("HomePage", () => {
   it("shows the mock-data notice when backend is unreachable", async () => {
     render(await HomePage());
     // DataSourceNotice is rendered when statsSource === "mock"
-    expect(screen.getByText(/sample data/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/sample data/i);
   });
 });

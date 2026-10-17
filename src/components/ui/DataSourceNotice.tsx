@@ -1,55 +1,7 @@
+import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { messages } from "@/lib/messages";
 
-/**
- * DataSourceNotice — inline badge indicating whether data is live or from
- * a mock/fallback source.
- *
- * Used across dashboards and detail pages so users always know when they're
- * looking at sample data vs live backend data. Wraps the repeated
- * "Sample data" / "Mock Data" inline pattern that was previously duplicated
- * in each page.
- */
-export interface DataSourceNoticeProps {
-  /** The data source. "live" renders nothing (no noise when data is real). */
-  source: "live" | "mock";
-  /** Visual variant: "badge" is a small pill, "inline" is plain text. */
-  variant?: "badge" | "inline";
-  /** Override the label text. Defaults to "Sample data". */
-  label?: string;
-  className?: string;
-}
-
-export function DataSourceNotice({
-  source,
-  variant = "badge",
-  label = "Sample data",
-  className,
-}: DataSourceNoticeProps) {
-  if (source === "live") return null;
-
-  if (variant === "inline") {
-    return (
-      <span
-        className={cn("text-xs text-amber-600 dark:text-amber-400", className)}
-        role="status"
-      >
-        {label}
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className={cn(
-        "rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30",
-        className,
-      )}
-      role="status"
-    >
-      {label}
-    </span>
-  );
-}
 /**
  * DataSourceNotice — the "this isn't real data" signal.
  *
@@ -73,9 +25,71 @@ export function DataSourceNotice({
  * compose as siblings, and callers that have both render both.
  */
 
-import { FlaskConical } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { messages } from "@/lib/messages";
+export interface DataSourceNoticeProps {
+  /** "live" renders nothing (no noise when the data is real). */
+  source?: "live" | "mock";
+  /**
+   * "badge"  — small pill carrying just the label (default).
+   * "inline" — plain text, no pill.
+   * "banner" — the full explainer panel: label + a sentence telling the
+   *            visitor the numbers below are illustrative.
+   */
+  variant?: "badge" | "inline" | "banner";
+  /** Override the label text. Defaults to messages["data.sample"]. */
+  label?: string;
+  className?: string;
+}
+
+export function DataSourceNotice({
+  source = "mock",
+  variant = "badge",
+  label,
+  className,
+}: DataSourceNoticeProps) {
+  if (source === "live") return null;
+  const text = label ?? messages["data.sample"];
+
+  if (variant === "inline") {
+    return (
+      <span
+        className={cn("text-xs text-amber-600 dark:text-amber-400", className)}
+        role="status"
+      >
+        {text}
+      </span>
+    );
+  }
+
+  if (variant === "banner") {
+    return (
+      <div
+        role="status"
+        className={cn(
+          "flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30",
+          className,
+        )}
+      >
+        <FlaskConical className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <p>
+          <span className="font-medium">{text}.</span>{" "}
+          {messages["data.sampleExplainer"]}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30",
+        className,
+      )}
+      role="status"
+    >
+      {text}
+    </span>
+  );
+}
 
 /** Compact inline chip, for labelling a specific section. */
 export function SampleDataChip({ className }: { className?: string }) {
@@ -89,24 +103,5 @@ export function SampleDataChip({ className }: { className?: string }) {
       <FlaskConical className="h-3 w-3" aria-hidden="true" />
       {messages["data.sample"]}
     </span>
-  );
-}
-
-/** Prominent banner explaining that everything below is illustrative. */
-export function DataSourceNotice({ className }: { className?: string }) {
-  return (
-    <div
-      role="status"
-      className={cn(
-        "flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30",
-        className,
-      )}
-    >
-      <FlaskConical className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <p>
-        <span className="font-medium">{messages["data.sample"]}.</span>{" "}
-        {messages["data.sampleExplainer"]}
-      </p>
-    </div>
   );
 }

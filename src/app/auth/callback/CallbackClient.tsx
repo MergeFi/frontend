@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import type { UserRole } from "@/types";
+import type { AuthUser, UserRole } from "@/types";
 
 const ROLE_REDIRECT_MAP: Record<UserRole, string> = {
   maintainer: "/dashboard/maintainer",
@@ -64,78 +64,61 @@ export function CallbackClient() {
     const code = searchParams.get("code");
     const token = searchParams.get("token");
 
-    async function handleCallback() {
-      // Try code-based handoff first (backend redirects with ?code=)
-      if (code) {
-        try {
-          const response = await fetch("/api/auth/handoff", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Handoff failed");
-          }
-
-          const data = await response.json();
-          const accessToken = data.accessToken || data.access_token;
-
-          if (!accessToken) {
-            throw new Error("No access token in response");
-          }
-
-          await login(accessToken);
-          router.replace("/dashboard/contributor");
-          return;
-        } catch {
-          setError("Could not complete sign-in. Please try again.");
-          return;
-        }
-      }
-
-      // Fallback: direct token auth
-      if (token) {
-        try {
-          await login(token);
-          router.replace("/dashboard/contributor");
-        } catch {
-          setError("Could not complete sign-in. Please try again.");
-        }
-        return;
-      }
-
-      // No code or token
-      setError("No token was returned by GitHub sign-in.");
-    }
-
-    void handleCallback();
-    if (!token) {
+    if (!code && !token) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setError("no-token");
       return;
     }
 
-    // Strip the JWT from the URL immediately so it doesn't persist in
-    // browser history, referrer headers, or server logs (#9).
-    window.history.replaceState({}, "", window.location.pathname);
+    let cancelled = false;
+    const fail = () => {
+      if (!cancelled) setError("sign-in-failed");
+    };
+    const land = (resolvedUser: AuthUser | null) => {
+      if (cancelled) return;
+      // A null user means the token exchange never resolved a profile.
+      // Landing on a dashboard would render its demo data as if it were the
+      // visitor's own, so surface the failure instead.
+      if (!resolvedUser) {
+        setError("sign-in-failed");
+        return;
+      }
+      router.replace(
+        shouldFinishConnect(resolvedUser.roles, resolvedUser.stellarAddress)
+          ? "/connect"
+          : redirectForRoles(resolvedUser.roles),
+      );
+    };
 
-    login(token)
-      .then((resolvedUser) => {
-        // A null user here means the token exchange did not resolve a
-        // profile. Landing on a dashboard would render that dashboard's
-        // demo/mock data as if it were real, so surface the failure instead.
-        if (!resolvedUser) {
-          setError("sign-in-failed");
-          return;
-        }
-        router.replace(
-          shouldFinishConnect(resolvedUser.roles, resolvedUser.stellarAddress)
-            ? "/connect"
-            : redirectForRoles(resolvedUser.roles),
-        );
+    if (token) {
+      // Strip the JWT from the URL immediately — before login resolves — so
+      // it can't persist in browser history, referrer headers, or logs (#9).
+      window.history.replaceState({}, "", window.location.pathname);
+      login(token).then(land).catch(fail);
+    } else {
+      // Code handoff: backend redirects with ?code=<one-time code>; the SPA
+      // exchanges it for the access token (#591).
+      fetch("/api/auth/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
       })
-      .catch(() => setError("sign-in-failed"));
+        .then((response) => {
+          if (!response.ok) throw new Error("Handoff failed");
+          return response.json();
+        })
+        .then((data) => {
+          const accessToken = data.accessToken || data.access_token;
+          if (!accessToken) throw new Error("No access token in response");
+          return login(accessToken);
+        })
+        .then(land)
+        .catch(fail);
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, login, router]);
 
   const copy =

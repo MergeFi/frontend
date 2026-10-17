@@ -16,6 +16,10 @@ jest.mock("next/navigation", () => ({
   usePathname: jest.fn(),
 }));
 
+jest.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({ user: { id: "u1", username: "tester", roles: [] } }),
+}));
+
 const mockedUsePathname = usePathname as jest.Mock;
 
 // Stub next/link to render a plain <a> so queries work in jsdom.

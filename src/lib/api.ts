@@ -28,6 +28,21 @@ export class ApiRequestError extends Error {
   }
 }
 
+export function parseRetryAfter(value: string | null | undefined): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = parseInt(trimmed, 10);
+    return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+  }
+  const dateMs = Date.parse(trimmed);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, Math.ceil((dateMs - Date.now()) / 1000));
+  }
+  return undefined;
+}
+
 /**
  * Distinguishes live backend data from mock fallback so callers can surface
  * a visible indicator without relying on fragile reference-identity checks.
@@ -131,18 +146,14 @@ export async function apiRequest<T>(
       throw err;
     }
 
-    // --- Rate-limit handling (#44) ---
+    // --- Rate-limit handling (#44, #572) ---
     if (res.status === 429) {
-      const retryAfter = res.headers.get("Retry-After");
-      const seconds = retryAfter ? parseInt(retryAfter, 10) : NaN;
-      const waitMsg = Number.isFinite(seconds)
-        ? ` Please wait ${seconds} second${seconds === 1 ? "" : "s"} before trying again.`
-        : "";
-      throw new ApiRequestError(
-        `You're doing that too fast.${waitMsg}` || `Rate limited. Please try again later.`,
-        429,
-        Number.isFinite(seconds) ? seconds : undefined,
-      );
+      const seconds = parseRetryAfter(res.headers.get("Retry-After"));
+      const message =
+        seconds !== undefined
+          ? `You're doing that too fast. Please wait ${seconds} second${seconds === 1 ? "" : "s"} before trying again.`
+          : "Rate limited. Please try again later.";
+      throw new ApiRequestError(message, 429, seconds);
     }
 
     if (!res.ok) {

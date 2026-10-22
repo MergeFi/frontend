@@ -209,6 +209,7 @@ export function PoolDepositButton({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const step = asset === "XLM" ? "0.0000001" : "0.01";
   const validation = parseMoneyInput(amount, asset);
   const inputValid = validation.valid;
 

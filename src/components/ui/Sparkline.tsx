@@ -50,6 +50,7 @@ export function Sparkline({
       role="img"
       aria-label={describeTrend(data, label, formatValue)}
       preserveAspectRatio="none"
+      aria-hidden="true"
     >
       <polyline
         points={areaPoints}

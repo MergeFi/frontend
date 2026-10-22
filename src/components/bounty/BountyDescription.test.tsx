@@ -161,6 +161,45 @@ describe("BountyDescription — content fidelity", () => {
     expect(tds[0].textContent).toBe("USDC");
     expect(tds[1].textContent).toBe("100");
   });
+  it("renders GFM tables with custom table, thead, tbody, tr, th, and td styling (#257, #423)", () => {
+    const markdown = [
+      "| Column A | Column B |",
+      "| :--- | :--- |",
+      "| Value 1 | Value 2 |",
+    ].join("\n");
+
+    const { container } = render(<BountyDescription description={markdown} />);
+
+    const tableWrapper = container.querySelector(".overflow-x-auto");
+    expect(tableWrapper).not.toBeNull();
+
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
+    expect(table).toHaveClass("min-w-full", "border-collapse", "text-sm");
+
+    const thead = container.querySelector("thead");
+    expect(thead).not.toBeNull();
+    expect(thead).toHaveClass("border-b", "border-slate-200", "bg-slate-50");
+
+    const ths = container.querySelectorAll("th");
+    expect(ths).toHaveLength(2);
+    expect(ths[0]).toHaveTextContent("Column A");
+    expect(ths[0]).toHaveClass("px-3", "py-2", "font-medium");
+    expect(ths[1]).toHaveTextContent("Column B");
+
+    const tbody = container.querySelector("tbody");
+    expect(tbody).not.toBeNull();
+
+    const trs = container.querySelectorAll("tbody tr");
+    expect(trs).toHaveLength(1);
+    expect(trs[0]).toHaveClass("border-b", "border-slate-100");
+
+    const tds = container.querySelectorAll("td");
+    expect(tds).toHaveLength(2);
+    expect(tds[0]).toHaveTextContent("Value 1");
+    expect(tds[0]).toHaveClass("px-3", "py-2");
+    expect(tds[1]).toHaveTextContent("Value 2");
+  });
 });
 
 describe("BountyDescription — untrusted-content hardening", () => {

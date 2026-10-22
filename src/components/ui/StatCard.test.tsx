@@ -284,10 +284,12 @@ describe("StatCard — negative currency values (issue #90)", () => {
 // ─── 9. Icon rendering (#218) ─────────────────────────────────────────────────
 
 describe("StatCard — icon", () => {
-  it("renders the icon when provided", () => {
+  it("renders the icon when provided with aria-hidden (#435)", () => {
     render(<StatCard label="Lifetime earnings" status="loaded" value={100} icon={Wallet} />);
     const iconWrapper = screen.getByTestId("statcard-icon");
-    expect(iconWrapper.querySelector("svg")).not.toBeNull();
+    const svg = iconWrapper.querySelector("svg");
+    expect(svg).not.toBeNull();
+    expect(svg).toHaveAttribute("aria-hidden", "true");
   });
 
   it("renders no icon wrapper when icon is omitted", () => {

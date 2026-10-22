@@ -115,6 +115,11 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
       router.push("/connect");
       return;
     }
+    if (!user.stellarAddress) {
+      setError("Please link a Stellar payout wallet in your account settings before claiming this bounty.");
+      router.push("/connect");
+      return;
+    }
     setPending(true);
     try {
       await apiPost(

@@ -26,6 +26,9 @@ import {
 const issuesDescription =
   "Browse paid, escrow-backed GitHub issues funded through MergeFi and ready for contributors.";
 
+// Revalidate the bounty board briefly to avoid fetching the unpaginated table on every request (#716)
+export const revalidate = 30;
+
 export const metadata: Metadata = {
   title: "Paid Issues | MergeFi",
   description: issuesDescription,

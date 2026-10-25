@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ShieldCheck, Clock, GitBranch, Milestone as MilestoneIcon, TriangleAlert } from "lucide-react";
 import { fetchBounty } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
+import { stripMarkdownToPlainText } from "@/lib/markdown";
+import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
 import { DifficultyBadge, Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { BountyDescription } from "@/components/bounty/BountyDescription";
@@ -17,9 +19,11 @@ const ESCROW_STATUS_LABELS: Record<BountyStatus, string> = {
   claimed: "Funds locked",
   in_review: "Funds locked",
   merged: "Funds locked",
+  release_failed: "Payout failed — funds still locked",
   paid: "Paid out",
   refunded: "Refunded to sponsor",
   expired: "Expired, unclaimed",
+  unknown: "Status unavailable",
 };
 
 export async function generateMetadata({
@@ -28,7 +32,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const { data: bounty } = await fetchBounty(
+  const { data: bounty, source } = await fetchBounty(
     id,
     mockBounties.find((b) => b.id === id),
   );
@@ -38,11 +42,18 @@ export async function generateMetadata({
   }
 
   const title = `${bounty.title} — ${formatCurrency(bounty.reward, bounty.asset)} | MergeFi`;
-  const description = bounty.description || `Fund or claim this bounty on MergeFi.`;
+  // #629: Strip markdown and truncate to ~160 chars on a word boundary for
+  // clean OG/Twitter descriptions and search snippets.
+  const rawDesc = bounty.description || `Fund or claim this bounty on MergeFi.`;
+  const plainDesc = stripMarkdownToPlainText(rawDesc);
+  const description = plainDesc.length <= 160
+    ? plainDesc
+    : plainDesc.slice(0, 160).replace(/\s+\S*$/, "") + "…";
 
   return {
     title,
     description,
+    ...(source === "mock" ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       title,
       description,
@@ -62,7 +73,7 @@ export default async function IssueDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { data: bounty } = await fetchBounty(
+  const { data: bounty, source } = await fetchBounty(
     id,
     mockBounties.find((b) => b.id === id),
   );
@@ -87,6 +98,7 @@ export default async function IssueDetailPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
+      {source === "mock" && <DataSourceNotice className="mb-6" />}
       <p className="text-sm text-slate-500 dark:text-slate-400">
         {bounty.org}/{bounty.repo} #{bounty.issueNumber}
       </p>

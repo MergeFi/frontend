@@ -45,6 +45,7 @@ This project is licensed under the [MIT License](LICENSE).
 | ------------------------------------------------------------ | ------------------------ |
 | Landing page / product pitch                                 | `/`                      |
 | Browse paid issues (bounties)                                | `/issues`                |
+| Create a bounty (issue + reward amount)                      | `/issues/create`         |
 | Bounty detail, escrow status, claim flow                     | `/issues/[id]`           |
 | Milestone funding + recurring maintenance pools              | `/milestones`            |
 | Connect GitHub + Stellar wallet (Freighter)                  | `/connect`               |
@@ -68,7 +69,8 @@ Next.js (App Router)                 this repo
 
 - **Framework**: Next.js 16 (App Router, React 19, TypeScript, Turbopack).
 - **Styling**: Tailwind CSS v4, dark-mode-first design system (`slate`/`emerald` palette).
-- **Data fetching**: Server Components call the backend via `src/lib/api.ts#fetchWithFallback`, which tries the live API and falls back to `src/lib/mock-data.ts` if it's unreachable — the app is fully browsable without the backend running.
+- **Data fetching**: Per-resource fetchers in `src/lib/api.ts` (`fetchBounties`, `fetchMilestones`, …) try the live API and fall back to `src/lib/mock-data.ts` if it's unreachable — the app is fully browsable without the backend running. Each fetcher returns a `FetchResult` with a `source` field (`"api"` or `"mock"`) so callers can tell where the data came from.
+- **Live bounty status (client-side polling)**: bounty detail pages poll the backend for status changes rather than waiting for a push. `useBountyStatus` (`src/hooks/useBountyStatus.ts`) wraps a module-level per-bounty poller registry (`src/hooks/bountyPoller.ts`) so multiple components on the same page share **one** fetch loop per bounty — `ClaimButton` polls every **2 s** and `LiveBountyStatus` every **5 s**, but they don't double up. Polling stops as soon as a terminal status (`paid`, `refunded`, `expired`) is observed. The generic `useSmartPolling` hook applies the same shape elsewhere: after 3 consecutive identical responses it backs the interval off by ×1.5 up to a 30 s ceiling, resets on any data change, and pauses entirely while the tab is hidden (`visibilitychange`). Load profile: an idle open bounty page costs one `GET /bounties/:id` per interval per *page*, not per component.
 - **Wallet integration**: `src/lib/wallet.ts` wraps `@stellar/freighter-api` for connecting a Stellar wallet and signing transactions (escrow funding, milestone deposits) client-side.
 - **GitHub auth**: The "Connect GitHub" button redirects to the backend's OAuth endpoint (`NEXT_PUBLIC_API_URL/auth/github`); the frontend itself holds no GitHub credentials.
 
@@ -115,13 +117,27 @@ every page renders against the bundled mock data in `src/lib/mock-data.ts` —
 useful for frontend-only development or a quick demo. Point
 `NEXT_PUBLIC_API_URL` at a running `mergefi-backend` instance to see live data.
 
+### Local port convention
+
+Keep these ports consistent when running frontend and backend together (#599):
+
+| Service            | URL                        | Notes                                                                 |
+| ------------------ | -------------------------- | --------------------------------------------------------------------- |
+| Next.js (this app) | `http://localhost:3000`    | Default `next dev` port — leave it here.                              |
+| mergefi-backend    | `http://localhost:4000`    | Set `PORT=4000` in the backend's `.env` so it does not collide.       |
+| OAuth / CORS       | `FRONTEND_URL=http://localhost:3000` | Backend's CORS origin and GitHub OAuth redirect must match the SPA. |
+
+`NEXT_PUBLIC_API_URL` in `.env.example` already points at `:4000`. If you
+leave the backend on its own default `PORT=3000`, the API calls will hit the
+Next.js server instead of the API.
+
 ### Environment variables
 
 Both `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_STELLAR_NETWORK` are validated at build time (`next.config.ts` / `src/lib/env.ts`, #26) — an unset or invalid value fails `next build`/`next dev`/`next start` immediately with a clear error, rather than silently falling back and only surfacing as a confusing on-chain failure later. `NEXT_PUBLIC_SITE_URL` is not build-time validated — it falls back to `https://mergefi.app` if unset. `.env.example` sets all three explicitly, so the quickstart above needs no manual edits.
 
 | Variable                      | Purpose                                                                                                                                                       | Default                                                                                                                                                                                             |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`         | Base URL of the `mergefi-backend` API. Must be a well-formed URL.                                                                                             | `http://localhost:4000/api`                                                                                                                                                                         |
+| `NEXT_PUBLIC_API_URL`         | Base URL of the `mergefi-backend` API. Must be a well-formed http(s) URL. Trailing slashes are stripped (so composed request paths never contain `//`), and when `NEXT_PUBLIC_STELLAR_NETWORK=PUBLIC` the URL must use `https:` — plain `http:` is only allowed on loopback (`localhost`, `127.0.0.1`, `::1`).                        | `http://localhost:4000/api`                                                                                                                                                                         |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | Must be exactly `TESTNET` or `PUBLIC` (case-sensitive) — selects the Freighter network passphrase used to sign transactions.                                  | **None.** Network selection is too consequential to guess a default for — the wrong value signs transactions with the wrong passphrase. Set it explicitly (`.env.example` does this for local dev). |
 | `NEXT_PUBLIC_SITE_URL`        | Base URL used by `src/app/sitemap.ts` to generate absolute sitemap URLs. Set this when deploying to a domain other than `mergefi.app` (staging, forks, etc.). | `https://mergefi.app`                                                                                                                                                                               |
 
@@ -146,7 +162,7 @@ Both `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_STELLAR_NETWORK` are validated at bu
 | --------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `X-Frame-Options`           | `DENY`                            | No legitimate iframe-embedding use case exists in this app, and fund/claim actions are one click away — clickjacking is a real risk here. Relax to a scoped CSP `frame-ancestors` allowlist if a real embed need ever comes up.                                  |
 | `X-Content-Type-Options`    | `nosniff`                         | Stops the browser from MIME-sniffing a response into an executable content type.                                                                                                                                                                                 |
-| `Referrer-Policy`           | `strict-origin-when-cross-origin` | The GitHub OAuth callback (`/auth/callback`) carries a short-lived token in its query string; this keeps the full URL out of the `Referer` header on cross-origin requests.                                                                                      |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin` | The GitHub OAuth callback (`/auth/callback`) carries a one-time handoff `code` in its query string (exchanged for the access token via `POST /auth/handoff`); this keeps the full URL out of the `Referer` header on cross-origin requests.                                                                                      |
 | `Strict-Transport-Security` | `max-age=86400`                   | Deliberately conservative to start (no `includeSubDomains`, no `preload`) — HSTS is effectively irreversible once cached by a browser. Raise `max-age` and add `includeSubDomains` after a stable production run, and only add `preload` once that's stable too. |
 
 `Content-Security-Policy` is intentionally not set here — it's tracked separately so it can compose correctly with the theme-init inline script in `layout.tsx` rather than this change guessing at a nonce/hash strategy.
@@ -189,17 +205,18 @@ Sitemaps are split into 50,000-URL files (`/sitemaps/<id>.xml`, with a permanent
 
 ## Example user journey
 
-1. A maintainer connects a GitHub repository from `/connect`.
-2. From their dashboard, they mark an issue with a **100 USDC** reward.
-3. A sponsor funds the bounty from `/dashboard/sponsor` — the backend locks the funds in a Soroban escrow contract.
-4. A contributor browses `/issues`, claims the bounty, and opens a pull request.
+1. A maintainer signs in with GitHub and connects their Freighter wallet from `/connect`. (Connecting a GitHub _repository_ is a roadmap item — see below; today no repository sync happens here.)
+2. From their `/dashboard/maintainer` pipeline they click **Create bounty** (`/issues/create`) and set a **100 USDC** reward on an issue.
+3. A sponsor opens that bounty on `/issues/[id]` and clicks **Fund this bounty** — the backend locks the funds in a Soroban escrow contract. (`/dashboard/sponsor` tracks that spend; the funding action itself lives on the issue page.)
+4. A contributor browses `/issues`, claims the bounty from `/issues/[id]`, and opens a pull request.
 5. The maintainer reviews and merges it on GitHub.
 6. The backend detects the merge via a GitHub webhook and calls the escrow contract's release function.
 7. The contributor is paid on-chain within minutes, and their `/reputation/[handle]` profile updates.
 
 ## Roadmap
 
+- GitHub repository sync from `/connect` — maintainers currently create bounties by hand at `/issues/create` rather than picking from a synced repository list.
+- Push-based (websocket) bounty/escrow status — the current polling implementation (see Architecture) is the interim until the backend emits subscription-friendly events.
 - Wire the contributor/maintainer dashboards to authenticated sessions instead of a hardcoded demo handle.
-- Real-time bounty/escrow status via websockets or polling once the backend emits webhook-driven events.
 - AI-powered issue recommendations based on a contributor's language/repo history.
 - Organization verification badges and cross-repository reputation aggregation.

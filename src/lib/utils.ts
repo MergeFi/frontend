@@ -48,6 +48,36 @@ export function coercePercentage(value: string | null | undefined, fallback = 0)
  */
 const SANITY_CEILING = 1_000_000_000; // 1 billion
 
+// ── Cached Intl.NumberFormat instances (#656) ────────────────────────────────
+// `Intl.NumberFormat` construction calls `resolveLocale()` which is expensive
+// and can vary between server and client (hydration mismatch). Cache instances
+// so they're constructed once and reused deterministically across renders.
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+/**
+ * Cached Intl.NumberFormat factory. Returns a memoized formatter for the
+ * given locale + options, avoiding repeated `resolveLocale()` calls (#656).
+ */
+export function getNumberFormat(locale: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const key = `${locale}:${JSON.stringify(options)}`;
+  let fmt = numberFormats.get(key);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat(locale, options);
+    numberFormats.set(key, fmt);
+  }
+  return fmt;
+}
+
+// ── Locale-independent formatting (#656) ──────────────────────────────────────
+// Use explicit "en-US" locale so server and client always produce identical
+// output regardless of the viewer's system locale.
+
+const currencyFormat2 = getNumberFormat("en-US", { maximumFractionDigits: 2 });
+const currencyFormat7 = getNumberFormat("en-US", { maximumFractionDigits: 7 });
+const countFormat = getNumberFormat("en-US", { maximumFractionDigits: 0 });
+const parseNormalizeFormat2 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const parseNormalizeFormat7 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 7 });
+
 /**
  * Format a numeric amount as a currency string with the specified asset label.
  *
@@ -91,6 +121,10 @@ export function formatCurrency(
   // is true, so testing the ceiling first would render a non-finite amount as
   // "0 USDC ⚠" instead of the plain "0 USDC" the contract promises.
   if (!Number.isFinite(amount)) return `0 ${asset}`;
+  const fmt = asset === "XLM" ? currencyFormat7 : currencyFormat2;
+  const formatted = fmt.format(amount);
+  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
+  return `${formatted} ${asset}`;
   const formatted = formatCryptoAmount(amount, asset, locale);
   if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ⚠`;
   return formatted;
@@ -150,6 +184,9 @@ export function parseMoneyInput(
     return { valid: false, error: "Enter a deposit amount." };
   }
 
+  // Use Number only for range checks, not for normalization.
+  // Normalization is done string-based to avoid precision loss on large amounts.
+  const num = Number(trimmed);
   const { group, decimal } = localeSeparators(locale);
 
   // Two notations have to be accepted, and they conflict on exactly one
@@ -200,6 +237,24 @@ export function parseMoneyInput(
     };
   }
 
+  // Normalize: string-based normalization to avoid precision loss.
+  // Trim trailing zeros and pad to maxDecimals if needed.
+  let normalized = trimmed;
+  if (normalized.includes(".")) {
+    // Trim trailing zeros after decimal point
+    normalized = normalized.replace(/\.?0+$/, "");
+    // If we removed everything after decimal, remove the decimal too
+    if (normalized.endsWith(".")) {
+      normalized = normalized.slice(0, -1);
+    }
+  }
+
+  return { valid: true, normalized };
+  // Normalize: convert to a canonical decimal string with the right precision.
+  // Use a cached Intl.NumberFormat with fixed fraction digits to get a clean
+  // representation, then strip thousands separators.
+  const fmt = asset === "XLM" ? parseNormalizeFormat7 : parseNormalizeFormat2;
+  const normalized = fmt.format(num).replace(/,/g, "");
   // Normalize to the canonical dot-decimal wire form, dropping any trailing
   // zeros the viewer's locale added ("12,50" → "12.5"). `toFixed` is the
   // correct primitive here precisely because it is locale-independent.
@@ -249,6 +304,11 @@ export function daysUntil(dateIso: string) {
   return Math.ceil((deadlineUtc - nowUtc) / (1000 * 60 * 60 * 24));
 }
 
+export function formatDaysUntil(days: number | null): string {
+  if (days === null) return "No deadline";
+  if (days > 0) return `${days} day${days === 1 ? "" : "s"} left`;
+  if (days === 0) return "Due today";
+  return "Deadline passed";
 /**
  * Human deadline label. Pluralization goes through `Intl.PluralRules` via the
  * message catalog rather than the previous `days === 1 ? "" : "s"` ternary,
@@ -272,18 +332,24 @@ const VALID_STATUSES: ReadonlySet<string> = new Set<BountyStatus>([
   "claimed",
   "in_review",
   "merged",
+  "release_failed",
   "paid",
   "refunded",
   "expired",
+  "unknown",
 ]);
 
 /**
  * Validate that a raw status string is a known BountyStatus. Returns the
- * validated status or falls back to "open" for unrecognized values (#279).
+ * validated status or falls back to "unknown" for unrecognized values.
+ *
+ * Falls back to "unknown" rather than "open" (#596): mapping an unrecognized
+ * status to "open" made a bounty whose escrow release failed look claimable
+ * again on the board.
  */
 export function coerceStatus(value: string | null | undefined): BountyStatus {
   if (value && VALID_STATUSES.has(value)) return value as BountyStatus;
-  return "open";
+  return "unknown";
 }
 
 export function validateTeamSplits(
@@ -319,12 +385,16 @@ export function generateIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // Fallback for environments without crypto.randomUUID (very unlikely in
-  // modern browsers, but defensive).
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
+  // crypto.randomUUID only exists in secure contexts, so a plain-http staging
+  // deploy lands here. crypto.getRandomValues is available on insecure
+  // origins; Math.random is predictable and collision-prone, and a collision
+  // replays another request's cached response instead of executing.
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 // ---------------------------------------------------------------------------

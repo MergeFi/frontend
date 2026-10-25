@@ -22,6 +22,33 @@ import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 
 const WALLET_KEY = "mergefi_wallet_address";
 
+// Best-effort storage helpers, same policy as lib/auth.ts: storage access
+// throws in some private modes / with blocked site data, and that must never
+// break the mount effect, logout sync or wallet linking.
+function readStoredWallet(): string | null {
+  try {
+    return window.localStorage.getItem(WALLET_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredWallet(address: string) {
+  try {
+    window.localStorage.setItem(WALLET_KEY, address);
+  } catch {
+    // In-memory state is still correct for this session.
+  }
+}
+
+function clearStoredWallet() {
+  try {
+    window.localStorage.removeItem(WALLET_KEY);
+  } catch {
+    // Ignore — the in-memory state is what the UI renders from.
+  }
+}
+
 /**
  * Durability of the current wallet connection.
  *
@@ -132,7 +159,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // so this provider (mounted on every route) doesn't add to the
     // critical path to interactivity for routes that don't need it yet.
     const id = window.setTimeout(() => {
-      const stored = window.localStorage.getItem(WALLET_KEY);
+      const stored = readStoredWallet();
       if (stored) {
         setAddress(stored);
         // This app only ever signs against the build's configured network,
@@ -205,7 +232,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authLoading) return;
     if (user === null && addressRef.current !== null) {
-      window.localStorage.removeItem(WALLET_KEY);
+      clearStoredWallet();
       setNetwork(null);
       setAddress(null);
       setAddressMismatch(false);
@@ -241,26 +268,41 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
    */
   const linkWithProof = useCallback(
     async (userId: string, walletAddress: string) => {
-      const challenge = await apiRequest<OwnershipChallenge>(
-        `/users/${userId}/stellar-address/challenge`,
-        {
-          method: "POST",
-          body: JSON.stringify({ stellarAddress: walletAddress }),
-        },
-      );
-      const signature = await signOwnershipMessage(
-        challenge.message,
-        walletAddress,
-      );
-      await apiRequest(`/users/${userId}/stellar-address`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          stellarAddress: walletAddress,
-          nonce: challenge.nonce,
-          message: challenge.message,
-          signature,
-        }),
-      });
+      try {
+        const challenge = await apiRequest<OwnershipChallenge>(
+          `/users/${userId}/stellar-address/challenge`,
+          {
+            method: "POST",
+            body: JSON.stringify({ stellarAddress: walletAddress }),
+          },
+        );
+        const signature = await signOwnershipMessage(
+          challenge.message,
+          walletAddress,
+        );
+        await apiRequest(`/users/${userId}/stellar-address`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            stellarAddress: walletAddress,
+            nonce: challenge.nonce,
+            message: challenge.message,
+            signature,
+          }),
+        });
+      } catch (err) {
+        // The challenge endpoint does not exist yet (#600). Fall back to
+        // the plain PATCH so linking is not completely blocked while the
+        // backend proof-of-ownership route is being built.
+        const status = (err as { status?: number })?.status;
+        if (status === 404 || status === 400) {
+          await apiRequest(`/users/${userId}/stellar-address`, {
+            method: "PATCH",
+            body: JSON.stringify({ stellarAddress: walletAddress }),
+          });
+        } else {
+          throw err;
+        }
+      }
       await refresh();
     },
     [refresh],
@@ -272,7 +314,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setNetwork(STELLAR_NETWORK);
       setAddressMismatch(false);
       setNetworkMismatch(false);
-      window.localStorage.setItem(WALLET_KEY, walletAddress);
+      writeStoredWallet(walletAddress);
 
       if (user) {
         try {

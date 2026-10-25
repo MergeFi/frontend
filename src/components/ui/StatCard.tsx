@@ -279,8 +279,12 @@ export function StatCard({
         <div data-testid="statcard-sparkline" className="text-indigo-500 dark:text-indigo-400">
           {/* The card's own label becomes the sparkline's accessible name, so
               the trend is announced as "Earnings: 8 data points, trending up
-              from …" rather than as an unlabelled graphic. */}
-          <Sparkline data={sparkline} label={label} />
+              from …" rather than as an unlabelled graphic (#709). */}
+          <Sparkline
+            data={sparkline}
+            label={label}
+            formatValue={(v) => formatValue(v, format, asset, locale).display}
+          />
         </div>
       )}
     </div>,

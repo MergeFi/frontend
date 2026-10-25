@@ -24,22 +24,27 @@ export const pipelineStages: { status: BountyStatus; label: string }[] = [
   { status: "claimed", label: "Claimed" },
   { status: "in_review", label: "In review" },
   { status: "merged", label: "Awaiting payout" },
+  { status: "release_failed", label: "Payout failed" },
 ];
 
 // Statuses excluded from "Value locked in escrow" on the page above: "open"
 // hasn't been funded yet (nothing in escrow to lock), and
-// "paid"/"refunded"/"expired" have already left escrow. Every other status
-// -- "funded", "claimed", "in_review", "merged" -- is still escrow-locked
-// and must have a corresponding entry in pipelineStages above. Kept in the
-// same file as pipelineStages specifically so the two can't silently drift
-// apart the way they did before #88 (the stat counted "merged" as
-// escrow-locked while the board had no column for it) -- see the
-// consistency test in PipelineBoard.test.tsx.
+// "paid"/"refunded"/"expired" have already left escrow. "release_failed" and
+// "unknown" are also excluded: release_failed still holds funds but is a
+// break-glass state tracked on its own column, and unknown is not a real
+// escrow state. Every other status -- "funded", "claimed", "in_review",
+// "merged" -- is still escrow-locked and must have a corresponding entry in
+// pipelineStages above. Kept in the same file as pipelineStages specifically
+// so the two can't silently drift apart the way they did before #88 (the stat
+// counted "merged" as escrow-locked while the board had no column for it) --
+// see the consistency test in PipelineBoard.test.tsx.
 export const ESCROW_LOCKED_EXCLUDED_STATUSES: BountyStatus[] = [
   "open",
+  "release_failed",
   "paid",
   "refunded",
   "expired",
+  "unknown",
 ];
 
 // Cap per-column rendering so a busy repo's pipeline (potentially hundreds
@@ -49,9 +54,11 @@ const MAX_VISIBLE_PER_COLUMN = 8;
 
 function PipelineColumn({
   label,
+  status,
   bounties,
 }: {
   label: string;
+  status: BountyStatus;
   bounties: Bounty[];
 }) {
   const visible = bounties.slice(0, MAX_VISIBLE_PER_COLUMN);
@@ -73,7 +80,6 @@ function PipelineColumn({
             key={b.id}
             href={`/issues/${b.id}`}
             title={b.title}
-            aria-label={`${b.title}, ${formatCurrency(b.reward, b.asset)}`}
             className="block rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-indigo-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-700"
           >
             <p className="truncate text-xs text-slate-400 dark:text-slate-500">
@@ -94,7 +100,7 @@ function PipelineColumn({
         )}
         {hiddenCount > 0 && (
           <Link
-            href="/issues"
+            href={`/issues?status=${status}`}
             className="block rounded-xl border border-dashed border-slate-200 px-3 py-2 text-center text-xs font-medium text-indigo-600 transition-colors hover:border-indigo-300 dark:border-slate-800 dark:text-indigo-400 dark:hover:border-indigo-700"
           >
             View all {bounties.length} in Bounty pipeline
@@ -129,6 +135,7 @@ export function PipelineBoard({ bounties }: { bounties: Bounty[] }) {
           <PipelineColumn
             key={stage.status}
             label={stage.label}
+            status={stage.status}
             bounties={byStatus.get(stage.status) ?? []}
           />
         ))}

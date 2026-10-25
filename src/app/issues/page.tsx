@@ -5,6 +5,7 @@ import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import { BountyCard } from "@/components/bounty/BountyCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { IssuesFilterForm } from "@/components/bounty/IssuesFilterForm";
 import { Button } from "@/components/ui/Button";
 import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
 import { formatInteger } from "@/lib/utils";
@@ -41,13 +42,18 @@ export const metadata: Metadata = {
 };
 
 /**
- * Filter values offered by the status facet. `open` and `in_review` are the
- * two a contributor actually filters by; `all` clears the facet.
+ * Filter values offered by the status facet. Every pipeline status
+ * is filterable so the dashboard's "View all" links land on a matching view;
+ * `all` clears the facet.
  */
 const STATUS_FILTERS = [
   { value: "all", label: "All" },
-  { value: "open", label: "Open" },
+  { value: "funded", label: "Claimable" },
+  { value: "open", label: "Not yet funded" },
+  { value: "claimed", label: "Claimed" },
   { value: "in_review", label: "In review" },
+  { value: "merged", label: "Awaiting payout" },
+  { value: "release_failed", label: "Payout failed" },
 ] as const satisfies readonly { value: (typeof STATUS_VALUES)[number]; label: string }[];
 
 const DIFFICULTY_LABELS: Record<(typeof DIFFICULTY_VALUES)[number], string> = {
@@ -88,7 +94,7 @@ export default async function IssuesPage({
           Paid issues
         </h1>
         <p className="mt-2 max-w-2xl text-slate-500 dark:text-slate-400">
-          Every bounty below is backed by funds already locked in a Soroban
+          Funded bounties are backed by funds already locked in a Soroban
           escrow contract. Claim one, open a pull request, and get paid the
           moment it&apos;s merged.
         </p>
@@ -129,9 +135,7 @@ export default async function IssuesPage({
           bookmarkable URL and the page works with JavaScript disabled. The
           hidden `status` field carries the pill selection above through the
           same submit, since HTML forms only send their own named fields. */}
-      <form
-        method="get"
-        action="/issues"
+      <IssuesFilterForm
         className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40"
       >
         {query.status !== "all" && <input type="hidden" name="status" value={query.status} />}
@@ -140,6 +144,7 @@ export default async function IssuesPage({
           Difficulty
           <select
             name="difficulty"
+            data-default="all"
             defaultValue={query.difficulty}
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           >
@@ -155,6 +160,7 @@ export default async function IssuesPage({
           Asset
           <select
             name="asset"
+            data-default="all"
             defaultValue={query.asset}
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           >
@@ -196,6 +202,7 @@ export default async function IssuesPage({
           Sort by
           <select
             name="sort"
+            data-default="default"
             defaultValue={query.sort}
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           >
@@ -218,7 +225,7 @@ export default async function IssuesPage({
             Clear all
           </Link>
         )}
-      </form>
+      </IssuesFilterForm>
 
       {visible.length === 0 ? (
         filterActive ? (

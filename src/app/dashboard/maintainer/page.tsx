@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Layers, Clock, Coins, FolderGit2, CheckCircle2 } from "lucide-react";
-import { fetchBounties } from "@/lib/api";
+import { Layers, Clock, Coins, FolderGit2, CheckCircle2, GitBranch } from "lucide-react";
+import { fetchBounties, fetchMyRepositories } from "@/lib/api";
 import { mockBounties, recentActivity, bountiesCompletedSparkline } from "@/lib/mock-data";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { formatCurrency, sumMoney } from "@/lib/utils";
 import { t } from "@/lib/messages";
 import { PipelineBoard, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
+import { GitHubSyncPanel } from "./GitHubSyncPanel";
 
 export const metadata = {
   title: "Maintainer Dashboard | MergeFi",
@@ -29,8 +30,18 @@ export default async function MaintainerDashboardPage() {
   // fetch, so this reliably distinguishes "live data" from "backend down,
   // showing mockBounties" without changing fetchBounties' shared contract
   // (#240).
-  const { data: bounties, source } = await fetchBounties(mockBounties);
+  const { data: allBounties, source } = await fetchBounties(mockBounties);
   const statStatus: "loaded" | "error" = source === "live" ? "loaded" : "error";
+
+  // Filter bounties to only those belonging to the maintainer's own
+  // repositories (#641). When no repositories are connected, show an
+  // empty state with a "Connect repository" CTA.
+  const myRepos = await fetchMyRepositories([]);
+  const maintainerRepoKeys = new Set(myRepos.map((r) => `${r.org}/${r.repo}`));
+  const bounties =
+    myRepos.length > 0
+      ? allBounties.filter((b) => maintainerRepoKeys.has(`${b.org}/${b.repo}`))
+      : [];
 
   const needsReview = bounties.filter((b) => b.status === "in_review");
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
@@ -50,11 +61,8 @@ export default async function MaintainerDashboardPage() {
       title="Bounty pipeline"
       subtitle="Create bounties from your GitHub issues and approve completed work. Payout release happens automatically once a linked pull request is merged."
       action={
-        // Bounties are created from your GitHub issues (per the subtitle
-        // above) — /issues is the same destination the contributor and
-        // sponsor dashboards' equivalent action buttons already link to
-        // for picking a bounty to work with (#241).
-        <Link href="/issues">
+        // #636 — Link to the create-bounty form instead of the bounty board.
+        <Link href="/issues/create">
           <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
             Create bounty
           </span>
@@ -99,7 +107,29 @@ export default async function MaintainerDashboardPage() {
         />
       </div>
 
-      <PipelineBoard bounties={bounties} />
+      {myRepos.length === 0 ? (
+        <EmptyState
+          icon={GitBranch}
+          title="No repositories connected"
+          description="Connect a GitHub repository to start tracking your bounty pipeline."
+          action={
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              Connect repository
+            </Link>
+          }
+        />
+      ) : (
+        <PipelineBoard bounties={bounties} />
+      )}
+
+      {/* #637 — GitHub repository sync UI so maintainers can bring their
+          issues onto the platform without manual API calls. */}
+      <div className="mt-8">
+        <GitHubSyncPanel />
+      </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div>

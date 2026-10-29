@@ -15,12 +15,20 @@ jest.mock("@/context/AuthContext", () => ({
 
 const mockReplace = jest.fn();
 
+beforeEach(() => {
+  mockedUseAuth.mockReset();
+  mockedUseSearchParams.mockReset();
+  mockedUseRouter.mockReset();
+  mockReplace.mockReset();
+
+  mockedUseRouter.mockReturnValue({ replace: mockReplace });
+  mockedUseSearchParams.mockReturnValue(new URLSearchParams("token=jwt-token"));
+});
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockedUseAuth = useAuth as jest.MockedFunction<any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockedUseSearchParams = useSearchParams as jest.MockedFunction<any>;
 const mockedUseRouter = useRouter as jest.Mock;
-
 function makeUser(roles: UserRole[], stellarAddress: string | null = "GWALLET"): AuthUser {
   return {
     id: "1",
@@ -95,7 +103,7 @@ describe("CallbackClient — role-based redirect (#77)", () => {
 
     render(<CallbackClient />);
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(expected));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer"));
   });
 
   it("redirects sponsor to /dashboard/sponsor after async login", async () => {
@@ -114,7 +122,7 @@ describe("CallbackClient — role-based redirect (#77)", () => {
     render(<CallbackClient />);
 
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer"),
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard/sponsor"),
     );
   });
 
@@ -160,7 +168,7 @@ describe("CallbackClient — role-based redirect (#77)", () => {
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/dashboard/maintainer"),
     );
-    expect(login).toHaveBeenCalledWith("jwt-token");
+    expect(authValue.login).toHaveBeenCalledWith("jwt-token");
   });
 });
 
@@ -169,18 +177,6 @@ describe("CallbackClient — unfinished wallet link (#456)", () => {
     mockedUseAuth.mockReturnValue({
       login: jest.fn().mockResolvedValue(makeUser(["maintainer"], null)),
     });
-    const { getAuthValue } = createAsyncAuthMock(makeUser([]));
-    let currentUser: AuthUser | null = null;
-    const authValue = getAuthValue();
-    authValue.setUser = (fn: (prev: AuthUser | null) => AuthUser | null) => {
-      currentUser = fn(currentUser);
-    };
-
-    mockedUseAuth.mockImplementation(() => ({
-      ...authValue,
-      get user() { return currentUser; },
-    }));
-
     render(<CallbackClient />);
 
     // /connect is the only page that can complete the link, and nothing in the

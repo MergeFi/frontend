@@ -1,3 +1,4 @@
+import { calculateTrendFromHistory } from "@/lib/utils";
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -169,7 +170,7 @@ export default function SponsorDashboardClient() {
           format="currency"
           status={fetchStatus}
           icon={Receipt}
-          trend={fetchStatus === "loaded" ? 18 : undefined}
+          trend={fetchStatus === "loaded" ? calculateTrendFromHistory(sponsorSpendHistory) : undefined}
           sparkline={fetchStatus === "loaded" ? sponsorSpendHistory : undefined}
         />
         <StatCard

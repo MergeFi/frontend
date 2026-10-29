@@ -2,11 +2,11 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
-  useEffect,
-  useRef,
   useState,
+  useEffect,
+  useCallback,
+  useRef,
 } from "react";
 import { getToken, setToken as persistToken, clearToken, TOKEN_KEY } from "@/lib/auth";
 import { apiRequest, ApiRequestError } from "@/lib/api";
@@ -18,22 +18,11 @@ interface AuthContextValue {
   /**
    * `true` while the session is still unresolved and the UI must not commit to
    * a signed-in *or* signed-out appearance.
-   *
-   * This covers both the initial mount hydration and any in-flight re-resolve
-   * (sign-in token exchange, cross-tab login). It previously only ever went
-   * `true → false` because `refresh()` never set it back, so for the whole
-   * duration of the GitHub OAuth round trip the Navbar rendered its
-   * logged-out CTAs — including a live "Connect GitHub" button that would
-   * re-enter the very OAuth flow the user had just completed.
    */
   loading: boolean;
+  degraded: boolean;
   login: (token: string) => Promise<AuthUser | null>;
   logout: () => void;
-  // Resolves with the session's user (null when there's no valid token, after
-  // a 401/403, or when all retries are exhausted) — CallbackClient awaits
-  // login() and redirects on the *resolved* user, so this must not be
-  // Promise<void> or the role-based redirect silently degrades to the
-  // contributor fallback.
   refresh: () => Promise<AuthUser | null>;
 }
 

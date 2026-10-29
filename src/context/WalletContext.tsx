@@ -406,20 +406,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // only reset lived inside connect().
     updateError(null);
     if (user) {
-      // Best-effort unlink, mirroring connect()'s PATCH — the local
-      // disconnect (clearing UI/localStorage state) already succeeded
-      // synchronously above regardless of whether this call does, so a
-      // signed-in user's "disconnected" UI never lies about local state.
-      // If this fails, AuthUser.stellarAddress on the backend still holds
-      // the old address until the user connects again (#230).
+      // #714: PATCH { stellarAddress: null } always returned 400 because
+      // @IsStellarAddress() rejects null — use DELETE instead, which is
+      // handled by the dedicated unlink route added in the backend fix.
+      // Best-effort: the local disconnect already succeeded synchronously
+      // above so the UI is never in a lying state regardless of whether
+      // this call succeeds. Log failures so they're not invisible.
       apiRequest(`/users/${user.id}/stellar-address`, {
-        method: "PATCH",
-        body: JSON.stringify({ stellarAddress: null }),
+        method: "DELETE",
       })
         .then(() => {
           void refresh();
         })
-        .catch(() => {});
+        .catch((err: unknown) => {
+          console.error("[WalletContext] Failed to unlink stellar address on backend:", err);
+        });
     }
   }, [user, refresh, updateError]);
 

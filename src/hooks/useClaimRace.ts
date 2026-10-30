@@ -1,11 +1,22 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiPost, fetchBounty } from '@/lib/api';
+import { adaptBounty, type RawBounty } from '@/lib/adapters';
+import { generateIdempotencyKey } from '@/lib/utils';
 import type { Bounty, ClaimResult } from '@/types/bounty';
 
 interface ApiError {
   status?: number;
+  code?: string;
   message?: string;
 }
+
+// The backend rejects a claim on an already-claimed bounty with
+// InvalidBountyTransitionError ("Cannot transition bounty from "claimed" to
+// "claimed""), which currently surfaces as a 500 without a machine-readable
+// code. Match that real message alongside a 409 / ALREADY_CLAIMED code so the
+// race UI works until the backend returns a proper 409.
+const ALREADY_CLAIMED_CODES = ['BOUNTY_ALREADY_CLAIMED', 'ALREADY_CLAIMED'];
+const CLAIMED_TRANSITION_RE = /cannot transition bounty from ["']?claimed["']? to ["']?claimed["']?/i;
 
 export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty) => void) {
   const [isClaiming, setIsClaiming] = useState(false);
@@ -15,6 +26,10 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
   // skip state updates once unmounted. Set to true in the effect body too so
   // React Strict Mode's simulated unmount/remount doesn't leave it false.
   const isMountedRef = useRef(true);
+  // POST /bounties/:id/claim requires an Idempotency-Key header. One key per
+  // claim intent: reused when a failed request is retried, rotated once the
+  // claim has a definitive outcome.
+  const idempotencyKeyRef = useRef(generateIdempotencyKey());
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -34,25 +49,30 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
     setIsClaiming(true);
     
     try {
-      const response = await apiPost<{ data: Bounty }>(`/bounties/${bountyId}/claim`, {});
+      const raw = await apiPost<RawBounty>(`/bounties/${bountyId}/claim`, {}, idempotencyKeyRef.current);
+      idempotencyKeyRef.current = generateIdempotencyKey();
       
+      const bounty = adaptBounty(raw);
       const result: ClaimResult = {
         success: true,
-        bounty: response.data,
+        bounty,
       };
       recordResult(result);
       if (isMountedRef.current) {
-        onClaimSuccess?.(response.data);
+        onClaimSuccess?.(bounty);
       }
       return result;
     } catch (error) {
       const apiError = error as ApiError;
       const isAlreadyClaimed = 
-        apiError?.status === 409 || 
+        apiError?.status === 409 ||
+        (apiError?.code !== undefined && ALREADY_CLAIMED_CODES.includes(apiError.code)) ||
+        CLAIMED_TRANSITION_RE.test(apiError?.message ?? '') ||
         apiError?.message?.toLowerCase().includes('already claimed') ||
         apiError?.message?.toLowerCase().includes('claimed by another user');
 
       if (isAlreadyClaimed) {
+        idempotencyKeyRef.current = generateIdempotencyKey();
         try {
           const updatedResult = await fetchBounty(bountyId, undefined);
           const result: ClaimResult = {

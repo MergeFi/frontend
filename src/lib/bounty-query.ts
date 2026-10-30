@@ -17,7 +17,15 @@ import type { Bounty } from "@/types";
 
 export const PAGE_SIZE = 10;
 
-export const STATUS_VALUES = ["all", "open", "in_review"] as const;
+export const STATUS_VALUES = [
+  "all",
+  "open",
+  "funded",
+  "claimed",
+  "in_review",
+  "merged",
+  "release_failed",
+] as const;
 export type StatusFilter = (typeof STATUS_VALUES)[number];
 
 export const DIFFICULTY_VALUES = [
@@ -53,6 +61,19 @@ export interface BountyQuery {
 }
 
 export type RawSearchParams = Record<string, string | string[] | undefined>;
+
+/**
+ * Approximate XLM → USD rate used to normalise reward comparisons across
+ * assets (#613). This is a rough display approximation, not a live feed —
+ * reward filtering and sorting across assets will drift as the rate moves.
+ * Pin to 1.0 to treat XLM and USDC as equal.
+ */
+export const XLM_TO_USD_APPROX = 0.12;
+
+/** Convert a reward to USD-equivalent for cross-asset comparison (#613). */
+function rewardToUsd(reward: number, asset: string): number {
+  return asset === "XLM" ? reward * XLM_TO_USD_APPROX : reward;
+}
 
 export function firstParam(raw: string | string[] | undefined): string | undefined {
   return Array.isArray(raw) ? raw[0] : raw;
@@ -121,30 +142,56 @@ export function filterBounties(bounties: Bounty[], query: BountyQuery): Bounty[]
     if (query.status !== "all" && b.status !== query.status) return false;
     if (query.difficulty !== "all" && b.difficulty !== query.difficulty) return false;
     if (query.asset !== "all" && b.asset !== query.asset) return false;
-    if (query.minReward !== undefined && b.reward < query.minReward) return false;
-    if (query.maxReward !== undefined && b.reward > query.maxReward) return false;
+    // Normalise to USD-equivalent when comparing across assets (#613).
+    if (query.minReward !== undefined || query.maxReward !== undefined) {
+      const usd = rewardToUsd(b.reward, b.asset);
+      if (query.minReward !== undefined && usd < query.minReward) return false;
+      if (query.maxReward !== undefined && usd > query.maxReward) return false;
+    }
     return true;
   });
+}
+
+function createdAtMs(b: Bounty): number {
+  const t = b.createdAt ? new Date(b.createdAt).getTime() : NaN;
+  return Number.isNaN(t) ? 0 : t;
 }
 
 function sortBounties(bounties: Bounty[], sort: SortOption): Bounty[] {
   const sorted = [...bounties];
   switch (sort) {
     case "reward-desc":
-      sorted.sort((a, b) => b.reward - a.reward);
+      sorted.sort(
+        (a, b) => rewardToUsd(b.reward, b.asset) - rewardToUsd(a.reward, a.asset),
+      );
       break;
     case "reward-asc":
-      sorted.sort((a, b) => a.reward - b.reward);
+      sorted.sort(
+        (a, b) => rewardToUsd(a.reward, a.asset) - rewardToUsd(b.reward, b.asset),
+      );
       break;
     case "deadline-asc":
+      // Upcoming deadlines first (soonest at the top), then bounties whose
+      // deadline already passed (most recently expired first), then
+      // open-ended bounties with no deadline.
       sorted.sort((a, b) => {
         if (!a.deadline && !b.deadline) return 0;
         if (!a.deadline) return 1;
         if (!b.deadline) return -1;
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        const now = Date.now();
+        const aTime = new Date(a.deadline).getTime();
+        const bTime = new Date(b.deadline).getTime();
+        const aPast = aTime < now;
+        const bPast = bTime < now;
+        if (aPast !== bPast) return aPast ? 1 : -1;
+        return aPast ? bTime - aTime : aTime - bTime;
       });
       break;
     case "default":
+      // "Newest": the backend returns bounties in unspecified order, so
+      // order by creation time. Array#sort is stable, so bounties without a
+      // createdAt (mock data) keep their incoming order.
+      sorted.sort((a, b) => createdAtMs(b) - createdAtMs(a));
       break;
   }
   return sorted;

@@ -222,27 +222,27 @@ describe("coerceStatus", () => {
   it("accepts all valid BountyStatus values", () => {
     const statuses = [
       "open", "funded", "claimed", "in_review",
-      "merged", "paid", "refunded", "expired",
+      "merged", "release_failed", "paid", "refunded", "expired", "unknown",
     ] as const;
     for (const s of statuses) {
       expect(coerceStatus(s)).toBe(s);
     }
   });
 
-  it("falls back to 'open' for an unrecognized string", () => {
-    expect(coerceStatus("banana")).toBe("open");
+  it("falls back to 'unknown' for an unrecognized string", () => {
+    expect(coerceStatus("banana")).toBe("unknown");
   });
 
-  it("falls back to 'open' for null", () => {
-    expect(coerceStatus(null)).toBe("open");
+  it("falls back to 'unknown' for null", () => {
+    expect(coerceStatus(null)).toBe("unknown");
   });
 
-  it("falls back to 'open' for undefined", () => {
-    expect(coerceStatus(undefined)).toBe("open");
+  it("falls back to 'unknown' for undefined", () => {
+    expect(coerceStatus(undefined)).toBe("unknown");
   });
 
-  it("falls back to 'open' for empty string", () => {
-    expect(coerceStatus("")).toBe("open");
+  it("falls back to 'unknown' for empty string", () => {
+    expect(coerceStatus("")).toBe("unknown");
   });
 });
 
@@ -400,6 +400,22 @@ describe("generateIdempotencyKey", () => {
   it("generates unique keys on successive calls", () => {
     const keys = new Set(Array.from({ length: 50 }, () => generateIdempotencyKey()));
     expect(keys.size).toBe(50);
+  });
+
+  it("builds a v4 UUID from getRandomValues when randomUUID is unavailable", () => {
+    const original = crypto.randomUUID;
+    Object.defineProperty(crypto, "randomUUID", { value: undefined, configurable: true });
+    const spy = jest.spyOn(Math, "random");
+    try {
+      const key = generateIdempotencyKey();
+      expect(key).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      Object.defineProperty(crypto, "randomUUID", { value: original, configurable: true });
+    }
   });
 });
 

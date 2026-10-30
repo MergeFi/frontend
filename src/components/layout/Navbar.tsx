@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { GitMerge, ChevronDown, LogOut, Wallet, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -40,9 +41,19 @@ function shortAddress(address: string): string {
   return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
+/** #589 — roles map used to build the accessible explanation for the count badge. */
+const roleLabels: Record<string, string> = {
+  contributor: "Contributor",
+  maintainer: "Maintainer",
+  sponsor: "Sponsor",
+};
+
 export function Navbar() {
   const { user, loading, logout } = useAuth();
   const { address, linkState, initializing } = useWallet();
+  const [dashboardsOpen, setDashboardsOpen] = useState(false);
+  const dashboardsRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // A user can hold any subset of roles, so derive the menu from the array
   // rather than assuming one role. Unknown/duplicated entries are dropped
@@ -51,6 +62,33 @@ export function Navbar() {
     (role): role is UserRole => role in dashboardRoute,
   );
   const orderedRoles = roleOrder.filter((role) => roles.includes(role));
+
+  const closeDashboards = useCallback(() => {
+    setDashboardsOpen(false);
+    triggerRef.current?.focus();
+  }, []);
+
+  // Close on Escape and return focus to the trigger (#625).
+  useEffect(() => {
+    if (!dashboardsOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") closeDashboards();
+    }
+    function onClickOutside(e: MouseEvent) {
+      if (dashboardsRef.current && !dashboardsRef.current.contains(e.target as Node)) {
+        setDashboardsOpen(false);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onClickOutside);
+    };
+  }, [dashboardsOpen, closeDashboards]);
+  // #589 — compute multi-role info so the badge carries an accessible title
+  const roles = user?.roles ?? [];
+  const multiRole = roles.length > 1;
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
@@ -68,11 +106,26 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <div className="group relative">
+            <div className="group relative" ref={dashboardsRef}>
               <button
+                ref={triggerRef}
                 aria-haspopup="menu"
+                aria-expanded={dashboardsOpen}
+                aria-controls="dashboards-menu"
+                onClick={() => setDashboardsOpen((v) => !v)}
                 className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
               >
+                Dashboards
+                {/* #589 — multi-role indicator with accessible title */}
+                {multiRole && (
+                  <span
+                    className="ml-1.5 inline-flex items-center justify-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"
+                    title={`You have ${roles.length} roles: ${roles.map((r) => roleLabels[r] ?? r).join(", ")}`}
+                  >
+                    {roles.length}
+                  </span>
+                )}
+                <ChevronDown className="h-3.5 w-3.5" />
                 {messages["nav.dashboards"]}
                 {orderedRoles.length > 1 && (
                   <span className="rounded-full bg-indigo-50 px-1.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
@@ -81,15 +134,20 @@ export function Navbar() {
                 )}
                 <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 rtl:rotate-180" />
               </button>
-              {/* group-focus-within alongside group-hover: the submenu was
-                  only reachable via mouse hover — a keyboard user tabbing
-                  to the trigger never made it visible, and the links
-                  inside stayed in the tab order (invisible/opacity-0, not
-                  display: none) so focus could land on an invisible link
-                  (#222). focus-within keeps it open while focus is
-                  anywhere inside this wrapper, including on the links
-                  themselves. */}
-              <div className="invisible absolute start-0 top-full pt-3 opacity-0 transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+              {/* Controlled open state alongside group-hover: aria-expanded and
+                  aria-haspopup let screen readers know the button controls a
+                  menu and whether it is open (#625). Escape closes and returns
+                  focus to the trigger. Click-outside also closes. */}
+              <div
+                id="dashboards-menu"
+                role="menu"
+                aria-label={messages["nav.dashboards"]}
+                className={`absolute start-0 top-full pt-3 transition-all ${
+                  dashboardsOpen
+                    ? "visible opacity-100"
+                    : "invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+                }`}
+              >
                 <div className="w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900">
                   {orderedRoles.length > 0 ? (
                     orderedRoles.map((role) => (

@@ -8,7 +8,13 @@ import {
   useCallback,
   useRef,
 } from "react";
-import { getToken, setToken as persistToken, clearToken, TOKEN_KEY } from "@/lib/auth";
+import {
+  getToken,
+  getTokenSubject,
+  setToken as persistToken,
+  clearToken,
+  TOKEN_KEY,
+} from "@/lib/auth";
 import { apiRequest, ApiRequestError } from "@/lib/api";
 import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 import type { AuthUser } from "@/types";
@@ -54,16 +60,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = getToken();
     if (!token) {
       setUser(null);
+      setLoading(false);
       setDegraded(false);
       return null;
     }
+    // `/auth/me` only returns `{ userId, username }`, so resolving a session
+    // through it costs two sequential requests. The JWT already carries the
+    // user id in `sub`; fetch the profile directly and keep `/auth/me` as the
+    // fallback for tokens whose subject can't be decoded.
+    const subject = getTokenSubject(token);
     const MAX_RETRIES = 3;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const session = await apiRequest<{ userId: string; username: string }>(
-          "/auth/me",
-        );
-        const profile = await apiRequest<AuthUser>(`/users/${session.userId}`);
+        const userId =
+          subject ??
+          (await apiRequest<{ userId: string; username: string }>("/auth/me")).userId;
+        const profile = await apiRequest<AuthUser>(`/users/${userId}`);
         setUser(profile);
         setDegraded(false);
         return profile;

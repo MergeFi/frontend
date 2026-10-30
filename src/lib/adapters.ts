@@ -56,6 +56,7 @@ export interface RawBounty {
   difficulty: Difficulty;
   status: Bounty["status"];
   deadline: string | null;
+  createdAt?: string | null;
   escrowId: string | null;
   issue?: RawIssue;
   claimedBy?: RawUser | null;
@@ -138,6 +139,7 @@ export function adaptBounty(raw: RawBounty): Bounty {
     // timestamp that would make daysUntil() render it as already expired
     // (#193). Consumers must render a "No deadline" state for null.
     deadline: raw.deadline,
+    createdAt: raw.createdAt ?? undefined,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
     claimedById: raw.claimedBy?.id,
@@ -155,39 +157,56 @@ export interface RawMilestone {
   budget: string;
   distributed: string;
   asset: "USDC" | "XLM";
+  status?: string;
+  deadline?: string | null;
   repository?: RawRepository;
   issues?: { state: "open" | "closed" }[];
 }
 
 export function adaptMilestone(raw: RawMilestone): Milestone {
   const issues = raw.issues ?? [];
+  const budget = coerceNonNegative(raw.budget);
+  const distributed = coerceNonNegative(raw.distributed);
   return {
     id: raw.id,
     name: raw.title,
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "unassigned",
-    budget: coerceNonNegative(raw.budget),
-    distributed: coerceNonNegative(raw.distributed),
+    budget,
+    distributed,
     asset: raw.asset,
+    status: raw.status ?? "open",
+    deadline: raw.deadline ?? null,
     issueCount: issues.length,
-    completedCount: issues.filter((i) => i.state === "closed").length,
+    // #615 — base progress on payouts (distributed / budget), not on
+    // GitHub-closed issue counts. Issues closed as "not planned", or closed
+    // by a merge but not yet paid, previously inflated this number so the
+    // progress bar disagreed with the money actually paid out. When budget
+    // is zero (not yet funded), fall back to 0 rather than a meaningless
+    // division.
+    completedCount:
+      budget > 0 ? Math.floor((distributed / budget) * issues.length) : 0,
   };
 }
 
 export interface RawMaintenancePool {
   id: string;
+  name?: string | null;
   monthlyDeposit: string;
   balance: string;
   asset: "USDC" | "XLM";
+  status?: string;
   repository?: RawRepository | null;
 }
 
 export function adaptMaintenancePool(raw: RawMaintenancePool): MaintenancePool {
   return {
     id: raw.id,
+    name: raw.name ?? null,
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "platform-wide",
     monthlyDeposit: coerceNonNegative(raw.monthlyDeposit),
     balance: coerceNonNegative(raw.balance),
     asset: raw.asset,
+    status: raw.status ?? "active",
   };
 }
 

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { API_BASE_URL } from "./config";
 import { getToken } from "./auth";
 import {
@@ -21,6 +22,7 @@ export class ApiRequestError extends Error {
     message: string,
     public status: number,
     public retryAfter?: number,
+    public code?: string,
   ) {
     super(message);
   }
@@ -146,26 +148,29 @@ export async function apiRequest<T>(
     if (!res.ok) {
       const body = await res.text();
       let message = body;
+      let code: string | undefined;
       try {
         const parsed = JSON.parse(body);
         // A JSON body without a `.message` (e.g. a NestJS validation error
         // shaped like `{statusCode,error,details}`) must not fall back to the
         // raw JSON text — that would get rendered verbatim in the UI (#187).
         message = parsed.message ?? `Request failed (${res.status})`;
+        if (typeof parsed.code === "string") code = parsed.code;
       } catch {
         // plain-text error body, use as-is
       }
-      throw new ApiRequestError(message || `Request failed (${res.status})`, res.status);
+      throw new ApiRequestError(message || `Request failed (${res.status})`, res.status, undefined, code);
     }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
   });
 }
 
-export function apiPost<T>(path: string, body?: unknown): Promise<T> {
+export function apiPost<T>(path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
   return apiRequest<T>(path, {
     method: "POST",
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
   });
 }
 
@@ -182,39 +187,45 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
  * `applyBountyQuery`/`filterBounties` themselves (see src/lib/bounty-query.ts)
  * to get correct behavior against both live and mock-fallback data.
  */
-export async function fetchBounties(
-  fallback: Bounty[],
-  query?: BountyQuery,
-): Promise<FetchResult<Bounty[]>> {
-  const qs = query ? buildBountyQueryString(query) : "";
-  try {
-    const raw = await request<RawBounty[]>(`/bounties${qs}`);
-    return { data: raw.map(adaptBounty), source: "live" };
-  } catch {
-    return { data: fallback, source: "mock" };
-  }
-}
+export const fetchBounties = cache(
+  async (
+    fallback: Bounty[],
+    query?: BountyQuery,
+  ): Promise<FetchResult<Bounty[]>> => {
+    const qs = query ? buildBountyQueryString(query) : "";
+    try {
+      const raw = await request<RawBounty[]>(`/bounties${qs}`);
+      return { data: raw.map(adaptBounty), source: "live" };
+    } catch {
+      return { data: fallback, source: "mock" };
+    }
+  },
+);
 
-export async function fetchBounty(
-  id: string,
-  fallback: Bounty | undefined,
-): Promise<FetchResult<Bounty | undefined>> {
-  try {
-    const raw = await request<RawBounty>(`/bounties/${id}`);
-    return { data: adaptBounty(raw), source: "live" };
-  } catch {
-    return { data: fallback, source: "mock" };
-  }
-}
+export const fetchBounty = cache(
+  async (
+    id: string,
+    fallback: Bounty | undefined,
+  ): Promise<FetchResult<Bounty | undefined>> => {
+    try {
+      const raw = await request<RawBounty>(`/bounties/${id}`);
+      return { data: adaptBounty(raw), source: "live" };
+    } catch {
+      return { data: fallback, source: "mock" };
+    }
+  },
+);
 
-export async function fetchMilestones(fallback: Milestone[]): Promise<FetchResult<Milestone[]>> {
-  try {
-    const raw = await request<RawMilestone[]>("/milestones");
-    return { data: raw.map(adaptMilestone), source: "live" };
-  } catch {
-    return { data: fallback, source: "mock" };
-  }
-}
+export const fetchMilestones = cache(
+  async (fallback: Milestone[]): Promise<FetchResult<Milestone[]>> => {
+    try {
+      const raw = await request<RawMilestone[]>("/milestones");
+      return { data: raw.map(adaptMilestone), source: "live" };
+    } catch {
+      return { data: fallback, source: "mock" };
+    }
+  },
+);
 
 export async function fetchMaintenancePools(
   fallback: MaintenancePool[],
@@ -227,23 +238,75 @@ export async function fetchMaintenancePools(
   }
 }
 
-export async function fetchReputationByUsername(
-  username: string,
-  fallback: ReputationProfile | null,
-): Promise<FetchResult<ReputationProfile | null>> {
+export interface MaintainerRepository {
+  org: string;
+  repo: string;
+  url: string;
+}
+
+export async function fetchMyRepositories(
+  fallback: MaintainerRepository[],
+): Promise<FetchResult<MaintainerRepository[]>> {
   try {
-    const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    const target = username.toLowerCase();
-    const user = users.find((u) => u.username.toLowerCase() === target);
-    if (!user) return { data: fallback, source: "mock" };
-    const snapshot = await request<RawReputationSnapshot | null>(
-      `/reputation/${user.id}`,
-    );
-    return { data: adaptReputation(user, snapshot), source: "live" };
+    const raw = await request<
+      { id: string; org: string; name: string; htmlUrl: string }[]
+    >("/repositories/my");
+    return {
+      data: raw.map((r) => ({
+        org: r.org,
+        repo: r.name,
+        url: r.htmlUrl,
+      })),
+      source: "live",
+    };
   } catch {
     return { data: fallback, source: "mock" };
   }
 }
+
+export const fetchReputationByUsername = cache(
+  async (
+    username: string,
+    fallback: ReputationProfile | null,
+  ): Promise<FetchResult<ReputationProfile | null>> => {
+  try {
+    // Prefer the public read path (#597). `GET /users` is JWT-gated and
+    // `GET /reputation/:id` is owner-only, so the old pair always 401/403'd
+    // for anonymous profile views and fell through to mock data. The
+    // by-username endpoint is the intended public lookup; the legacy pair is
+    // kept as a secondary attempt for backends that still expose it.
+    const target = username.toLowerCase();
+    let user: (RawUserProfile & { id: string }) | undefined;
+    try {
+      user = await request<RawUserProfile & { id: string }>(
+        `/users/by-username/${encodeURIComponent(username)}`,
+      );
+    } catch {
+      const users = await request<(RawUserProfile & { id: string })[]>("/users");
+      user = users.find((u) => u.username.toLowerCase() === target);
+    }
+    if (!user?.id) return { data: fallback, source: "mock" };
+
+    let snapshot: RawReputationSnapshot | null = null;
+    try {
+      snapshot = await request<RawReputationSnapshot | null>(
+        `/reputation/${user.id}/latest`,
+      );
+    } catch {
+      try {
+        snapshot = await request<RawReputationSnapshot | null>(
+          `/reputation/${user.id}`,
+        );
+      } catch {
+        snapshot = null;
+      }
+    }
+    return { data: adaptReputation(user, snapshot), source: "live" };
+    } catch {
+      return { data: fallback, source: "mock" };
+    }
+  },
+);
 
 /**
  * Handles eligible to appear in the sitemap — i.e. profiles whose owner has
@@ -256,22 +319,56 @@ export async function fetchReputationByUsername(
  * excluded, so the endpoint omitting the field (as it does today) means
  * nothing is indexed rather than everything.
  */
-export async function fetchIndexableReputationHandles(
-  fallback: string[],
+export const fetchIndexableReputationHandles = cache(
+  async (fallback: string[]): Promise<FetchResult<string[]>> => {
 ): Promise<FetchResult<string[]>> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
-    return {
-      data: users
-        .filter((user) => user.isProfilePublic === true)
-        .map((user) => user.username)
-        .filter(Boolean),
-      source: "live",
-    };
+    // The backend's PublicUserDto currently has no isProfilePublic field,
+    // so profile indexing is effectively disabled until it ships (#598).
+    // Once the backend adds the flag, this filter will start matching.
+    const indexable = users
+      .filter((user) => user.isProfilePublic === true)
+      .map((user) => user.username)
+      .filter(Boolean);
+    return { data: indexable, source: "live" };
   } catch {
     // The mock fixtures represent contributors who have opted in, so local
     // development exercises the same code path production will take once the
     // backend ships the flag.
+    return { data: fallback, source: "mock" };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Platform analytics (#633)
+// ---------------------------------------------------------------------------
+
+export interface PlatformStats {
+  totalBounties: number;
+  totalPaidOut: number;
+  totalRepos: number;
+}
+
+export async function fetchPlatformStats(
+  fallback: PlatformStats,
+): Promise<FetchResult<PlatformStats>> {
+  try {
+    const raw = await request<{
+      totalBounties: number;
+      totalPaidOut: number;
+      totalRepos: number;
+    }>("/analytics/platform");
+    return {
+      data: {
+        totalBounties: raw.totalBounties,
+        totalPaidOut: raw.totalPaidOut,
+        totalRepos: raw.totalRepos,
+      },
+      source: "live",
+    };
+  } catch {
     return { data: fallback, source: "mock" };
   }
 }

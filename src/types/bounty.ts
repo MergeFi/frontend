@@ -6,9 +6,18 @@ export type BountyStatus =
   | 'claimed'
   | 'in_review'
   | 'merged'
+  | 'release_failed'
   | 'paid'
   | 'refunded'
-  | 'expired';
+  | 'expired'
+  | 'unknown';
+
+/** Statuses that never change again — polling should stop once observed. */
+export const TERMINAL_STATUSES: ReadonlySet<BountyStatus> = new Set([
+  'paid',
+  'refunded',
+  'expired',
+]);
 
 export interface Bounty {
   id: string;
@@ -23,6 +32,8 @@ export interface Bounty {
   issueNumber: number;
   labels: string[];
   deadline: string | null;
+  /** ISO creation timestamp; backs the "Newest" sort. Absent on mock data. */
+  createdAt?: string;
   claimedBy?: string;
   claimedById?: string;
   /**

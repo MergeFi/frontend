@@ -496,14 +496,12 @@ describe("WalletContext — disconnect() (#230, #231)", () => {
 
     // Local state clears synchronously regardless of the backend call...
     expect(screen.getByTestId("address")).toHaveTextContent("disconnected");
-    // ...and the unlink PATCH is fired.
+    // ...and the unlink DELETE is fired (#714: PATCH { stellarAddress: null }
+    // was always rejected 400 by @IsStellarAddress()).
     await waitFor(() =>
       expect(mockApiRequest).toHaveBeenCalledWith(
         "/users/user-1/stellar-address",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ stellarAddress: null }),
-        }),
+        expect.objectContaining({ method: "DELETE" }),
       ),
     );
   });

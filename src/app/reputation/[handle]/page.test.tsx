@@ -1,9 +1,20 @@
+import { render, screen } from "@testing-library/react";
 import { fetchReputationByUsername } from "@/lib/api";
-import { generateMetadata } from "./page";
+import ReputationPage, { generateMetadata } from "./page";
 import { mockReputationProfiles } from "@/lib/mock-data";
 
 jest.mock("next/navigation", () => ({ notFound: jest.fn() }));
 jest.mock("@/lib/api", () => ({ fetchReputationByUsername: jest.fn() }));
+jest.mock("./ReputationProfileView", () => ({
+  ReputationProfileView: ({ profile }: { profile: { handle: string } }) => (
+    <div data-testid="profile-view">@{profile.handle}</div>
+  ),
+}));
+jest.mock("./ReputationClientFallback", () => ({
+  ReputationClientFallback: ({ handle }: { handle: string }) => (
+    <div data-testid="client-fallback">fallback-@{handle}</div>
+  ),
+}));
 
 const mockFetch = fetchReputationByUsername as jest.MockedFunction<
   typeof fetchReputationByUsername
@@ -11,11 +22,6 @@ const mockFetch = fetchReputationByUsername as jest.MockedFunction<
 
 const meta = (handle: string) => generateMetadata({ params: Promise.resolve({ handle }) });
 
-/**
- * Per-page metadata is the enforcement point for the noindex fallback: a
- * profile excluded from the sitemap can still be indexed from an inbound link
- * unless the page itself says so.
- */
 describe("reputation page robots metadata", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -55,9 +61,42 @@ describe("reputation page robots metadata", () => {
 
     const metadata = await meta("priyaeth");
 
-    // noindex is about search engines, not about the page being shareable.
     expect(metadata.title).toBe("@priyaeth | MergeFi");
     expect(metadata.openGraph?.title).toBe("@priyaeth | MergeFi");
     expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
+  });
+});
+
+describe("ReputationPage component", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("renders ReputationProfileView when profile is returned by server fetch", async () => {
+    mockFetch.mockResolvedValue({
+      data: mockReputationProfiles.priyaeth,
+      source: "live",
+    });
+
+    const jsx = await ReputationPage({ params: Promise.resolve({ handle: "priyaeth" }) });
+    render(jsx);
+
+    expect(screen.getByTestId("profile-view")).toBeInTheDocument();
+    expect(screen.getByText("@priyaeth")).toBeInTheDocument();
+    expect(screen.queryByTestId("client-fallback")).not.toBeInTheDocument();
+  });
+
+  it("renders ReputationClientFallback when server fetch returns null", async () => {
+    mockFetch.mockResolvedValue({
+      data: null,
+      source: "mock",
+    });
+
+    const jsx = await ReputationPage({ params: Promise.resolve({ handle: "unknown_user" }) });
+    render(jsx);
+
+    expect(screen.getByTestId("client-fallback")).toBeInTheDocument();
+    expect(screen.getByText("fallback-@unknown_user")).toBeInTheDocument();
+    expect(screen.queryByTestId("profile-view")).not.toBeInTheDocument();
   });
 });

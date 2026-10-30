@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { fetchReputationByUsername } from "@/lib/api";
 import { mockReputationProfiles } from "@/lib/mock-data";
 import { profileIsIndexable } from "@/lib/seo-policy";
 import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
 import { ReputationProfileView } from "./ReputationProfileView";
+import { ReputationClientFallback } from "./ReputationClientFallback";
 
 export async function generateMetadata({
   params,
@@ -19,7 +19,10 @@ export async function generateMetadata({
   const { data: profile } = await fetchReputationByUsername(handle, mockFallback);
 
   if (!profile) {
-    return { title: "Profile not found | MergeFi" };
+    return {
+      title: `@${handle} | MergeFi`,
+      robots: { index: false, follow: false },
+    };
   }
 
   const title = `@${profile.handle} | MergeFi`;
@@ -28,21 +31,6 @@ export async function generateMetadata({
   return {
     title,
     description,
-    // The noindex fallback required by the policy in src/lib/seo-policy.ts.
-    // Omitting a profile from the sitemap is not sufficient on its own: a URL
-    // that has already been crawled (shared in a Slack channel, a GitHub
-    // profile README, a search result from before the policy existed) can
-    // still get indexed from an inbound link, and robots.txt can't express
-    // "this one page is private, the rest aren't". So every profile that
-    // hasn't opted in states it explicitly in the document head.
-    //
-    // Deliberately not an X-Robots-Tag header: a header can only be set for a
-    // whole route match in next.config.ts, which would noindex opted-in
-    // profiles too. Per-page metadata is the granularity this policy needs.
-    //
-    // A static header for all /reputation/* was also rejected for the same
-    // reason — see the robots.ts comment for why robots.txt must not
-    // disallow this path either.
     robots: profileIsIndexable(profile)
       ? { index: true, follow: true }
       : { index: false, follow: false },
@@ -71,7 +59,9 @@ export default async function ReputationPage({
     ) ?? null;
   const { data: profile, source } = await fetchReputationByUsername(handle, mockFallback);
 
-  if (!profile) notFound();
+  if (!profile) {
+    return <ReputationClientFallback handle={handle} />;
+  }
 
   return (
     <>

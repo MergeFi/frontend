@@ -444,3 +444,38 @@ export function sumMoney(values: ReadonlyArray<string | number>, decimals = 2): 
 export function subtractMoney(a: string | number, b: string | number, decimals = 2): number {
   return toMajorUnits(toCents(a, decimals) - toCents(b, decimals), decimals);
 }
+export function calculateTrend(
+  current?: number | null,
+  previous?: number | null,
+): number | undefined {
+  if (
+    current == null ||
+    previous == null ||
+    !Number.isFinite(current) ||
+    !Number.isFinite(previous)
+  ) {
+    return undefined;
+  }
+
+  if (previous === 0) {
+    return current === 0 ? 0 : 100;
+  }
+
+  const delta = ((current - previous) / Math.abs(previous)) * 100;
+  return Math.round(delta);
+}
+
+/**
+ * Calculates the percentage trend between the last two data points of a history array.
+ * Returns undefined if history has fewer than 2 data points.
+ */
+export function calculateTrendFromHistory(
+  history?: number[] | null,
+): number | undefined {
+  if (!history || history.length < 2) {
+    return undefined;
+  }
+  const current = history[history.length - 1];
+  const previous = history[history.length - 2];
+  return calculateTrend(current, previous);
+}

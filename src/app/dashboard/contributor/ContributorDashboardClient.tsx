@@ -1,3 +1,4 @@
+import { calculateTrendFromHistory } from "@/lib/utils";
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -221,7 +222,7 @@ export default function ContributorDashboardClient() {
           format="currency"
           status={fetchStatus}
           icon={DollarSign}
-          trend={fetchStatus === "loaded" ? 12 : undefined}
+          trend={fetchStatus === "loaded" ? calculateTrendFromHistory(contributorEarningsHistory) : undefined}
           sparkline={fetchStatus === "loaded" ? contributorEarningsHistory : undefined}
           zeroLabel="No earnings yet"
         />
@@ -231,7 +232,7 @@ export default function ContributorDashboardClient() {
           format="count"
           status={fetchStatus}
           icon={GitMerge}
-          trend={fetchStatus === "loaded" ? 8 : undefined}
+          trend={fetchStatus === "loaded" ? calculateTrendFromHistory(contributorSparkline) : undefined}
           sparkline={fetchStatus === "loaded" ? contributorSparkline : undefined}
           zeroLabel="No merged PRs yet"
         />

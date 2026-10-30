@@ -25,7 +25,7 @@ type PollingState = {
   isBackingOff: boolean;
 };
 
-type PollingAction = 
+type PollingAction =
   | { type: 'START_POLLING' }
   | { type: 'STOP_POLLING' }
   | { type: 'START_BACKOFF' }
@@ -66,24 +66,32 @@ export function useSmartPolling<T>({
   const [error, setError] = useState<Error | null>(null);
   const [pollingState, dispatch] = useReducer(pollingReducer, pollingInitialState);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentIntervalRef = useRef(interval);
   const unchangedCountRef = useRef(0);
   const isMountedRef = useRef(true);
   const previousDataRef = useRef<T | null>(null);
-  const isBackgroundedRef = useRef(false);
 
-  const fetchData = useCallback(async () => {
+  // Stabilne referencje do callbacków zapobiegają niepożądanym restartom efektu
+  const fetchFnRef = useRef(fetchFn);
+  fetchFnRef.current = fetchFn;
+
+  const compareFnRef = useRef(compareFn);
+  compareFnRef.current = compareFn;
+
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
+
+  const executePoll = useCallback(async () => {
     if (!isMountedRef.current) return;
-    
+
     try {
-      setIsLoading(true);
-      const result = await fetchFn();
-      
+      const result = await fetchFnRef.current();
+
       if (!isMountedRef.current) return;
 
-      const hasChanged = previousDataRef.current !== null 
-        ? !compareFn(previousDataRef.current, result)
+      const hasChanged = previousDataRef.current !== null
+        ? !compareFnRef.current(previousDataRef.current, result)
         : true;
 
       if (hasChanged) {
@@ -92,10 +100,10 @@ export function useSmartPolling<T>({
         unchangedCountRef.current = 0;
         currentIntervalRef.current = interval;
         dispatch({ type: 'STOP_BACKOFF' });
-        onDataChange?.(result);
+        onDataChangeRef.current?.(result);
       } else {
         unchangedCountRef.current += 1;
-        
+
         if (unchangedCountRef.current >= unchangedThreshold) {
           const newInterval = Math.min(
             currentIntervalRef.current * backoffMultiplier,
@@ -118,33 +126,51 @@ export function useSmartPolling<T>({
         setIsLoading(false);
       }
     }
-  }, [fetchFn, compareFn, interval, backoffMultiplier, maxBackoff, unchangedThreshold, onDataChange]);
+  }, [interval, backoffMultiplier, maxBackoff, unchangedThreshold]);
+
+  const scheduleNext = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (!enabled || (typeof document !== 'undefined' && document.hidden)) {
+      return;
+    }
+
+    // Dynamicznie pobiera zaktualizowaną wartość currentIntervalRef.current
+    timerRef.current = setTimeout(async () => {
+      await executePoll();
+      scheduleNext();
+    }, currentIntervalRef.current);
+  }, [enabled, executePoll]);
 
   const refetch = useCallback(async () => {
     currentIntervalRef.current = interval;
     dispatch({ type: 'STOP_BACKOFF' });
     unchangedCountRef.current = 0;
-    await fetchData();
-  }, [fetchData, interval]);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    await executePoll();
+    scheduleNext();
+  }, [executePoll, interval, scheduleNext]);
 
-  // Handle visibility change
+  // Obsługa minimalizacji / zmiany karty
   useEffect(() => {
     const handleVisibilityChange = () => {
-      isBackgroundedRef.current = document.hidden;
-      
       if (document.hidden) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
         }
         dispatch({ type: 'STOP_POLLING' });
       } else if (enabled) {
         dispatch({ type: 'START_POLLING' });
-        fetchData();
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-        intervalRef.current = setInterval(fetchData, currentIntervalRef.current);
+        void executePoll().then(() => {
+          scheduleNext();
+        });
       }
     };
 
@@ -152,35 +178,39 @@ export function useSmartPolling<T>({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [enabled, fetchData]);
+  }, [enabled, executePoll, scheduleNext]);
 
-  // Main polling effect - use a ref to track initial mount
-  const hasInitialized = useRef(false);
-
+  // Cykl życia odpytywania
   useEffect(() => {
-    isMountedRef.current = true;
-
     if (!enabled) {
+      dispatch({ type: 'STOP_POLLING' });
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
       return;
     }
 
-    // Only start polling on initial mount or when enabled changes
-    if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      dispatch({ type: 'START_POLLING' });
-      fetchData();
-      intervalRef.current = setInterval(fetchData, currentIntervalRef.current);
-    }
+    dispatch({ type: 'START_POLLING' });
+
+    void executePoll().then(() => {
+      scheduleNext();
+    });
 
     return () => {
-      isMountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
-      // Don't dispatch STOP_POLLING here to avoid state updates during unmount
     };
-  }, [enabled, fetchData]);
+  }, [enabled, executePoll, scheduleNext]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   return {
     data,

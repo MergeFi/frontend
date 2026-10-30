@@ -265,7 +265,9 @@ function parsePluralBranches(body: string): Map<string, string> {
     // `i` is the index of the matching close brace, or body.length when the
     // body is malformed — in which case we take the remainder.
     const end = depth === 0 ? i : body.length;
-    branches.set(selector, body.slice(start, end));
+    if (selector !== undefined) {
+      branches.set(selector, body.slice(start, end));
+    }
     pattern.lastIndex = end + 1;
   }
   return branches;

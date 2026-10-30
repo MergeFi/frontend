@@ -55,10 +55,8 @@ export function Avatar({
 
   return (
     <Image
-      src={src ?? seedToUrl(seed)}
-      alt={alt ?? seed}
       src={resolved}
-      alt={seed}
+      alt={alt ?? seed}
       width={size}
       height={size}
       unoptimized={resolved.startsWith("https://api.dicebear.com")}

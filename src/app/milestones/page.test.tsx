@@ -25,6 +25,8 @@ function makeMilestone(overrides: Partial<Milestone> = {}): Milestone {
     asset: "USDC",
     issueCount: 5,
     completedCount: 2,
+    status: "open",
+    deadline: null,
     ...overrides,
   };
 }

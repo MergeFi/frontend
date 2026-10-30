@@ -85,7 +85,7 @@ async function executeFetch(entry: PollerEntry): Promise<void> {
   entry.inFlight = true;
 
   try {
-    const result = await fetchBounty(entry.id);
+    const result = await fetchBounty(entry.id, undefined);
     entry.bounty = result.data ?? null;
     entry.source = result.source;
     entry.error = null;

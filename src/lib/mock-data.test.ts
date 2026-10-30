@@ -59,7 +59,7 @@ describe("recentActivity dynamic timestamps (#707)", () => {
   });
 
   it("advances timestamps dynamically across accesses via proxy", () => {
-    const firstEvent = recentActivity[0];
+    const firstEvent = recentActivity[0]!;
     expect(new Date(firstEvent.occurredAt).getTime()).toBeLessThanOrEqual(Date.now());
   });
 });

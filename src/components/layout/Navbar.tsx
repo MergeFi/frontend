@@ -87,8 +87,8 @@ export function Navbar() {
     };
   }, [dashboardsOpen, closeDashboards]);
   // #589 — compute multi-role info so the badge carries an accessible title
-  const roles = user?.roles ?? [];
-  const multiRole = roles.length > 1;
+  const userRoles = user?.roles ?? [];
+  const multiRole = userRoles.length > 1;
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
@@ -113,23 +113,15 @@ export function Navbar() {
                 aria-expanded={dashboardsOpen}
                 aria-controls="dashboards-menu"
                 onClick={() => setDashboardsOpen((v) => !v)}
+                title={multiRole ? `You have ${roles.length} roles: ${roles.map((r) => roleLabels[r] ?? r).join(", ")}` : undefined}
                 className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
               >
                 Dashboards
-                {/* #589 — multi-role indicator with accessible title */}
                 {multiRole && (
                   <span
                     className="ml-1.5 inline-flex items-center justify-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"
-                    title={`You have ${roles.length} roles: ${roles.map((r) => roleLabels[r] ?? r).join(", ")}`}
                   >
                     {roles.length}
-                  </span>
-                )}
-                <ChevronDown className="h-3.5 w-3.5" />
-                {messages["nav.dashboards"]}
-                {orderedRoles.length > 1 && (
-                  <span className="rounded-full bg-indigo-50 px-1.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
-                    {orderedRoles.length}
                   </span>
                 )}
                 <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 rtl:rotate-180" />

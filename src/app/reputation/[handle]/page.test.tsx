@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { fetchReputationByUsername } from "@/lib/api";
 import ReputationPage, { generateMetadata } from "./page";
 import { mockReputationProfiles } from "@/lib/mock-data";
+import type { ReputationProfile } from "@/types";
 
 jest.mock("next/navigation", () => ({ notFound: jest.fn() }));
 jest.mock("@/lib/api", () => ({ fetchReputationByUsername: jest.fn() }));
@@ -21,6 +22,7 @@ const mockFetch = fetchReputationByUsername as jest.MockedFunction<
 >;
 
 const meta = (handle: string) => generateMetadata({ params: Promise.resolve({ handle }) });
+const sampleProfile = mockReputationProfiles["priyaeth"] as unknown as ReputationProfile;
 
 describe("reputation page robots metadata", () => {
   beforeEach(() => {
@@ -29,7 +31,7 @@ describe("reputation page robots metadata", () => {
 
   it("marks a profile that has not opted in as noindex, nofollow", async () => {
     mockFetch.mockResolvedValue({
-      data: { ...mockReputationProfiles.priyaeth, indexable: false },
+      data: { ...sampleProfile, indexable: false },
       source: "live",
     });
 
@@ -38,7 +40,7 @@ describe("reputation page robots metadata", () => {
 
   it("allows indexing for a profile that has opted in", async () => {
     mockFetch.mockResolvedValue({
-      data: { ...mockReputationProfiles.priyaeth, indexable: true },
+      data: { ...sampleProfile, indexable: true },
       source: "live",
     });
 
@@ -46,16 +48,16 @@ describe("reputation page robots metadata", () => {
   });
 
   it("treats a missing opt-in flag as not indexable", async () => {
-    const withoutFlag = { ...mockReputationProfiles.priyaeth };
+    const withoutFlag = { ...sampleProfile } as Record<string, unknown>;
     delete withoutFlag.indexable;
-    mockFetch.mockResolvedValue({ data: withoutFlag, source: "live" });
+    mockFetch.mockResolvedValue({ data: withoutFlag as unknown as ReputationProfile, source: "live" });
 
     expect((await meta("priyaeth")).robots).toEqual({ index: false, follow: false });
   });
 
   it("keeps the title and social metadata intact for a non-indexed profile", async () => {
     mockFetch.mockResolvedValue({
-      data: { ...mockReputationProfiles.priyaeth, indexable: false },
+      data: { ...sampleProfile, indexable: false },
       source: "live",
     });
 
@@ -74,7 +76,7 @@ describe("ReputationPage component", () => {
 
   it("renders ReputationProfileView when profile is returned by server fetch", async () => {
     mockFetch.mockResolvedValue({
-      data: mockReputationProfiles.priyaeth,
+      data: sampleProfile,
       source: "live",
     });
 

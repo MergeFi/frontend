@@ -99,7 +99,7 @@ describe("IssueActions — action buttons per bounty.status", () => {
     expect(buttons[0]).toHaveTextContent("Awaiting sponsor funding");
     expect(buttons[0]).toBeDisabled();
     expect(
-      screen.queryByRole("button", { name: /fund/i }),
+      screen.queryByRole("button", { name: /^fund this bounty/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -119,7 +119,6 @@ describe("IssueActions — action buttons per bounty.status", () => {
     ["release_failed", "Payout failed — contact support"],
     ["paid", "Payout complete"],
     ["refunded", "No action available"],
-    ["expired", "No action available"],
     ["unknown", "No action available"],
   ] as const)(
     "%s → a single disabled '%s' button and no money-moving action",
@@ -136,6 +135,7 @@ describe("IssueActions — action buttons per bounty.status", () => {
   );
 
   it("expired (non-sponsor) shows a disabled 'Deadline passed' button", () => {
+    mockUser({ id: "someone-else", stellarAddress: null });
     render(<IssueActions bounty={makeBounty("expired")} />);
     const buttons = screen.getAllByRole("button");
     expect(buttons).toHaveLength(1);
@@ -260,7 +260,7 @@ describe("IssueActions — claim", () => {
 
     // The contributor identity is taken from the JWT server-side, so the
     // body carries nothing — not even a client-asserted contributorId.
-    expect(mockApiPost).toHaveBeenCalledWith("/bounties/bounty-1/claim", {});
+    expect(mockApiPost).toHaveBeenCalledWith("/bounties/bounty-1/claim", {}, expect.any(String));
     expect(await screen.findByRole("status")).toHaveTextContent(
       /You've claimed this issue/,
     );
@@ -338,8 +338,8 @@ describe("IssueActions — refund (confirm-gated)", () => {
       "/bounties/bounty-1/refund",
       expect.objectContaining({ idempotencyKey: expect.any(String) }),
     );
-    expect(confirmSpy.mock.invocationCallOrder[0]).toBeLessThan(
-      mockApiPost.mock.invocationCallOrder[0],
+    expect(confirmSpy.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockApiPost.mock.invocationCallOrder[0]!,
     );
     expect(await screen.findByRole("status")).toHaveTextContent(
       /refunded to the sponsor/,

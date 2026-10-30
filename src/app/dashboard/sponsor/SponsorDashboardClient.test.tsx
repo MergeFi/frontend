@@ -36,8 +36,9 @@ jest.mock("@/lib/adapters", () => ({
 
 // Mock DashboardShell to avoid complex nesting
 jest.mock("@/components/dashboard/DashboardShell", () => ({
-  DashboardShell: ({ children, badge }: any) => (
+  DashboardShell: ({ children, badge, subtitle }: any) => (
     <div data-testid="dashboard-shell">
+      {subtitle && <p>{subtitle}</p>}
       {badge}
       {children}
     </div>

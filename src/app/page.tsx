@@ -150,7 +150,7 @@ export default async function HomePage() {
             <span>
               Joined by{" "}
               <strong className="text-slate-900 dark:text-white">
-                {formatInteger(platformStats.activeContributors)} contributors
+                {formatInteger(mockPlatformStats.activeContributors)} contributors
               </strong>{" "}
               already earning
             </span>

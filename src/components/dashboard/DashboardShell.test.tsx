@@ -12,6 +12,12 @@ import { render, screen } from "@testing-library/react";
 import { usePathname } from "next/navigation";
 import { DashboardShell } from "./DashboardShell";
 
+jest.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({
+    user: { id: "u1", username: "alice", roles: ["contributor", "maintainer", "sponsor"] },
+  }),
+}));
+
 jest.mock("next/navigation", () => ({
   usePathname: jest.fn(),
 }));

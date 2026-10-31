@@ -49,7 +49,7 @@ describe("CopyrightYear — hydration correction", () => {
       }
     }
 
-    (global as any).Date = MockDate;
+    (globalThis as unknown as Record<string, unknown>).Date = MockDate;
     try {
       render(<CopyrightYear />);
       // Initially might show stale year, but effect should correct it
@@ -57,7 +57,7 @@ describe("CopyrightYear — hydration correction", () => {
       const el = screen.getByText(String(realYear));
       expect(el).toBeInTheDocument();
     } finally {
-      (global as any).Date = originalDate;
+      (globalThis as unknown as Record<string, unknown>).Date = originalDate;
     }
   });
 });

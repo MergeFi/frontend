@@ -170,7 +170,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         // Reconcile the cached address against Freighter's actual active
         // account. If the user switched accounts inside the extension
         // without touching MergeFi, the cached address is stale (#71).
-        getActiveFreighterAddress().then((live) => {
+        void getActiveFreighterAddress().then((live) => {
           if (live && live !== stored) {
             setAddressMismatch(true);
           }

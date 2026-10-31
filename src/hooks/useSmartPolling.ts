@@ -74,13 +74,14 @@ export function useSmartPolling<T>({
 
   // Stabilne referencje do callbacków zapobiegają niepożądanym restartom efektu
   const fetchFnRef = useRef(fetchFn);
-  fetchFnRef.current = fetchFn;
-
   const compareFnRef = useRef(compareFn);
-  compareFnRef.current = compareFn;
-
   const onDataChangeRef = useRef(onDataChange);
-  onDataChangeRef.current = onDataChange;
+
+  useEffect(() => {
+    fetchFnRef.current = fetchFn;
+    compareFnRef.current = compareFn;
+    onDataChangeRef.current = onDataChange;
+  });
 
   const executePoll = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -128,6 +129,8 @@ export function useSmartPolling<T>({
     }
   }, [interval, backoffMultiplier, maxBackoff, unchangedThreshold]);
 
+  const scheduleNextRef = useRef<() => void>(() => {});
+
   const scheduleNext = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -138,12 +141,16 @@ export function useSmartPolling<T>({
       return;
     }
 
-    // Dynamicznie pobiera zaktualizowaną wartość currentIntervalRef.current
-    timerRef.current = setTimeout(async () => {
-      await executePoll();
-      scheduleNext();
+    timerRef.current = setTimeout(() => {
+      void executePoll().then(() => {
+        scheduleNextRef.current();
+      });
     }, currentIntervalRef.current);
   }, [enabled, executePoll]);
+
+  useEffect(() => {
+    scheduleNextRef.current = scheduleNext;
+  }, [scheduleNext]);
 
   const refetch = useCallback(async () => {
     currentIntervalRef.current = interval;

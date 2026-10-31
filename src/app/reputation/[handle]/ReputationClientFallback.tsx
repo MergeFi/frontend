@@ -22,13 +22,19 @@ export function ReputationClientFallback({ handle }: ReputationClientFallbackPro
   useEffect(() => {
     if (loading) return;
 
-    if (!user || user.username.toLowerCase() !== handle.toLowerCase()) {
-      setIsFetching(false);
-      setNotFoundTriggered(true);
-      return;
-    }
-
     let isCancelled = false;
+
+    if (!user || user.username.toLowerCase() !== handle.toLowerCase()) {
+      setTimeout(() => {
+        if (!isCancelled) {
+          setIsFetching(false);
+          setNotFoundTriggered(true);
+        }
+      }, 0);
+      return () => {
+        isCancelled = true;
+      };
+    }
 
     async function loadReputation() {
       try {

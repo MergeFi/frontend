@@ -50,7 +50,7 @@ const config: Config = {
   // rather than exact name, so a new transitive dependency within one of
   // these families still gets covered without a per-package addition.
   transformIgnorePatterns: [
-    "node_modules/(?!(react-markdown|remark-.*|rehype-.*|unified|hast-.*|mdast-.*|micromark.*|vfile.*|unist-.*|bail|is-plain-obj|trough|zwitch|longest-streak|ccount|escape-string-regexp|markdown-table|trim-lines|decode-named-character-reference|character-entities.*|devlop|space-separated-tokens|comma-separated-tokens|property-information|web-namespaces|html-void-elements|stringify-entities|html-url-attributes|inline-style-parser|estree-util-is-identifier-name|style-to-object)/)",
+    "node_modules/(?!(\.pnpm/.*node_modules/)?(react-markdown|remark-.*|rehype-.*|unified|hast-.*|mdast-.*|micromark.*|vfile.*|unist-.*|bail|is-plain-obj|trough|zwitch|longest-streak|ccount|escape-string-regexp|markdown-table|trim-lines|decode-named-character-reference|character-entities.*|devlop|space-separated-tokens|comma-separated-tokens|property-information|web-namespaces|html-void-elements|stringify-entities|html-url-attributes|inline-style-parser|estree-util-is-identifier-name|style-to-object)/)",
   ],
 };
 

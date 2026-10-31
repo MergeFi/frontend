@@ -36,7 +36,7 @@ export default async function MaintainerDashboardPage() {
   // Filter bounties to only those belonging to the maintainer's own
   // repositories (#641). When no repositories are connected, show an
   // empty state with a "Connect repository" CTA.
-  const myRepos = await fetchMyRepositories([]);
+  const { data: myRepos = [] } = await fetchMyRepositories([]);
   const maintainerRepoKeys = new Set(myRepos.map((r) => `${r.org}/${r.repo}`));
   const bounties =
     myRepos.length > 0

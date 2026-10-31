@@ -74,7 +74,7 @@ export async function GET(
     });
   }
 
-  return new Response(renderUrlset(chunks[index]), {
+  return new Response(renderUrlset(chunks[index]!), {
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
       "Cache-Control": CACHE_CONTROL,

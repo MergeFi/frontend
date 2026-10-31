@@ -1,5 +1,4 @@
-import { useSyncExternalStore, useCallback } from 'react';
-import { fetchBounty } from '@/lib/api';
+import { useSyncExternalStore, useCallback, useRef, useEffect } from 'react';
 import type { Bounty, BountyStatus } from '@/types/bounty';
 import { TERMINAL_STATUSES } from '@/types/bounty';
 import {
@@ -27,12 +26,6 @@ interface UseBountyStatusResult {
   source: 'live' | 'mock' | null;
 }
 
-/**
- * Shared bounty status hook — uses the module-level poller registry
- * so multiple components on the same page share one fetch loop (#631).
- *
- * Stops polling once a terminal status is observed (#632).
- */
 export function useBountyStatus({
   bountyId,
   fallbackBounty,
@@ -40,29 +33,48 @@ export function useBountyStatus({
   enabled = true,
   onStatusChange,
 }: UseBountyStatusOptions): UseBountyStatusResult {
+  const subscribe = useCallback(
+    (onStoreChange: () => void) =>
+      subscribeBounty(bountyId, onStoreChange, interval, enabled),
+    [bountyId, interval, enabled],
+  );
+
+  const getSnapshot = useCallback(
+    () => getBountySnapshot(bountyId),
+    [bountyId],
+  );
+
   const snapshot = useSyncExternalStore(
-    useCallback(
-      (onStoreChange: () => void) =>
-        enabled ? subscribeBounty(bountyId, onStoreChange, interval) : () => {},
-      [bountyId, enabled, interval],
-    ),
-    () => getBountySnapshot(bountyId),
-    () => getBountySnapshot(bountyId),
+    subscribe,
+    getSnapshot,
+    getSnapshot,
   );
 
   const refetch = useCallback(async () => {
     refetchBounty(bountyId);
   }, [bountyId]);
 
-  const status = snapshot.bounty?.status ?? null;
+  const bounty = snapshot.bounty ?? (snapshot.loading ? (fallbackBounty ?? null) : null);
+  const status = bounty?.status ?? null;
+
+  const previousStatusRef = useRef<BountyStatus | null>(null);
+
+  useEffect(() => {
+    if (status && status !== previousStatusRef.current) {
+      previousStatusRef.current = status;
+      onStatusChange?.(status);
+    }
+  }, [status, onStatusChange]);
+
+  const isTerminal = status ? TERMINAL_STATUSES.has(status as BountyStatus) : false;
 
   return {
-    bounty: snapshot.bounty,
-    isLoading: snapshot.loading && !snapshot.bounty,
+    bounty,
+    isLoading: snapshot.loading && !bounty,
     error: snapshot.error,
     refetch,
-    isPolling: enabled && !TERMINAL_STATUSES.has(status as BountyStatus),
-    isLive: enabled && !TERMINAL_STATUSES.has(status as BountyStatus),
+    isPolling: enabled && !isTerminal,
+    isLive: enabled && !isTerminal,
     status,
     source: snapshot.source,
   };

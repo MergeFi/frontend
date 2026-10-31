@@ -156,7 +156,7 @@ describe("applyBountyQuery", () => {
       { status: "all", difficulty: "all", asset: "all", sort: "reward-desc", page: 1 },
       10,
     );
-    expect(result.items[0].reward).toBe(24);
+    expect(result.items[0]!.reward).toBe(24);
   });
 
   it("puts bounties without a deadline last when sorting by soonest deadline", () => {

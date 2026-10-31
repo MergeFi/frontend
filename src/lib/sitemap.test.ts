@@ -105,9 +105,9 @@ describe("splitIntoSitemaps — scale", () => {
     // the first and last entries of each file are the ones a slicing bug would
     // drop or duplicate, and it keeps the suite fast enough that a parallel
     // test run isn't starved by it.
-    expect(chunks[0][0]).toBe(entries[0]);
-    expect(chunks[0][MAX_URLS_PER_SITEMAP - 1]).toBe(entries[MAX_URLS_PER_SITEMAP - 1]);
-    expect(chunks[1][0]).toBe(entries[MAX_URLS_PER_SITEMAP]);
+    expect(chunks[0]![0]).toBe(entries[0]);
+    expect(chunks[0]![MAX_URLS_PER_SITEMAP - 1]).toBe(entries[MAX_URLS_PER_SITEMAP - 1]);
+    expect(chunks[1]![0]).toBe(entries[MAX_URLS_PER_SITEMAP]);
   });
 
   it("never emits a file above the limit for a large user base", async () => {
@@ -129,10 +129,10 @@ describe("splitIntoSitemaps — scale", () => {
     // Nothing dropped or duplicated: the per-file counts add back up to the
     // total, and consecutive files meet exactly at the boundary.
     expect(chunks.reduce((sum, c) => sum + c.length, 0)).toBe(entries.length);
-    expect(chunks[0][0]).toBe(entries[0]);
-    expect(chunks[chunks.length - 1].at(-1)).toBe(entries.at(-1));
+    expect(chunks[0]![0]).toBe(entries[0]);
+    expect(chunks[chunks.length - 1]!.at(-1)).toBe(entries.at(-1));
     for (let i = 1; i < chunks.length; i++) {
-      expect(chunks[i][0]).toBe(entries[(i - 1) * MAX_URLS_PER_SITEMAP + MAX_URLS_PER_SITEMAP]);
+      expect(chunks[i]![0]).toBe(entries[(i - 1) * MAX_URLS_PER_SITEMAP + MAX_URLS_PER_SITEMAP]);
     }
   });
 

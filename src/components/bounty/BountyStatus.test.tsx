@@ -15,7 +15,7 @@ jest.mock("@/hooks/useBountyStatus");
 const mockUseBountyStatus = useBountyStatus as jest.MockedFunction<typeof useBountyStatus>;
 
 const defaultMock = {
-  bounty: { id: "1", status: "open", claimedBy: null },
+  bounty: { id: "1", status: "open", claimedBy: null } as unknown as ReturnType<typeof useBountyStatus>["bounty"],
   isLoading: false,
   error: null,
   isPolling: false,
@@ -80,7 +80,7 @@ describe("BountyStatus", () => {
   });
 
   it("shows claimed-by when bounty.claimedBy is set", () => {
-    mockUseBountyStatus.mockReturnValue({ ...defaultMock, bounty: { id: "1", status: "claimed", claimedBy: "alice" } });
+    mockUseBountyStatus.mockReturnValue({ ...defaultMock, bounty: { id: "1", status: "claimed", claimedBy: "alice" } as unknown as ReturnType<typeof useBountyStatus>["bounty"] });
     render(<BountyStatus bountyId="1" />);
     expect(screen.getByText("Claimed by:")).toBeInTheDocument();
     expect(screen.getByText("alice")).toBeInTheDocument();
@@ -91,17 +91,21 @@ describe("BountyStatus", () => {
     const labels = ["Open", "Funded", "Claimed", "In Review", "Merged", "Paid", "Refunded", "Expired"];
 
     statuses.forEach((status, i) => {
-      mockUseBountyStatus.mockReturnValue({ ...defaultMock, status, bounty: { id: "1", status, claimedBy: null } });
+      mockUseBountyStatus.mockReturnValue({
+        ...defaultMock,
+        status,
+        bounty: { id: "1", status, claimedBy: null } as unknown as ReturnType<typeof useBountyStatus>["bounty"],
+      });
       const { unmount } = render(<BountyStatus bountyId="1" />);
-      expect(screen.getByText(labels[i])).toBeInTheDocument();
+      const label = labels[i];
+      if (label) {
+        expect(screen.getByText(label)).toBeInTheDocument();
+      }
       unmount();
     });
   });
-jest.mock("@/hooks/useBountyStatus", () => ({
-  useBountyStatus: jest.fn(),
-}));
+});
 
-const mockUseBountyStatus = useBountyStatus as jest.MockedFunction<typeof useBountyStatus>;
 type HookResult = ReturnType<typeof useBountyStatus>;
 
 const refetch = jest.fn();

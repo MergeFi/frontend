@@ -25,19 +25,20 @@ jest.mock("@/context/AuthContext", () => ({
 // Mock the api module
 const mockApiRequest = jest.fn();
 jest.mock("@/lib/api", () => ({
-  apiRequest: (...args: any[]) => mockApiRequest(...args),
+  apiRequest: (...args: unknown[]) => mockApiRequest(...args),
 }));
 
 // Mock the adapters module
 jest.mock("@/lib/adapters", () => ({
-  adaptBounty: (raw: any) => raw,
-  adaptMilestone: (raw: any) => raw,
+  adaptBounty: (raw: unknown) => raw,
+  adaptMilestone: (raw: unknown) => raw,
 }));
 
 // Mock DashboardShell to avoid complex nesting
 jest.mock("@/components/dashboard/DashboardShell", () => ({
-  DashboardShell: ({ children, badge }: any) => (
+  DashboardShell: ({ children, badge, subtitle }: { children?: React.ReactNode; badge?: React.ReactNode; subtitle?: React.ReactNode }) => (
     <div data-testid="dashboard-shell">
+      {subtitle && <p>{subtitle}</p>}
       {badge}
       {children}
     </div>
@@ -46,7 +47,7 @@ jest.mock("@/components/dashboard/DashboardShell", () => ({
 
 // Mock other heavy components
 jest.mock("@/components/bounty/BountyCard", () => ({
-  BountyCard: ({ bounty }: any) => <div data-testid="bounty-card">{bounty.title}</div>,
+  BountyCard: ({ bounty }: { bounty: { title?: string } }) => <div data-testid="bounty-card">{bounty.title}</div>,
 }));
 
 jest.mock("@/components/dashboard/ActivityList", () => ({
@@ -58,7 +59,7 @@ jest.mock("@/components/ui/BarChart", () => ({
 }));
 
 jest.mock("@/components/ui/StatCard", () => ({
-  StatCard: ({ label, status, value }: any) => (
+  StatCard: ({ label, status, value }: { label?: string; status?: string; value?: unknown }) => (
     <div data-testid="stat-card" data-label={label} data-status={status}>
       {status === "loaded" && value !== undefined ? String(value) : ""}
     </div>

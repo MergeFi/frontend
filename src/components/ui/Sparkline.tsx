@@ -79,9 +79,10 @@ export function describeTrend(
   label?: string,
   formatValue?: (v: number) => string,
 ): string {
+  if (data.length === 0) return label ? `${label}: no data` : "no data";
   const format = formatValue ?? ((v: number) => String(v));
-  const first = data[0];
-  const last = data[data.length - 1];
+  const first = data[0]!;
+  const last = data[data.length - 1]!;
   const direction = last > first ? "up" : last < first ? "down" : "flat";
   const subject = label ? `${label}: ` : "";
   return (

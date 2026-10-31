@@ -37,7 +37,7 @@ const ALL_DIFFICULTIES: Difficulty[] = ["beginner", "intermediate", "advanced", 
  * (#456). Both now render the same map.
  */
 const STATUS_LABELS: Record<BountyStatus, string> = {
-  open: "Open",
+  open: "Not yet funded",
   funded: "Funded",
   claimed: "Claimed",
   in_review: "In Review",

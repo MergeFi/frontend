@@ -57,8 +57,10 @@ export function Tabs<T extends string>({
 
       e.preventDefault();
       const nextKey = keys[nextIdx];
-      onChange(nextKey);
-      focusTab(nextKey);
+      if (nextKey !== undefined) {
+        onChange(nextKey);
+        focusTab(nextKey);
+      }
     },
     [tabs, onChange, focusTab],
   );

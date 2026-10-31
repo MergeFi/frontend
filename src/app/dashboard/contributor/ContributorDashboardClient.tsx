@@ -94,6 +94,7 @@ export default function ContributorDashboardClient() {
 
     if (!user) {
       const demo = mockReputationProfiles.priyaeth;
+      if (!demo) return;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStats({
         handle: demo.handle,

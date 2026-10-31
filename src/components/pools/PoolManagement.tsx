@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost } from "@/lib/api-client";
-import { generateIdempotencyKey } from "@/lib/idempotency";
+import { apiPost } from "@/lib/api";
+import { generateIdempotencyKey } from "@/lib/utils";
 
 /**
  * Pool management components for creating maintenance pools and

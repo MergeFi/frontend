@@ -12,6 +12,10 @@ jest.mock("react", () => {
 const realUseState: typeof React.useState = jest.requireActual("react").useState;
 const mockUseState = React.useState as unknown as jest.Mock;
 
+jest.mock("@/lib/adapters", () => ({
+  adaptBounty: jest.fn((raw: any) => raw?.data ?? raw),
+}));
+
 jest.mock("@/lib/api", () => ({
   apiPost: jest.fn(),
   fetchBounty: jest.fn(),

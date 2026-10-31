@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost, apiPatch } from "@/lib/api-client";
-import { generateIdempotencyKey } from "@/lib/idempotency";
+import { apiPost, apiPatch } from "@/lib/api";
+import { generateIdempotencyKey } from "@/lib/utils";
 
 /**
  * Team management components for creating teams, editing splits,
@@ -42,7 +42,9 @@ export function CreateTeamButton({ onCreated }: { onCreated?: (team: Team) => vo
 
   function updateMember(index: number, field: keyof TeamMember, value: string | number) {
     const updated = [...members];
-    updated[index] = { ...updated[index], [field]: value };
+    const member = updated[index];
+    if (!member) return;
+    updated[index] = { ...member, [field]: value } as TeamMember;
     setMembers(updated);
   }
 
@@ -201,7 +203,9 @@ export function EditTeamSplitsButton({
 
   function updateMember(index: number, field: keyof TeamMember, value: string | number) {
     const updated = [...members];
-    updated[index] = { ...updated[index], [field]: value };
+    const member = updated[index];
+    if (!member) return;
+    updated[index] = { ...member, [field]: value } as TeamMember;
     setMembers(updated);
   }
 

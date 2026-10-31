@@ -41,25 +41,15 @@ describe("CopyrightYear — hydration correction", () => {
 
     // First call (useState initial value) returns stale year,
     // subsequent calls (useEffect) return the real year
-    let callCount = 0;
+    let yearCallCount = 0;
     class MockDate extends Date {
-      constructor(...args: any[]) {
-        if (args.length === 0 && callCount === 0) {
-          callCount++;
-          super(realYear, 0, 1);
-        } else if (args.length === 0) {
-          super(realYear, 0, 1);
-        } else {
-          // @ts-expect-error - spread for constructor
-          super(...args);
-        }
-      }
       getFullYear() {
-        return callCount <= 1 ? staleYear : realYear;
+        yearCallCount++;
+        return yearCallCount === 1 ? staleYear : realYear;
       }
     }
 
-    (global as any).Date = MockDate;
+    (globalThis as unknown as Record<string, unknown>).Date = MockDate;
     try {
       render(<CopyrightYear />);
       // Initially might show stale year, but effect should correct it
@@ -67,7 +57,7 @@ describe("CopyrightYear — hydration correction", () => {
       const el = screen.getByText(String(realYear));
       expect(el).toBeInTheDocument();
     } finally {
-      (global as any).Date = originalDate;
+      (globalThis as unknown as Record<string, unknown>).Date = originalDate;
     }
   });
 });

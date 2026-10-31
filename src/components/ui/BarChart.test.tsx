@@ -66,8 +66,8 @@ describe("BarChart accessibility", () => {
     const bars = Array.from(
       container.querySelectorAll<HTMLElement>(".relative > div"),
     );
-    expect(bars[1].style.backgroundImage).toContain("repeating-linear-gradient");
-    expect(bars[0].style.backgroundImage).toBe("");
+    expect(bars[1]!.style.backgroundImage).toContain("repeating-linear-gradient");
+    expect(bars[0]!.style.backgroundImage).toBe("");
   });
 
   it("uses label colours that pass AA in both themes", () => {

@@ -82,6 +82,7 @@ export default function SponsorDashboardClient() {
         ),
         budgetLocked: mockSponsorSummary.budgetRemaining,
         repoCount: mockSponsorSummary.repos.length,
+        recentPayments: [],
       });
       setFetchStatus("loaded");
       setIsLive(false);

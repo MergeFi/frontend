@@ -100,6 +100,8 @@ export const mockMilestones: Milestone[] = [
     asset: "USDC",
     issueCount: 12,
     completedCount: 4,
+    status: "open",
+    deadline: null,
   },
   {
     id: "m2",
@@ -111,24 +113,30 @@ export const mockMilestones: Milestone[] = [
     asset: "XLM",
     issueCount: 8,
     completedCount: 3,
+    status: "open",
+    deadline: null,
   },
 ];
 
 export const mockMaintenancePools: MaintenancePool[] = [
   {
     id: "p1",
+    name: "Core Indexer Maintenance Pool",
     repo: "core-indexer",
     monthlyDeposit: 500,
     balance: 1240,
     asset: "USDC",
+    status: "active",
   },
   {
     // XLM-denominated (#367); balance carries full 7-decimal stroop precision.
     id: "p2",
+    name: "Stellar Wallet Kit Pool",
     repo: "stellar-wallet-kit",
     monthlyDeposit: 2500,
     balance: 8412.1234567,
     asset: "XLM",
+    status: "active",
   },
 ];
 

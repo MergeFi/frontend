@@ -91,7 +91,7 @@ describe("ClaimButton", () => {
     });
     expect(reset).toHaveBeenCalledTimes(1);
     expect(claim).toHaveBeenCalledTimes(1);
-    expect(reset.mock.invocationCallOrder[0]).toBeLessThan(claim.mock.invocationCallOrder[0]);
+    expect(reset.mock.invocationCallOrder[0]!).toBeLessThan(claim.mock.invocationCallOrder[0]!);
   });
 
   it("renders the already-claimed view instead of a button when status is claimed", () => {

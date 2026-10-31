@@ -8,6 +8,7 @@ const eslintConfig = defineConfig([
   // Type-aware rules to catch floating promises and misused promises (#646, #647).
   // projectService is required for typed linting.
   {
+    files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -20,6 +21,14 @@ const eslintConfig = defineConfig([
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
+    },
+  },
+  {
+    files: ["*.mjs", "scripts/**/*.mjs"],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
     },
   },
   // Extends (not just restates) eslint-config-next's default ignores with

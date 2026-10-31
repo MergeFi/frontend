@@ -10,10 +10,6 @@ import { formatCurrency, generateIdempotencyKey } from "@/lib/utils";
 import { ClaimButton } from "@/components/bounty/ClaimButton";
 import type { Bounty } from "@/types";
 
-/** #592 — generate a UUID for the Idempotency-Key header. */
-function generateIdempotencyKey(): string {
-  return crypto.randomUUID();
-}
 
 export function IssueActions({ bounty }: { bounty: Bounty }) {
   const router = useRouter();
@@ -70,20 +66,13 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     setNotice(null);
     setPending(true);
     try {
-      const walletAddress = address ?? (await connect());
-      if (!walletAddress) {
-        setError(getWalletError() ?? "Connect a Stellar wallet to continue.");
       const result = await runWithWallet(async (walletAddress) => {
         await apiPost(`/bounties/${bounty.id}/fund`, {
           funderAddress: walletAddress,
           idempotencyKey: fundKey,
         });
         setNotice("Escrow funded on-chain. This bounty is now open for claims.");
-        // Rotate key after definitive success so next fund attempt is fresh
         setFundKey(generateIdempotencyKey());
-          idempotencyKey: generateIdempotencyKey(),
-        });
-        setNotice("Escrow funded on-chain. This bounty is now open for claims.");
       }, "Connect a Stellar wallet to continue.");
       if (!result.ok) {
         setError(result.error);
@@ -95,17 +84,6 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     } finally {
       setPending(false);
     }
-  }
-
-  async function handleFund() {
-    await withWallet(async (walletAddress) => {
-      await apiPost(
-        `/bounties/${bounty.id}/fund`,
-        { funderAddress: walletAddress },
-        generateIdempotencyKey(),
-      );
-      setNotice("Escrow funded on-chain. This bounty is now open for claims.");
-    });
   }
 
   async function handleClaim() {
@@ -156,10 +134,8 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
     setNotice(null);
     setPending(true);
     try {
-      await apiPost(`/bounties/${bounty.id}/refund`, undefined, generateIdempotencyKey());
       await apiPost(`/bounties/${bounty.id}/refund`, {
         idempotencyKey: refundKey,
-        idempotencyKey: generateIdempotencyKey(),
       });
       setNotice("Escrowed funds were refunded to the sponsor.");
       // Rotate key after definitive success
@@ -202,7 +178,6 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
             Refund sponsor
           </Button>
         )}
-        {["in_review", "merged", "release_failed", "paid", "refunded", "expired", "unknown"].includes(
         {/*
           Expired bounties: the backend's state machine allows EXPIRED →
           REFUNDED so sponsors can reclaim escrow after the deadline sweep,
@@ -213,9 +188,7 @@ export function IssueActions({ bounty }: { bounty: Bounty }) {
             Refund sponsor (deadline passed)
           </Button>
         )}
-        {["in_review", "merged", "paid", "refunded"].includes(
-          bounty.status,
-        ) && (
+        {!["open", "funded", "claimed", "expired"].includes(bounty.status) && (
           <Button size="lg" variant="outline" disabled>
             {bounty.status === "paid"
               ? "Payout complete"

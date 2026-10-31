@@ -144,13 +144,13 @@ describe("/issues — the status filter", () => {
 
     await renderPage({ status: "open" });
 
-    expect(screen.queryByText(OPEN_BOUNTIES[0].title)).not.toBeInTheDocument();
+    expect(screen.queryByText(OPEN_BOUNTIES[0]!.title)).not.toBeInTheDocument();
   });
 
   it("marks the active filter for assistive tech", async () => {
     await renderPage({ status: "open" });
 
-    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("link", { name: "Not yet funded" })).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("link", { name: "All" })).not.toHaveAttribute("aria-current");
   });
 
@@ -165,7 +165,7 @@ describe("/issues — the status filter", () => {
     // list that reads as "this platform has no bounties".
     await renderPage({ status: "not-a-status" });
 
-    expect(screen.getByText(OPEN_BOUNTIES[0].title)).toBeInTheDocument();
+    expect(screen.getByText(OPEN_BOUNTIES[0]!.title)).toBeInTheDocument();
   });
 
   it("renders the filtered count alongside the total", async () => {

@@ -1,7 +1,7 @@
 export type UserRole = "contributor" | "maintainer" | "sponsor";
 
 // Mirrors mergefi-backend's BountyDifficulty enum
-export type Difficulty = "beginner" | "intermediate" | "advanced" | "expert";
+export type Difficulty = "beginner" | "intermediate" | "advanced" | "expert" | "unknown";
 
 export interface TeamSplit {
   role: string;
@@ -15,7 +15,7 @@ export interface Milestone {
   repo: string;
   budget: number;
   distributed: number;
-  asset: "USDC" | "XLM";
+  asset: "USDC" | "XLM" | "unknown";
   status: string;
   deadline: string | null;
   issueCount: number;
@@ -46,7 +46,7 @@ export interface MaintenancePool {
   repo: string;
   monthlyDeposit: number;
   balance: number;
-  asset: "USDC" | "XLM";
+  asset: "USDC" | "XLM" | "unknown";
   status: string;
 }
 

@@ -19,12 +19,14 @@ export const TERMINAL_STATUSES: ReadonlySet<BountyStatus> = new Set([
   'expired',
 ]);
 
+export type BountyAsset = "USDC" | "XLM" | "unknown";
+
 export interface Bounty {
   id: string;
   title: string;
   description: string;
   reward: number;
-  asset: "USDC" | "XLM";
+  asset: BountyAsset;
   difficulty: Difficulty;
   status: BountyStatus;
   org: string;

@@ -47,12 +47,13 @@ export const DEFAULT_LOCALE = "en";
 export const LOCALE_STORAGE_KEY = "mergefi_locale";
 
 /** Crypto assets this app denominates payouts in. */
-export type CryptoAsset = "USDC" | "XLM";
+export type CryptoAsset = "USDC" | "XLM" | "unknown";
 
 /** Fraction digits per asset: USDC is an ERC-20-style 2dp token, XLM has 7. */
 export const ASSET_DECIMALS: Record<CryptoAsset, number> = {
   USDC: 2,
   XLM: 7,
+  unknown: 2,
 };
 
 /**

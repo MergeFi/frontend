@@ -7,7 +7,9 @@ import type {
   ReputationProfile,
 } from "@/types";
 import {
+  coerceAsset,
   coerceDecimal,
+  coerceDifficulty,
   coerceNonNegative,
   coercePercentage,
   coerceStatus,
@@ -52,8 +54,8 @@ interface RawIssue {
 export interface RawBounty {
   id: string;
   amount: string;
-  asset: "USDC" | "XLM";
-  difficulty: Difficulty;
+  asset: "USDC" | "XLM" | string;
+  difficulty: Difficulty | string;
   status: Bounty["status"];
   deadline: string | null;
   createdAt?: string | null;
@@ -131,8 +133,8 @@ export function adaptBounty(raw: RawBounty): Bounty {
     title: raw.issue?.title ?? "Untitled issue",
     description: raw.issue?.body ?? "",
     reward: coerceNonNegative(raw.amount),
-    asset: raw.asset,
-    difficulty: raw.difficulty,
+    asset: coerceAsset(raw.asset),
+    difficulty: coerceDifficulty(raw.difficulty),
     status: coerceStatus(raw.status),
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
@@ -156,7 +158,7 @@ export interface RawMilestone {
   title: string;
   budget: string;
   distributed: string;
-  asset: "USDC" | "XLM";
+  asset: "USDC" | "XLM" | string;
   status?: string;
   deadline?: string | null;
   repository?: RawRepository;
@@ -173,7 +175,7 @@ export function adaptMilestone(raw: RawMilestone): Milestone {
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "unassigned",
     budget,
     distributed,
-    asset: raw.asset,
+    asset: coerceAsset(raw.asset),
     status: raw.status ?? "open",
     deadline: raw.deadline ?? null,
     issueCount: issues.length,
@@ -193,7 +195,7 @@ export interface RawMaintenancePool {
   name?: string | null;
   monthlyDeposit: string;
   balance: string;
-  asset: "USDC" | "XLM";
+  asset: "USDC" | "XLM" | string;
   status?: string;
   repository?: RawRepository | null;
 }
@@ -205,7 +207,7 @@ export function adaptMaintenancePool(raw: RawMaintenancePool): MaintenancePool {
     repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "platform-wide",
     monthlyDeposit: coerceNonNegative(raw.monthlyDeposit),
     balance: coerceNonNegative(raw.balance),
-    asset: raw.asset,
+    asset: coerceAsset(raw.asset),
     status: raw.status ?? "active",
   };
 }

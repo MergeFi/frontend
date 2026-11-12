@@ -170,6 +170,16 @@ describe("adaptBounty — field coverage audit (#86)", () => {
       expect(bounty[field]).not.toBeUndefined();
     }
   });
+
+  it("coerces invalid asset and difficulty to 'unknown' (#893)", () => {
+    const raw = rawBounty({
+      asset: "INVALID_COIN" as any,
+      difficulty: "super_hard" as any,
+    });
+    const adapted = adaptBounty(raw);
+    expect(adapted.asset).toBe("unknown");
+    expect(adapted.difficulty).toBe("unknown");
+  });
 });
 
 /**

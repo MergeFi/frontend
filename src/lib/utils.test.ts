@@ -16,6 +16,8 @@ import {
   coerceFraction,
   coercePercentage,
   coerceStatus,
+  coerceAsset,
+  coerceDifficulty,
   validateTeamSplits,
   generateIdempotencyKey,
   toCents,
@@ -243,6 +245,44 @@ describe("coerceStatus", () => {
 
   it("falls back to 'unknown' for empty string", () => {
     expect(coerceStatus("")).toBe("unknown");
+  });
+});
+
+describe("coerceAsset (#893)", () => {
+  it("accepts valid crypto assets", () => {
+    expect(coerceAsset("USDC")).toBe("USDC");
+    expect(coerceAsset("XLM")).toBe("XLM");
+  });
+
+  it("falls back to 'unknown' for unrecognized asset strings", () => {
+    expect(coerceAsset("ETH")).toBe("unknown");
+    expect(coerceAsset("BTC")).toBe("unknown");
+    expect(coerceAsset("bogus")).toBe("unknown");
+  });
+
+  it("falls back to 'unknown' for null, undefined, or empty string", () => {
+    expect(coerceAsset(null)).toBe("unknown");
+    expect(coerceAsset(undefined)).toBe("unknown");
+    expect(coerceAsset("")).toBe("unknown");
+  });
+});
+
+describe("coerceDifficulty (#893)", () => {
+  it("accepts valid difficulty tiers", () => {
+    for (const d of ["beginner", "intermediate", "advanced", "expert"] as const) {
+      expect(coerceDifficulty(d)).toBe(d);
+    }
+  });
+
+  it("falls back to 'unknown' for unrecognized difficulty strings", () => {
+    expect(coerceDifficulty("hardcore")).toBe("unknown");
+    expect(coerceDifficulty("trivial")).toBe("unknown");
+  });
+
+  it("falls back to 'unknown' for null, undefined, or empty string", () => {
+    expect(coerceDifficulty(null)).toBe("unknown");
+    expect(coerceDifficulty(undefined)).toBe("unknown");
+    expect(coerceDifficulty("")).toBe("unknown");
   });
 });
 

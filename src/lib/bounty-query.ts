@@ -72,6 +72,7 @@ export const XLM_TO_USD_APPROX = 0.12;
 
 /** Convert a reward to USD-equivalent for cross-asset comparison (#613). */
 function rewardToUsd(reward: number, asset: string): number {
+  if (asset === "unknown") return 0;
   return asset === "XLM" ? reward * XLM_TO_USD_APPROX : reward;
 }
 

@@ -6,6 +6,7 @@
  */
 
 import {
+  daysUntil,
   formatCurrency,
   formatDaysUntil,
   formatInteger,
@@ -577,6 +578,18 @@ describe("formatDaysUntil — pluralization via Intl.PluralRules", () => {
   it("keeps the no-deadline and passed-past copy", () => {
     expect(formatDaysUntil(null, "en")).toBe("No deadline");
     expect(formatDaysUntil(-3, "en")).toBe("Deadline passed");
+  });
+
+  it("returns null from daysUntil for empty, garbage, or non-ISO strings so formatDaysUntil renders No deadline (#949)", () => {
+    expect(daysUntil("")).toBeNull();
+    expect(daysUntil("garbage")).toBeNull();
+    expect(daysUntil("14/11/2026")).toBeNull();
+    expect(daysUntil("Nov 14, 2026")).toBeNull();
+    expect(daysUntil("2026-99-99")).toBeNull();
+
+    expect(formatDaysUntil(daysUntil(""), "en")).toBe("No deadline");
+    expect(formatDaysUntil(daysUntil("garbage"), "en")).toBe("No deadline");
+    expect(formatDaysUntil(daysUntil("14/11/2026"), "en")).toBe("No deadline");
   });
 });
 

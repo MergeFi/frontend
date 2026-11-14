@@ -82,8 +82,30 @@ const REQUEST_TIMEOUT_MS = 20_000;
 
 const inflight = new Map<string, Promise<unknown>>();
 
-function requestKey(method: string, path: string, body?: string): string {
-  return `${method}:${path}:${body ?? ""}`;
+function getIdempotencyKeyHeader(headers?: HeadersInit): string | undefined {
+  if (!headers) return undefined;
+  if (headers instanceof Headers) {
+    return headers.get("Idempotency-Key") ?? undefined;
+  }
+  if (Array.isArray(headers)) {
+    const entry = headers.find(([name]) => name.toLowerCase() === "idempotency-key");
+    return entry?.[1];
+  }
+  for (const [name, value] of Object.entries(headers)) {
+    if (name.toLowerCase() === "idempotency-key") return value;
+  }
+  return undefined;
+}
+
+function requestKey(
+  method: string,
+  path: string,
+  body?: string,
+  idempotencyKey?: string,
+): string {
+  return idempotencyKey !== undefined
+    ? `${method}:${path}:${body ?? ""}:${idempotencyKey}`
+    : `${method}:${path}:${body ?? ""}`;
 }
 
 async function dedupedFetch<T>(
@@ -108,7 +130,8 @@ export async function apiRequest<T>(
   init?: RequestInit,
 ): Promise<T> {
   const bodyStr = init?.body != null ? String(init.body) : undefined;
-  const key = requestKey(init?.method ?? "GET", path, bodyStr);
+  const idempotencyKey = getIdempotencyKeyHeader(init?.headers);
+  const key = requestKey(init?.method ?? "GET", path, bodyStr, idempotencyKey);
 
   return dedupedFetch(key, async () => {
     const token = getToken();
@@ -321,8 +344,7 @@ export const fetchReputationByUsername = cache(
  */
 export const fetchIndexableReputationHandles = cache(
   async (fallback: string[]): Promise<FetchResult<string[]>> => {
-): Promise<FetchResult<string[]>> {
-  try {
+    try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
     // The backend's PublicUserDto currently has no isProfilePublic field,
     // so profile indexing is effectively disabled until it ships (#598).

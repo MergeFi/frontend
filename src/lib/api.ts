@@ -202,19 +202,24 @@ export const fetchBounties = cache(
   },
 );
 
-export const fetchBounty = cache(
-  async (
-    id: string,
-    fallback: Bounty | undefined,
-  ): Promise<FetchResult<Bounty | undefined>> => {
-    try {
-      const raw = await request<RawBounty>(`/bounties/${id}`);
-      return { data: adaptBounty(raw), source: "live" };
-    } catch {
-      return { data: fallback, source: "mock" };
-    }
-  },
-);
+/**
+ * Uncached bounty fetcher for client-side polling (`bountyPoller`) and
+ * post-race refresh (`useClaimRace`), where every tick/retry must observe
+ * the latest server state rather than a memoized RSC snapshot (#863).
+ */
+export async function fetchBountyLive(
+  id: string,
+  fallback?: Bounty,
+): Promise<FetchResult<Bounty | undefined>> {
+  try {
+    const raw = await request<RawBounty>(`/bounties/${id}`);
+    return { data: adaptBounty(raw), source: "live" };
+  } catch {
+    return { data: fallback, source: "mock" };
+  }
+}
+
+export const fetchBounty = cache(fetchBountyLive);
 
 export const fetchMilestones = cache(
   async (fallback: Milestone[]): Promise<FetchResult<Milestone[]>> => {
@@ -321,8 +326,7 @@ export const fetchReputationByUsername = cache(
  */
 export const fetchIndexableReputationHandles = cache(
   async (fallback: string[]): Promise<FetchResult<string[]>> => {
-): Promise<FetchResult<string[]>> {
-  try {
+    try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
     // The backend's PublicUserDto currently has no isProfilePublic field,
     // so profile indexing is effectively disabled until it ships (#598).

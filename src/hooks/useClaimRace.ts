@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { apiPost, fetchBounty } from '@/lib/api';
+import { apiPost, fetchBountyLive } from '@/lib/api';
 import { adaptBounty, type RawBounty } from '@/lib/adapters';
 import { generateIdempotencyKey } from '@/lib/utils';
 import type { Bounty, ClaimResult } from '@/types/bounty';
@@ -49,10 +49,13 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
     setIsClaiming(true);
     
     try {
-      const raw = await apiPost<RawBounty>(`/bounties/${bountyId}/claim`, {}, idempotencyKeyRef.current);
+      const raw = await apiPost<RawBounty | { data: Bounty }>(`/bounties/${bountyId}/claim`, {}, idempotencyKeyRef.current);
       idempotencyKeyRef.current = generateIdempotencyKey();
       
-      const bounty = adaptBounty(raw);
+      const bounty =
+        raw && typeof raw === 'object' && 'data' in raw && raw.data
+          ? raw.data
+          : adaptBounty(raw as RawBounty);
       const result: ClaimResult = {
         success: true,
         bounty,
@@ -74,7 +77,7 @@ export function useClaimRace(bountyId: string, onClaimSuccess?: (bounty: Bounty)
       if (isAlreadyClaimed) {
         idempotencyKeyRef.current = generateIdempotencyKey();
         try {
-          const updatedResult = await fetchBounty(bountyId, undefined);
+          const updatedResult = await fetchBountyLive(bountyId, undefined);
           const result: ClaimResult = {
             success: false,
             error: 'ALREADY_CLAIMED',

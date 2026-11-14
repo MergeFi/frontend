@@ -1,5 +1,4 @@
-import { useSyncExternalStore, useCallback } from 'react';
-import { fetchBounty } from '@/lib/api';
+import { useSyncExternalStore, useCallback, useEffect, useRef } from 'react';
 import type { Bounty, BountyStatus } from '@/types/bounty';
 import { TERMINAL_STATUSES } from '@/types/bounty';
 import {
@@ -35,7 +34,6 @@ interface UseBountyStatusResult {
  */
 export function useBountyStatus({
   bountyId,
-  fallbackBounty,
   interval = 5000,
   enabled = true,
   onStatusChange,
@@ -43,7 +41,7 @@ export function useBountyStatus({
   const snapshot = useSyncExternalStore(
     useCallback(
       (onStoreChange: () => void) =>
-        enabled ? subscribeBounty(bountyId, onStoreChange, interval) : () => {},
+        subscribeBounty(bountyId, onStoreChange, interval, enabled),
       [bountyId, enabled, interval],
     ),
     () => getBountySnapshot(bountyId),
@@ -55,14 +53,24 @@ export function useBountyStatus({
   }, [bountyId]);
 
   const status = snapshot.bounty?.status ?? null;
+  const lastNotifiedStatusRef = useRef<BountyStatus | null>(null);
+
+  useEffect(() => {
+    if (status !== null && status !== lastNotifiedStatusRef.current) {
+      lastNotifiedStatusRef.current = status;
+      onStatusChange?.(status);
+    }
+  }, [status, onStatusChange]);
+
+  const isTerminal = status !== null && TERMINAL_STATUSES.has(status);
 
   return {
     bounty: snapshot.bounty,
     isLoading: snapshot.loading && !snapshot.bounty,
     error: snapshot.error,
     refetch,
-    isPolling: enabled && !TERMINAL_STATUSES.has(status as BountyStatus),
-    isLive: enabled && !TERMINAL_STATUSES.has(status as BountyStatus),
+    isPolling: enabled && !isTerminal,
+    isLive: enabled && !isTerminal,
     status,
     source: snapshot.source,
   };

@@ -1,4 +1,59 @@
-import { fetchIndexableReputationHandles } from "./api";
+import { fetchBountyLive, fetchIndexableReputationHandles } from "./api";
+
+describe("fetchBountyLive (#863)", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("observes fresh backend state on consecutive calls instead of memoizing", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: "b1",
+          amount: "100",
+          asset: "USDC",
+          difficulty: "beginner",
+          status: "open",
+          deadline: null,
+          escrowId: null,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: "b1",
+          amount: "100",
+          asset: "USDC",
+          difficulty: "beginner",
+          status: "claimed",
+          deadline: null,
+          escrowId: null,
+        }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const first = await fetchBountyLive("b1");
+    const second = await fetchBountyLive("b1");
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(first.source).toBe("live");
+    expect(first.data?.status).toBe("open");
+    expect( first.data?.reward).toBe(100);
+    expect(second.source).toBe("live");
+    expect(second.data?.status).toBe("claimed");
+    expect(second.data?.reward).toBe(100);
+  });
+});
 
 /**
  * The privacy filter in fetchIndexableReputationHandles is the point where a

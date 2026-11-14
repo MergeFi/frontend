@@ -1,7 +1,7 @@
 import * as React from "react";
 import { act, renderHook } from "@testing-library/react";
 import { useClaimRace } from "./useClaimRace";
-import { apiPost, fetchBounty } from "@/lib/api";
+import { apiPost, fetchBountyLive } from "@/lib/api";
 import type { Bounty } from "@/types/bounty";
 
 // Pass-through useState so tests can observe setter calls (see trackSetStateCalls).
@@ -14,11 +14,11 @@ const mockUseState = React.useState as unknown as jest.Mock;
 
 jest.mock("@/lib/api", () => ({
   apiPost: jest.fn(),
-  fetchBounty: jest.fn(),
+  fetchBountyLive: jest.fn(),
 }));
 
 const mockApiPost = apiPost as jest.MockedFunction<typeof apiPost>;
-const mockFetchBounty = fetchBounty as jest.MockedFunction<typeof fetchBounty>;
+const mockFetchBounty = fetchBountyLive as jest.MockedFunction<typeof fetchBountyLive>;
 
 const bounty = { id: "b1", status: "claimed" } as Bounty;
 

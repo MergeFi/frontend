@@ -6,9 +6,16 @@
  * deduplicates them into a single fetch loop per bounty ID.
  */
 
-import { fetchBounty } from '@/lib/api';
+import { fetchBountyLive } from '@/lib/api';
 import type { Bounty } from '@/types/bounty';
 import { TERMINAL_STATUSES } from '@/types/bounty';
+
+export interface BountySnapshot {
+  bounty: Bounty | null;
+  source: 'live' | 'mock' | null;
+  loading: boolean;
+  error: Error | null;
+}
 
 interface PollerEntry {
   bounty: Bounty | null;
@@ -18,17 +25,43 @@ interface PollerEntry {
   interval: number;
   loading: boolean;
   error: Error | null;
+  snapshot: BountySnapshot;
 }
+
+const EMPTY_SNAPSHOT: BountySnapshot = Object.freeze({
+  bounty: null,
+  source: null,
+  loading: false,
+  error: null,
+});
 
 const registry = new Map<string, PollerEntry>();
 
+function updateSnapshot(entry: PollerEntry): void {
+  if (
+    entry.snapshot.bounty === entry.bounty &&
+    entry.snapshot.source === entry.source &&
+    entry.snapshot.loading === entry.loading &&
+    entry.snapshot.error === entry.error
+  ) {
+    return;
+  }
+  entry.snapshot = {
+    bounty: entry.bounty,
+    source: entry.source,
+    loading: entry.loading,
+    error: entry.error,
+  };
+}
+
 function notify(entry: PollerEntry): void {
+  updateSnapshot(entry);
   for (const listener of entry.listeners) {
     listener();
   }
 }
 
-function startPolling(id: string, entry: PollerEntry, interval: number): void {
+function startPolling(id: string, entry: PollerEntry, interval: number, pollLoop: boolean = true): void {
   if (entry.intervalId) return;
   entry.interval = interval;
 
@@ -42,7 +75,7 @@ function startPolling(id: string, entry: PollerEntry, interval: number): void {
       entry.loading = true;
       notify(entry);
 
-      const result = await fetchBounty(id);
+      const result = await fetchBountyLive(id);
       entry.bounty = result.data ?? null;
       entry.source = result.source;
       entry.error = null;
@@ -59,8 +92,12 @@ function startPolling(id: string, entry: PollerEntry, interval: number): void {
     }
   };
 
-  tick();
-  entry.intervalId = setInterval(tick, interval);
+  void tick();
+  if (pollLoop) {
+    entry.intervalId = setInterval(() => {
+      void tick();
+    }, interval);
+  }
 }
 
 function stopPolling(entry: PollerEntry): void {
@@ -70,28 +107,26 @@ function stopPolling(entry: PollerEntry): void {
   }
 }
 
-export function getBountySnapshot(id: string): {
-  bounty: Bounty | null;
-  source: 'live' | 'mock' | null;
-  loading: boolean;
-  error: Error | null;
-} {
+export function getBountySnapshot(id: string): BountySnapshot {
   const entry = registry.get(id);
-  return {
-    bounty: entry?.bounty ?? null,
-    source: entry?.source ?? null,
-    loading: entry?.loading ?? false,
-    error: entry?.error ?? null,
-  };
+  return entry ? entry.snapshot : EMPTY_SNAPSHOT;
 }
 
 export function subscribeBounty(
   id: string,
   listener: () => void,
   interval: number = 5000,
+  pollLoop: boolean = true,
 ): () => void {
   let entry = registry.get(id);
+  const isNew = !entry;
   if (!entry) {
+    const initialSnapshot: BountySnapshot = {
+      bounty: null,
+      source: null,
+      loading: true,
+      error: null,
+    };
     entry = {
       bounty: null,
       source: null,
@@ -100,23 +135,26 @@ export function subscribeBounty(
       interval,
       loading: true,
       error: null,
+      snapshot: initialSnapshot,
     };
     registry.set(id, entry);
-    startPolling(id, entry, interval);
   }
 
   entry.listeners.add(listener);
-  // Use the minimum interval of all subscribers
-  if (interval < entry.interval && entry.intervalId) {
+
+  if (isNew) {
+    startPolling(id, entry, interval, pollLoop);
+  } else if (pollLoop && interval < entry.interval && entry.intervalId) {
     clearInterval(entry.intervalId);
     entry.intervalId = null;
-    startPolling(id, entry, interval);
+    startPolling(id, entry, interval, true);
   }
 
   return () => {
     entry!.listeners.delete(listener);
     if (entry!.listeners.size === 0) {
       stopPolling(entry!);
+      registry.delete(id);
     }
   };
 }

@@ -8,9 +8,13 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { useBountyStatus } from "./useBountyStatus";
 
-jest.mock("@/lib/api", () => ({
-  fetchBounty: jest.fn(),
-}));
+jest.mock("@/lib/api", () => {
+  const fn = jest.fn();
+  return {
+    fetchBounty: fn,
+    fetchBountyLive: fn,
+  };
+});
 
 const { fetchBounty } = jest.requireMock("@/lib/api");
 

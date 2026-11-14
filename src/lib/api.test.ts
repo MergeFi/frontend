@@ -1,4 +1,33 @@
-import { fetchIndexableReputationHandles } from "./api";
+import {
+  ApiRequestError,
+  ApiUnavailableError,
+  fetchIndexableReputationHandles,
+} from "./api";
+
+describe("ApiUnavailableError and ApiRequestError (#867)", () => {
+  it("sets name on ApiUnavailableError so logs and stack traces identify the subclass", () => {
+    const err = new ApiUnavailableError("Request to /bounties timed out");
+
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(ApiUnavailableError);
+    expect(err.name).toBe("ApiUnavailableError");
+    expect(err.message).toBe("Request to /bounties timed out");
+    expect(err.stack).toContain("ApiUnavailableError");
+  });
+
+  it("sets name and preserves metadata on ApiRequestError", () => {
+    const err = new ApiRequestError("Rate limited", 429, 10, "RATE_LIMITED");
+
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(ApiRequestError);
+    expect(err.name).toBe("ApiRequestError");
+    expect(err.message).toBe("Rate limited");
+    expect(err.status).toBe(429);
+    expect(err.retryAfter).toBe(10);
+    expect(err.code).toBe("RATE_LIMITED");
+    expect(err.stack).toContain("ApiRequestError");
+  });
+});
 
 /**
  * The privacy filter in fetchIndexableReputationHandles is the point where a

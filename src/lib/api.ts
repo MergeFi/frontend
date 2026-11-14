@@ -15,7 +15,16 @@ import {
 import type { Bounty, Milestone, MaintenancePool, ReputationProfile } from "@/types";
 import { buildBountyQueryString, type BountyQuery } from "./bounty-query";
 
-export class ApiUnavailableError extends Error {}
+// Assign `this.name` in every Error subclass constructor (matching
+// EnvValidationError in env.ts) so stack traces, console.error output, and
+// error-reporting grouping keys preserve the subclass identity (#867). Any
+// future Error subclass added here should set `this.name` as well.
+export class ApiUnavailableError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = "ApiUnavailableError";
+  }
+}
 
 export class ApiRequestError extends Error {
   constructor(
@@ -25,6 +34,7 @@ export class ApiRequestError extends Error {
     public code?: string,
   ) {
     super(message);
+    this.name = "ApiRequestError";
   }
 }
 
@@ -321,8 +331,7 @@ export const fetchReputationByUsername = cache(
  */
 export const fetchIndexableReputationHandles = cache(
   async (fallback: string[]): Promise<FetchResult<string[]>> => {
-): Promise<FetchResult<string[]>> {
-  try {
+    try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
     // The backend's PublicUserDto currently has no isProfilePublic field,
     // so profile indexing is effectively disabled until it ships (#598).

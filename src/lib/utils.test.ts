@@ -288,10 +288,25 @@ describe("validateTeamSplits", () => {
     expect(result.sum).toBe(100);
   });
 
-  it("handles an empty array", () => {
+  it("rejects an empty array by default with a distinct message (#948)", () => {
     const result = validateTeamSplits([]);
     // Empty splits don't sum to 100, so valid=false is correct behavior
+    expect(result.valid).toBe(false);
     expect(result.sum).toBe(0);
+    expect(result.message).toBe(
+      "Team splits must include at least one member summing to 100%",
+    );
+  });
+
+  it("allows an empty array when allowEmpty is true (#948)", () => {
+    expect(validateTeamSplits([], 0.01, { allowEmpty: true })).toEqual({
+      valid: true,
+      sum: 0,
+    });
+    expect(validateTeamSplits([], 0.01, true)).toEqual({
+      valid: true,
+      sum: 0,
+    });
   });
 
   it("degrades a non-numeric percentage string to 0 instead of producing NaN (#198)", () => {

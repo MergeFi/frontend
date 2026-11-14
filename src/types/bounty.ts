@@ -12,11 +12,18 @@ export type BountyStatus =
   | 'expired'
   | 'unknown';
 
-/** Statuses that never change again — polling should stop once observed. */
+/**
+ * Statuses that never change without operator intervention — polling should
+ * stop once observed (#632, #924). Includes `release_failed` (permanent payout
+ * failure until manual operator recovery) and `unknown` (#596 fallback for
+ * unrecognized backend statuses).
+ */
 export const TERMINAL_STATUSES: ReadonlySet<BountyStatus> = new Set([
+  'release_failed',
   'paid',
   'refunded',
   'expired',
+  'unknown',
 ]);
 
 export interface Bounty {

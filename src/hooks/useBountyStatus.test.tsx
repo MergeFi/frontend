@@ -83,4 +83,26 @@ describe("useBountyStatus", () => {
     expect(result.current.isPolling).toBe(true);
     expect(result.current.isLive).toBe(true);
   });
+
+  it.each(["release_failed", "unknown"] as const)(
+    "stops polling and marks isLive=false when bounty status is %s (#924)",
+    async (terminalStatus) => {
+      fetchBounty.mockResolvedValue({
+        data: { ...mockBounty, id: `b-${terminalStatus}`, status: terminalStatus },
+        source: "live",
+      });
+
+      const { result } = renderHook(() =>
+        useBountyStatus({
+          bountyId: `b-${terminalStatus}`,
+          enabled: true,
+          interval: 1000,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.status).toBe(terminalStatus));
+      expect(result.current.isPolling).toBe(false);
+      expect(result.current.isLive).toBe(false);
+    },
+  );
 });

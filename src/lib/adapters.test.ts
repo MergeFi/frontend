@@ -119,6 +119,18 @@ describe("adaptBounty — sponsorId mapping", () => {
   it("leaves sponsorId undefined when the key is absent entirely", () => {
     expect(adaptBounty(rawBounty({ sponsorId: undefined })).sponsorId).toBeUndefined();
   });
+
+  it("normalizes malformed or non-ISO deadline strings to null with a warning (#949)", () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(adaptBounty(rawBounty({ deadline: "" })).deadline).toBeNull();
+      expect(adaptBounty(rawBounty({ deadline: "garbage" })).deadline).toBeNull();
+      expect(adaptBounty(rawBounty({ deadline: "14/11/2026" })).deadline).toBeNull();
+      expect(warnSpy).toHaveBeenCalledTimes(3);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
 });
 
 describe("adaptBounty — field coverage audit (#86)", () => {

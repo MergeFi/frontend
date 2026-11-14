@@ -114,6 +114,20 @@ export interface RawBounty {
  * adaptBounty computed and attached a validity flag that no component could
  * read).
  */
+const ISO_DEADLINE_RE = /^\d{4}-\d{2}-\d{2}/;
+
+function coerceDeadline(rawDeadline: string | null | undefined): string | null {
+  if (rawDeadline == null) return null;
+  if (
+    !ISO_DEADLINE_RE.test(rawDeadline) ||
+    Number.isNaN(new Date(rawDeadline).getTime())
+  ) {
+    console.warn(`[adapters] Ignoring malformed bounty deadline: "${rawDeadline}"`);
+    return null;
+  }
+  return rawDeadline;
+}
+
 export function adaptBounty(raw: RawBounty): Bounty {
   const splits = raw.team?.splits?.map(
     (split): TeamSplit => ({
@@ -137,8 +151,9 @@ export function adaptBounty(raw: RawBounty): Bounty {
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
     // timestamp that would make daysUntil() render it as already expired
-    // (#193). Consumers must render a "No deadline" state for null.
-    deadline: raw.deadline,
+    // (#193). Malformed strings are normalized to null with a warning (#949)
+    // so an unparseable deadline never renders as "Deadline passed".
+    deadline: coerceDeadline(raw.deadline),
     createdAt: raw.createdAt ?? undefined,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,

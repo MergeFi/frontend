@@ -147,7 +147,9 @@ export function adaptBounty(raw: RawBounty): Bounty {
     milestoneId: raw.issue?.milestoneId ?? undefined,
     escrowId: raw.escrowId ?? undefined,
     teamSplits: splits,
-    teamSplitsValid: splits ? validateTeamSplits(splits) : undefined,
+    teamSplitsValid: splits
+      ? validateTeamSplits(splits, 0.01, { allowEmpty: true })
+      : undefined,
   };
 }
 

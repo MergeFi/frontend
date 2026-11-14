@@ -68,50 +68,6 @@ export function getNumberFormat(locale: string, options: Intl.NumberFormatOption
   return fmt;
 }
 
-// ── Locale-independent formatting (#656) ──────────────────────────────────────
-// Use explicit "en-US" locale so server and client always produce identical
-// output regardless of the viewer's system locale.
-
-const currencyFormat2 = getNumberFormat("en-US", { maximumFractionDigits: 2 });
-const currencyFormat7 = getNumberFormat("en-US", { maximumFractionDigits: 7 });
-const countFormat = getNumberFormat("en-US", { maximumFractionDigits: 0 });
-const parseNormalizeFormat2 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-const parseNormalizeFormat7 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 7 });
-
-/**
- * Format a numeric amount as a currency string with the specified asset label.
- *
- * Locale-aware (#456): grouping separators, decimal separator, digit shaping
- * and sign placement all come from `Intl` via the viewer's locale, resolved
- * through {@link resolveLocale}. A `de-DE` viewer now sees "1.234,56 USDC"
- * instead of "1,234.56 USDC". The asset ticker stays suffixed — see
- * {@link formatCryptoAmount} for why (USDC/XLM are not ISO 4217 currencies, and
- * `Intl`'s en-US ISO-code placement is a fiat prefix no crypto surface uses).
- *
- * Pass an explicit `locale` to override detection — required when formatting
- * for a *specific* locale in tests, or when a future locale-routed build
- * resolves the locale from the route segment rather than the browser.
- *
- * @param amount - The numeric value to format. Negative values are preserved
- *                 and rendered with a locale-correct sign (e.g., -50 → "-50 USDC").
- * @param asset - The asset label ("USDC" or "XLM"). Defaults to "USDC".
- * @param locale - BCP-47 tag. Defaults to the viewer's locale.
- * @returns Locale-formatted currency string (e.g. en-US "1,234.56 USDC",
- *          de-DE "1.234,56 USDC"). Values above the sanity ceiling are
- *          suffixed with " ⚠" to flag implausibly large figures.
- *
- * @remarks
- * This function deliberately preserves the sign of negative amounts rather than
- * silently discarding it via Math.abs(). Financial systems may legitimately
- * display negative figures for:
- * - Net-negative sponsor balances (refunds exceeding deposits)
- * - Accounting corrections or adjustments
- * - Deltas or changes (e.g., budget remaining after overspending)
- *
- * This behavior matches StatCard's internal currency formatter, ensuring
- * consistency across the app. StatCard's currency format uses this function
- * directly.
- */
 export function formatCurrency(
   amount: number,
   asset: CryptoAsset = "USDC",
@@ -121,10 +77,6 @@ export function formatCurrency(
   // is true, so testing the ceiling first would render a non-finite amount as
   // "0 USDC ⚠" instead of the plain "0 USDC" the contract promises.
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  const fmt = asset === "XLM" ? currencyFormat7 : currencyFormat2;
-  const formatted = fmt.format(amount);
-  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
-  return `${formatted} ${asset}`;
   const formatted = formatCryptoAmount(amount, asset, locale);
   if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ⚠`;
   return formatted;
@@ -184,9 +136,6 @@ export function parseMoneyInput(
     return { valid: false, error: "Enter a deposit amount." };
   }
 
-  // Use Number only for range checks, not for normalization.
-  // Normalization is done string-based to avoid precision loss on large amounts.
-  const num = Number(trimmed);
   const { group, decimal } = localeSeparators(locale);
 
   // Two notations have to be accepted, and they conflict on exactly one
@@ -237,24 +186,6 @@ export function parseMoneyInput(
     };
   }
 
-  // Normalize: string-based normalization to avoid precision loss.
-  // Trim trailing zeros and pad to maxDecimals if needed.
-  let normalized = trimmed;
-  if (normalized.includes(".")) {
-    // Trim trailing zeros after decimal point
-    normalized = normalized.replace(/\.?0+$/, "");
-    // If we removed everything after decimal, remove the decimal too
-    if (normalized.endsWith(".")) {
-      normalized = normalized.slice(0, -1);
-    }
-  }
-
-  return { valid: true, normalized };
-  // Normalize: convert to a canonical decimal string with the right precision.
-  // Use a cached Intl.NumberFormat with fixed fraction digits to get a clean
-  // representation, then strip thousands separators.
-  const fmt = asset === "XLM" ? parseNormalizeFormat7 : parseNormalizeFormat2;
-  const normalized = fmt.format(num).replace(/,/g, "");
   // Normalize to the canonical dot-decimal wire form, dropping any trailing
   // zeros the viewer's locale added ("12,50" → "12.5"). `toFixed` is the
   // correct primitive here precisely because it is locale-independent.
@@ -304,11 +235,6 @@ export function daysUntil(dateIso: string) {
   return Math.ceil((deadlineUtc - nowUtc) / (1000 * 60 * 60 * 24));
 }
 
-export function formatDaysUntil(days: number | null): string {
-  if (days === null) return "No deadline";
-  if (days > 0) return `${days} day${days === 1 ? "" : "s"} left`;
-  if (days === 0) return "Due today";
-  return "Deadline passed";
 /**
  * Human deadline label. Pluralization goes through `Intl.PluralRules` via the
  * message catalog rather than the previous `days === 1 ? "" : "s"` ternary,
@@ -352,11 +278,26 @@ export function coerceStatus(value: string | null | undefined): BountyStatus {
   return "unknown";
 }
 
+export interface ValidateTeamSplitsOptions {
+  allowEmpty?: boolean;
+}
+
 export function validateTeamSplits(
   splits: Array<{ percentage: string | number }>,
-  tolerance = 0.01
+  tolerance = 0.01,
+  options: ValidateTeamSplitsOptions | boolean = {},
 ): { valid: boolean; sum: number; message?: string } {
-  if (!splits || splits.length === 0) return { valid: true, sum: 0 };
+  const allowEmpty =
+    typeof options === "boolean" ? options : (options.allowEmpty ?? false);
+  if (!splits || splits.length === 0) {
+    return allowEmpty
+      ? { valid: true, sum: 0 }
+      : {
+          valid: false,
+          sum: 0,
+          message: "Team splits must include at least one member summing to 100%",
+        };
+  }
   // coerceDecimal degrades a malformed percentage string to 0 instead of
   // NaN, so one bad split can't poison the whole sum into "NaN%" (#198).
   const percentages = splits.map((s) =>

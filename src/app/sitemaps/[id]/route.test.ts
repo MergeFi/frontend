@@ -6,6 +6,7 @@
  */
 import { fetchBounties, fetchIndexableReputationHandles } from "@/lib/api";
 import { MAX_URLS_PER_SITEMAP } from "@/lib/seo-policy";
+import * as sitemap from "@/lib/sitemap";
 import { resetSitemapCache } from "@/lib/sitemap";
 import { GET } from "./route";
 
@@ -69,6 +70,26 @@ describe("/sitemaps/[id] route", () => {
     expect(res.status).toBe(404);
     // The chunk count grows over time, so a "not found" must not be cached.
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  // #926 — /sitemap.xml redirects to /sitemaps/0.xml, so index 0 must be a
+  // valid sitemap even when there is nothing to list.
+  it("serves an empty urlset for index 0 when there are no chunks", async () => {
+    const spy = jest.spyOn(sitemap, "getSitemapChunks").mockResolvedValue([]);
+    try {
+      const res = await get("0.xml");
+      const body = await res.text();
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/xml; charset=utf-8");
+      expect(body).toContain("<urlset");
+      expect(body).toContain("</urlset>");
+      expect(body).not.toContain("<url>");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect((await get("1")).status).toBe(404);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it.each(["-1", "abc", "1.5"])("404s the non-integer id %p", async (id) => {

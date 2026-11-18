@@ -103,13 +103,15 @@ const nextConfig: NextConfig = {
       // The sitemap moved from a single /sitemap.xml to chunked
       // /sitemaps/<id>.xml files (src/app/sitemaps/[id]/route.ts) so it can
       // respect the 50,000-URL-per-file limit search engines enforce.
-      // `permanent: true` emits a 308, so any crawler or integration still
-      // requesting the old URL follows to the new location instead of a 404,
-      // and the redirect itself is cached rather than re-derived per request.
+      // Temporary (307) rather than permanent (#926): crawlers cache a 308
+      // aggressively, and this is the canonical sitemap URL submitted to
+      // search consoles — a temporary redirect stays revisable while the
+      // chunked layout settles in production. /sitemaps/0.xml always serves a
+      // valid (possibly empty) urlset, so the target never 404s.
       {
         source: "/sitemap.xml",
         destination: "/sitemaps/0.xml",
-        permanent: true,
+        permanent: false,
       },
     ];
   },

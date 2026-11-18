@@ -1,8 +1,9 @@
+import { validateSiteUrl } from "./env";
 import { fetchBounties, fetchIndexableReputationHandles } from "./api";
 import { mockBounties, mockReputationProfiles } from "./mock-data";
 import { chunk, MAX_URLS_PER_SITEMAP } from "./seo-policy";
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mergefi.app";
+export const SITE_URL = validateSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
 
 /** Public, non-authenticated routes worth crawling. */
 const STATIC_ROUTES = ["", "/issues", "/milestones", "/connect"];
@@ -82,12 +83,17 @@ export function splitIntoSitemaps(entries: SitemapEntry[]): SitemapEntry[][] {
 }
 
 /**
- * How long a derived sitemap chunk list is reused in-process. Crawlers
- * refetch sitemaps aggressively, and re-deriving the list means re-hitting
- * /users and /bounties; an hour keeps the sitemap fresh enough to be useful
- * without turning crawler traffic into backend load. The response is also
- * marked CDN-cacheable by the route handler, so in practice the origin only
- * recomputes when nothing else is serving.
+ * How long a derived sitemap chunk list is reused. Crawlers refetch sitemaps
+ * aggressively, and re-deriving the list means re-hitting /users and
+ * /bounties; an hour keeps the sitemap fresh enough to be useful without
+ * turning crawler traffic into backend load.
+ *
+ * The load-bearing cache is the CDN: the route handler sends
+ * `s-maxage=<this TTL>`, so the origin only recomputes when the CDN has no
+ * copy (#928). The module-level memo below is only a same-instance
+ * optimization — on a serverless deployment each cold instance starts with
+ * an empty memo, so a cold crawl of N chunks can still mean N backend
+ * fetches. Do not rely on it to bound backend load; the CDN header does that.
  */
 export const SITEMAP_CACHE_TTL_MS = 60 * 60 * 1000;
 

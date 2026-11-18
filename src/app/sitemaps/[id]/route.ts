@@ -20,7 +20,7 @@ import { getSitemapChunks, SITEMAP_CACHE_TTL_MS, type SitemapEntry } from "@/lib
  *
  * robots.txt advertises one entry per chunk (see src/app/robots.ts), which is
  * the standard discovery mechanism — a separate sitemap *index* file is
- * optional, and the 301 in next.config.ts keeps the old /sitemap.xml working.
+ * optional, and the redirect in next.config.ts keeps the old /sitemap.xml working.
  */
 const CACHE_CONTROL =
   `public, s-maxage=${Math.floor(SITEMAP_CACHE_TTL_MS / 1000)}, ` +
@@ -64,6 +64,15 @@ export async function GET(
   // arrives as "0.xml". Accept the suffix either way so both spellings work.
   const index = Number(id.replace(/\.xml$/, ""));
   const chunks = await getSitemapChunks();
+
+  // /sitemap.xml redirects here, so index 0 must always be a valid sitemap:
+  // with zero chunks it serves an empty <urlset> rather than a 404 (#926).
+  // Not cached, since the next build of the list may not be empty.
+  if (index === 0 && chunks.length === 0) {
+    return new Response(renderUrlset([]), {
+      headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
 
   // An id outside the current range 404s rather than serving someone else's
   // chunk, and isn't cacheable — the chunk count can grow.

@@ -11,7 +11,7 @@
  * http: URL except on loopback.
  */
 
-import { validateApiUrl, validateStellarNetwork, EnvValidationError } from "./env";
+import { validateApiUrl, validateSiteUrl, validateStellarNetwork, EnvValidationError } from "./env";
 
 describe("validateApiUrl — scheme restriction", () => {
   it("accepts an http URL on TESTNET", () => {
@@ -155,5 +155,27 @@ describe("validateStellarNetwork", () => {
 
   it("rejects an arbitrary string", () => {
     expect(() => validateStellarNetwork("devnet")).toThrow(EnvValidationError);
+  });
+});
+
+describe("validateSiteUrl (#927)", () => {
+  it("falls back to the production origin when unset or empty", () => {
+    expect(validateSiteUrl(undefined)).toBe("https://mergefi.app");
+    expect(validateSiteUrl("")).toBe("https://mergefi.app");
+  });
+
+  it("accepts an http(s) URL and strips trailing slashes", () => {
+    expect(validateSiteUrl("https://staging.mergefi.app/")).toBe("https://staging.mergefi.app");
+    expect(validateSiteUrl("http://localhost:3000")).toBe("http://localhost:3000");
+  });
+
+  it("rejects a malformed URL", () => {
+    expect(() => validateSiteUrl("mergefi.app")).toThrow(EnvValidationError);
+    expect(() => validateSiteUrl("mergefi.app")).toThrow(/NEXT_PUBLIC_SITE_URL/);
+  });
+
+  it("rejects a non-http(s) scheme", () => {
+    expect(() => validateSiteUrl("javascript:alert(1)")).toThrow(EnvValidationError);
+    expect(() => validateSiteUrl("ftp://mergefi.app")).toThrow(EnvValidationError);
   });
 });

@@ -11,6 +11,7 @@ const accentByDifficulty: Record<Bounty["difficulty"], string> = {
   intermediate: "before:bg-amber-400",
   advanced: "before:bg-rose-400",
   expert: "before:bg-fuchsia-400",
+  unknown: "before:bg-slate-400",
 };
 
 export function BountyCard({ bounty }: { bounty: Bounty }) {

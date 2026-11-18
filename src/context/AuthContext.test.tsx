@@ -14,6 +14,18 @@ jest.mock("@/lib/api", () => {
 
 const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>;
 
+/**
+ * Under fake timers, steps past the deferred mount and every refresh retry
+ * delay (500ms / 2s / 5s, each jittered to at most its scheduled value — #935).
+ */
+async function advanceThroughRetries() {
+  for (const ms of [10, 600, 2100, 5100]) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms);
+    });
+  }
+}
+
 const PROFILE: AuthUser = {
   id: "user-1",
   username: "alice",
@@ -214,10 +226,10 @@ describe("AuthContext — session hydration (#232)", () => {
 
     // Advance past the deferred mount setTimeout(, 0)
     await act(async () => { jest.advanceTimersByTime(10); });
-    // Advance past first retry backoff (200ms)
-    await act(async () => { jest.advanceTimersByTime(300); });
-    // Advance past second retry backoff (400ms)
-    await act(async () => { jest.advanceTimersByTime(500); });
+    // Advance past first retry backoff (at most 500ms, #935)
+    await act(async () => { jest.advanceTimersByTime(600); });
+    // Advance past second retry backoff (at most 2s)
+    await act(async () => { jest.advanceTimersByTime(2100); });
 
     await waitFor(() =>
       expect(screen.getByTestId("state")).toHaveTextContent("signed-in:alice"),
@@ -237,13 +249,10 @@ describe("AuthContext — session hydration (#232)", () => {
       </AuthProvider>,
     );
 
-    // Advance past mount + 3 retries with backoff delays
-    await act(async () => { jest.advanceTimersByTime(10); });
-    await act(async () => { jest.advanceTimersByTime(300); });
-    await act(async () => { jest.advanceTimersByTime(500); });
-    await act(async () => { jest.advanceTimersByTime(1000); });
+    await advanceThroughRetries();
 
-    expect(mockApiRequest).toHaveBeenCalledTimes(3);
+    // One initial attempt plus three retries (#935).
+    expect(mockApiRequest).toHaveBeenCalledTimes(4);
     expect(window.localStorage.getItem(TOKEN_KEY)).toBe("valid-token");
     jest.useRealTimers();
   });
@@ -399,6 +408,7 @@ describe("AuthContext — degraded session (#456)", () => {
   // dashboards' `if (!user)` branch renders mock data, so a transient outage
   // would present fabricated numbers as the user's own.
   it("marks the session degraded when retries are exhausted, keeping the token", async () => {
+    jest.useFakeTimers();
     mockApiRequest.mockRejectedValue(new Error("network down"));
     window.localStorage.setItem(TOKEN_KEY, "stored-token");
 
@@ -408,6 +418,8 @@ describe("AuthContext — degraded session (#456)", () => {
       </AuthProvider>,
     );
 
+    await advanceThroughRetries();
+    jest.useRealTimers();
     await waitFor(() => expect(screen.getByTestId("degraded")).toHaveTextContent("true"));
     // Signed out, not signed in — but explicitly flagged as "could not tell".
     expect(screen.getByTestId("state")).toHaveTextContent("signed-out");
@@ -427,7 +439,8 @@ describe("AuthContext — degraded session (#456)", () => {
   });
 
   it("clears the degraded flag once a resolve succeeds", async () => {
-    mockApiRequest.mockRejectedValueOnce(new Error("network down"));
+    jest.useFakeTimers();
+    mockApiRequest.mockRejectedValue(new Error("network down"));
     window.localStorage.setItem(TOKEN_KEY, "stored-token");
 
     render(
@@ -436,6 +449,8 @@ describe("AuthContext — degraded session (#456)", () => {
       </AuthProvider>,
     );
 
+    await advanceThroughRetries();
+    jest.useRealTimers();
     await waitFor(() => expect(screen.getByTestId("degraded")).toHaveTextContent("true"));
 
     mockApiRequest.mockImplementation(async (path: string) =>
@@ -455,5 +470,66 @@ describe("AuthContext — degraded session (#456)", () => {
       expect(screen.getByTestId("state")).toHaveTextContent("signed-in:alice"),
     );
     expect(screen.getByTestId("degraded")).toHaveTextContent("false");
+  });
+});
+
+describe("AuthContext — refresh retry policy (#935)", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  function renderProvider() {
+    window.localStorage.setItem(TOKEN_KEY, "stored-token");
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+  }
+
+  it.each([400, 404, 422])(
+    "does not retry a %p — it will not change on a retry",
+    async (status) => {
+      jest.useFakeTimers();
+      mockApiRequest.mockRejectedValue(new ApiRequestError("nope", status));
+      renderProvider();
+
+      await advanceThroughRetries();
+
+      expect(mockApiRequest).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("degraded")).toHaveTextContent("true");
+      expect(window.localStorage.getItem(TOKEN_KEY)).toBe("stored-token");
+    },
+  );
+
+  it.each([0, 429, 500, 503])("retries a transient %p", async (status) => {
+    jest.useFakeTimers();
+    mockApiRequest.mockRejectedValue(new ApiRequestError("transient", status));
+    renderProvider();
+
+    await advanceThroughRetries();
+
+    expect(mockApiRequest).toHaveBeenCalledTimes(4);
+  });
+
+  it("waits out a 429's Retry-After before the next attempt", async () => {
+    jest.useFakeTimers();
+    mockApiRequest.mockRejectedValue(new ApiRequestError("slow down", 429, 3));
+    renderProvider();
+
+    await act(async () => {
+      jest.advanceTimersByTime(10);
+    });
+    expect(mockApiRequest).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(2900);
+    });
+    expect(mockApiRequest).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+    expect(mockApiRequest).toHaveBeenCalledTimes(2);
   });
 });

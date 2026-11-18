@@ -17,6 +17,9 @@ const config: Config = {
       statements: 50,
     },
   },
+  // Jest's defaults plus json-summary, which scripts/check-coverage-floor.mjs
+  // reads to enforce a per-file floor without changing `global` above (#934).
+  coverageReporters: ["clover", "json", "json-summary", "lcov", "text"],
   // Runs after the test framework is installed — this is where jest-dom matchers are registered
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
@@ -48,6 +51,11 @@ const config: Config = {
   // families that actually need transforming, by package-name prefix
   // rather than exact name, so a new transitive dependency within one of
   // these families still gets covered without a per-package addition.
+  //
+  // If a test fails with `SyntaxError: Cannot use import statement outside a
+  // module` pointing into node_modules, a new ESM-only dependency of
+  // react-markdown is missing here — see "ESM dependencies under Jest" in
+  // CONTRIBUTING.md (#933).
   transformIgnorePatterns: [
     "node_modules/(?!(react-markdown|remark-.*|rehype-.*|unified|hast-.*|mdast-.*|micromark.*|vfile.*|unist-.*|bail|is-plain-obj|trough|zwitch|longest-streak|ccount|escape-string-regexp|markdown-table|trim-lines|decode-named-character-reference|character-entities.*|devlop|space-separated-tokens|comma-separated-tokens|property-information|web-namespaces|html-void-elements|stringify-entities|html-url-attributes|inline-style-parser|estree-util-is-identifier-name|style-to-object)/)",
   ],

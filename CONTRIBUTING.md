@@ -67,6 +67,7 @@ mock data when no backend is running.
 | `npm run lint` | Run ESLint |
 | `npm test` | Run Jest test suite |
 | `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage-floor` | Per-file coverage floor for `src/lib` and `src/hooks` (run `npm test` first) |
 | `npm run verify:headers` | Verify security headers (run `build` first) |
 | `npm run verify:env` | Validate environment variable handling |
 
@@ -156,7 +157,24 @@ src/
 - **Components**: Place reusable UI primitives in `src/components/ui/`. Feature-specific
   components go in their own folders under `src/components/`.
 - **Testing**: Write tests using Jest and React Testing Library. Place test files
-  next to the components they test (e.g., `Button.test.tsx`).
+  next to the components they test (e.g., `Button.test.tsx`). Every file under
+  `src/lib/` and `src/hooks/` must meet a per-file line-coverage floor
+  (`npm run test:coverage-floor`), so a new module there needs a test of its own.
+
+### ESM dependencies under Jest
+
+`react-markdown` and its remark/rehype/unified tree ship ESM-only JavaScript,
+which Jest's CommonJS loader can't `require()`. `jest.config.ts` transforms
+just those packages through Babel, named by prefix in
+`transformIgnorePatterns`.
+
+If a test fails with `SyntaxError: Cannot use import statement outside a
+module` and the stack points into `node_modules/<pkg>/`, that package is a new
+ESM-only dependency (usually after a `react-markdown`/`remark-gfm` upgrade).
+Add its name, or its family prefix such as `foo-.*`, to the negative lookahead
+in `transformIgnorePatterns` (#933). Don't replace the list with
+`transformIgnorePatterns: []`: that transforms all of `node_modules` on every
+run (#251).
 - **No `any`**: Avoid `any` types. Use proper TypeScript types.
 
 ## Bounty System

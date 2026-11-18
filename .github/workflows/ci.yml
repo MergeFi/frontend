@@ -51,6 +51,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      # #934 — per-file floor for src/lib and src/hooks, read from the
+      # coverage summary npm test just wrote.
+      - run: npm run test:coverage-floor
       - run: npm run verify:env
       - run: npm run build
       - run: npm run verify:headers

@@ -83,7 +83,7 @@ export function useSmartPolling<T>({
   const [error, setError] = useState<Error | null>(null);
   const [pollingState, dispatch] = useReducer(pollingReducer, pollingInitialState);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentIntervalRef = useRef(interval);
   const unchangedCountRef = useRef(0);
   const isMountedRef = useRef(true);

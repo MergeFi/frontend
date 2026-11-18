@@ -14,13 +14,10 @@
  * HYDRATION
  * ─────────
  * The server cannot know the viewer's locale, so server-rendered HTML is
- * always formatted in {@link DEFAULT_LOCALE}. If the first *client* render
- * used the viewer's locale, React would report a hydration mismatch on every
- * number on the page. So the provider deliberately starts at
- * {@link DEFAULT_LOCALE} — byte-identical to what the server sent — and
- * upgrades to the viewer's locale in a post-mount effect. The visible cost is
- * that numbers re-format once, after mount. The alternative (a hydration
- * error, or permanently-wrong en-US) is worse.
+ * always formatted in {@link DEFAULT_LOCALE}. How the provider chooses its
+ * locale on the first client render is explained on the `useState`
+ * initializer inside {@link LocaleProvider}; that comment is the single source
+ * of truth for it, so it is not restated here (#888).
  *
  * `lang` and `dir` do NOT have that constraint, because they are attributes
  * on `<html>` and are set by {@link localeInitScript} before React hydrates —

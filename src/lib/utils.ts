@@ -24,7 +24,16 @@ export function coerceDecimal(value: string | null | undefined, fallback = 0): n
 
 export function coerceNonNegative(value: string | null | undefined, fallback = 0): number {
   const n = coerceDecimal(value, fallback);
-  return n < 0 ? fallback : n;
+  if (n < 0) {
+    // A negative value in a non-negative field is a data bug (#947). Clamp,
+    // but never silently: log so the evidence isn't destroyed at the display
+    // layer without a trace.
+    console.warn(
+      `[utils] coerceNonNegative clamped a negative value to ${fallback} (#947)`,
+    );
+    return fallback;
+  }
+  return n;
 }
 
 export function coerceFraction(value: string | null | undefined, fallback = 0): number {
@@ -67,16 +76,6 @@ export function getNumberFormat(locale: string, options: Intl.NumberFormatOption
   }
   return fmt;
 }
-
-// ── Locale-independent formatting (#656) ──────────────────────────────────────
-// Use explicit "en-US" locale so server and client always produce identical
-// output regardless of the viewer's system locale.
-
-const currencyFormat2 = getNumberFormat("en-US", { maximumFractionDigits: 2 });
-const currencyFormat7 = getNumberFormat("en-US", { maximumFractionDigits: 7 });
-const countFormat = getNumberFormat("en-US", { maximumFractionDigits: 0 });
-const parseNormalizeFormat2 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-const parseNormalizeFormat7 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 7 });
 
 /**
  * Format a numeric amount as a currency string with the specified asset label.
@@ -121,10 +120,6 @@ export function formatCurrency(
   // is true, so testing the ceiling first would render a non-finite amount as
   // "0 USDC ⚠" instead of the plain "0 USDC" the contract promises.
   if (!Number.isFinite(amount)) return `0 ${asset}`;
-  const fmt = asset === "XLM" ? currencyFormat7 : currencyFormat2;
-  const formatted = fmt.format(amount);
-  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
-  return `${formatted} ${asset}`;
   const formatted = formatCryptoAmount(amount, asset, locale);
   if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ⚠`;
   return formatted;
@@ -184,9 +179,6 @@ export function parseMoneyInput(
     return { valid: false, error: "Enter a deposit amount." };
   }
 
-  // Use Number only for range checks, not for normalization.
-  // Normalization is done string-based to avoid precision loss on large amounts.
-  const num = Number(trimmed);
   const { group, decimal } = localeSeparators(locale);
 
   // Two notations have to be accepted, and they conflict on exactly one
@@ -237,24 +229,6 @@ export function parseMoneyInput(
     };
   }
 
-  // Normalize: string-based normalization to avoid precision loss.
-  // Trim trailing zeros and pad to maxDecimals if needed.
-  let normalized = trimmed;
-  if (normalized.includes(".")) {
-    // Trim trailing zeros after decimal point
-    normalized = normalized.replace(/\.?0+$/, "");
-    // If we removed everything after decimal, remove the decimal too
-    if (normalized.endsWith(".")) {
-      normalized = normalized.slice(0, -1);
-    }
-  }
-
-  return { valid: true, normalized };
-  // Normalize: convert to a canonical decimal string with the right precision.
-  // Use a cached Intl.NumberFormat with fixed fraction digits to get a clean
-  // representation, then strip thousands separators.
-  const fmt = asset === "XLM" ? parseNormalizeFormat7 : parseNormalizeFormat2;
-  const normalized = fmt.format(num).replace(/,/g, "");
   // Normalize to the canonical dot-decimal wire form, dropping any trailing
   // zeros the viewer's locale added ("12,50" → "12.5"). `toFixed` is the
   // correct primitive here precisely because it is locale-independent.
@@ -350,9 +324,17 @@ export function coerceStatus(value: string | null | undefined): BountyStatus {
 
 export function validateTeamSplits(
   splits: Array<{ percentage: string | number }>,
-  tolerance = 0.01
+  options: { tolerance?: number; allowEmpty?: boolean } = {},
 ): { valid: boolean; sum: number; message?: string } {
-  if (!splits || splits.length === 0) return { valid: true, sum: 0 };
+  const { tolerance = 0.01, allowEmpty = false } = options;
+  if (!splits || splits.length === 0) {
+    // An empty split set is the clearest violation of the "must sum to 100%"
+    // rule (#948): never wave it through unless the caller explicitly opts
+    // in via `allowEmpty`.
+    return allowEmpty
+      ? { valid: true, sum: 0 }
+      : { valid: false, sum: 0, message: "Team has no members" };
+  }
   // coerceDecimal degrades a malformed percentage string to 0 instead of
   // NaN, so one bad split can't poison the whole sum into "NaN%" (#198).
   const percentages = splits.map((s) =>

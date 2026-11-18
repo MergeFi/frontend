@@ -10,6 +10,7 @@ import {
   type RawMilestone,
   type RawMaintenancePool,
   type RawReputationSnapshot,
+  type RawRepository,
   type RawUserProfile,
 } from "./adapters";
 import type { Bounty, Milestone, MaintenancePool, ReputationProfile } from "@/types";
@@ -257,6 +258,27 @@ export interface MaintainerRepository {
   url: string;
 }
 
+export async function fetchMyRepositories(
+  fallback: MaintainerRepository[],
+): Promise<FetchResult<MaintainerRepository[]>> {
+  try {
+    // RawRepository is the single description of the wire format (#945),
+    // verified against mergefi-backend's Repository entity: `owner`/`name`,
+    // not `org`/`htmlUrl` (neither of those exists on the entity).
+    const raw = await request<RawRepository[]>("/repositories/my");
+    return {
+      data: raw.map((r) => ({
+        org: r.owner,
+        repo: r.name,
+        // The entity has no htmlUrl column; derive the canonical GitHub URL.
+        url: `https://github.com/${r.owner}/${r.name}`,
+      })),
+      source: "live",
+    };
+  } catch {
+    return { data: fallback, source: "mock" };
+  }
+}
 export const fetchMyRepositories = cache(
   async (
     fallback: MaintainerRepository[],
@@ -351,7 +373,7 @@ export const fetchIndexableReputationHandles = cache(
     // development exercises the same code path production will take once the
     // backend ships the flag.
     return { data: fallback, source: "mock" };
-    }
+  }
   },
 );
 

@@ -288,9 +288,17 @@ describe("validateTeamSplits", () => {
     expect(result.sum).toBe(100);
   });
 
-  it("handles an empty array", () => {
+  it("reports an empty array as invalid with a distinct message (#948)", () => {
     const result = validateTeamSplits([]);
     // Empty splits don't sum to 100, so valid=false is correct behavior
+    expect(result.valid).toBe(false);
+    expect(result.sum).toBe(0);
+    expect(result.message).toBe("Team has no members");
+  });
+
+  it("accepts an empty array only when the caller passes allowEmpty (#948)", () => {
+    const result = validateTeamSplits([], { allowEmpty: true });
+    expect(result.valid).toBe(true);
     expect(result.sum).toBe(0);
   });
 

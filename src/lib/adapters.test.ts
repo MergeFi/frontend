@@ -211,11 +211,15 @@ describe("adaptBounty — teamSplitsValid", () => {
     expect(bounty.teamSplitsValid).toBeUndefined();
   });
 
-  it("treats an empty splits array as valid with a zero sum, not as invalid", () => {
+  it("reports an empty splits array as invalid — a team with nobody cannot be paid (#948)", () => {
     const bounty: Bounty = adaptBounty(rawBounty({ team: { splits: [] } }));
 
     expect(bounty.teamSplits).toEqual([]);
-    expect(bounty.teamSplitsValid).toEqual({ valid: true, sum: 0 });
+    expect(bounty.teamSplitsValid).toEqual({
+      valid: false,
+      sum: 0,
+      message: "Team has no members",
+    });
   });
 });
 
@@ -269,9 +273,19 @@ describe("adaptMilestone", () => {
     expect(milestone.completedCount).toBe(0);
   });
 
-  it("joins repository owner/name, or falls back to \"unassigned\"", () => {
+  it("joins repository owner/name, or falls back to a visible gap marker (#946)", () => {
     expect(adaptMilestone(rawMilestone()).repo).toBe("acme/widgets");
-    expect(adaptMilestone(rawMilestone({ repository: undefined })).repo).toBe("unassigned");
+    expect(adaptMilestone(rawMilestone({ repository: undefined })).repo).toBe(
+      "(unavailable)",
+    );
+  });
+
+  it("defaults a missing status to \"unknown\", not a live status (#946)", () => {
+    expect(adaptMilestone(rawMilestone({ status: undefined })).status).toBe("unknown");
+  });
+
+  it("passes a negative distributed through so the sign is visible (#947)", () => {
+    expect(adaptMilestone(rawMilestone({ distributed: "-50" })).distributed).toBe(-50);
   });
 
   it("sets every Milestone field to a defined value given a fully-populated raw milestone", () => {
@@ -307,11 +321,21 @@ function rawMaintenancePool(
 }
 
 describe("adaptMaintenancePool", () => {
-  it("joins repository owner/name, or falls back to \"platform-wide\" when null", () => {
+  it("joins repository owner/name, or falls back to a visible gap marker when null (#946)", () => {
     expect(adaptMaintenancePool(rawMaintenancePool()).repo).toBe("acme/widgets");
     expect(
       adaptMaintenancePool(rawMaintenancePool({ repository: null })).repo,
-    ).toBe("platform-wide");
+    ).toBe("(unavailable)");
+  });
+
+  it("defaults a missing status to \"unknown\", not a live status (#946)", () => {
+    expect(adaptMaintenancePool(rawMaintenancePool({ status: undefined })).status).toBe(
+      "unknown",
+    );
+  });
+
+  it("passes a negative balance through so the sign is visible (#947)", () => {
+    expect(adaptMaintenancePool(rawMaintenancePool({ balance: "-50" })).balance).toBe(-50);
   });
 
   it("sets every MaintenancePool field to a defined value given a fully-populated raw pool", () => {

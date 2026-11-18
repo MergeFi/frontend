@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { GitPullRequest, FilterX } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
@@ -83,6 +84,12 @@ export default async function IssuesPage({
   const { data: bounties, source } = await fetchBounties(mockBounties, query);
   const { items: visible, page, totalPages, filteredCount } = applyBountyQuery(bounties, query);
   const total = bounties.length;
+
+  // #900 — applyBountyQuery clamps an out-of-range page; make the URL agree
+  // with the page actually rendered, so every link built from these params,
+  // a reload and a shared URL all match what is on screen.
+  const canonicalHref = buildIssuesHref(params, { page: String(page) });
+  if (canonicalHref !== buildIssuesHref(params, {})) redirect(canonicalHref);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">

@@ -55,10 +55,37 @@ export async function checkNetworkMismatch(): Promise<string | null> {
   return `Your Freighter wallet is on the wrong network. Switch it to ${STELLAR_NETWORK === "PUBLIC" ? "Mainnet" : "Testnet"} and try again.`;
 }
 
-export async function isFreighterInstalled(): Promise<boolean> {
-  const result = await freighterIsConnected();
-  return !result.error && result.isConnected;
+/**
+ * What `@stellar/freighter-api`'s `isConnected` can actually tell us (#938):
+ * - `available`: the extension answered and is reachable from this page.
+ * - `not_detected`: it answered "not connected" — no extension, or one that
+ *   hasn't injected into this page yet / is locked; the API can't separate
+ *   those, so the message must not claim it's definitely not installed.
+ * - `unreachable`: the call errored or threw — the extension is present but
+ *   didn't respond.
+ */
+export type FreighterAvailability = "available" | "not_detected" | "unreachable";
+
+export async function getFreighterAvailability(): Promise<FreighterAvailability> {
+  try {
+    const result = await freighterIsConnected();
+    if (result.error) return "unreachable";
+    return result.isConnected ? "available" : "not_detected";
+  } catch {
+    return "unreachable";
+  }
 }
+
+/** Whether Freighter is present *and* reachable from this page right now. */
+export async function isFreighterAvailable(): Promise<boolean> {
+  return (await getFreighterAvailability()) === "available";
+}
+
+const FREIGHTER_UNAVAILABLE_MESSAGES: Record<Exclude<FreighterAvailability, "available">, string> = {
+  not_detected:
+    "Freighter wasn't detected. Install the Freighter wallet extension, or if it's already installed, unlock it and reload the page.",
+  unreachable: "Freighter didn't respond. Unlock the extension and try again.",
+};
 
 /**
  * Passively read the currently-active Freighter address without prompting
@@ -69,7 +96,7 @@ export async function isFreighterInstalled(): Promise<boolean> {
  */
 export async function getActiveFreighterAddress(): Promise<string | null> {
   try {
-    if (!(await isFreighterInstalled())) return null;
+    if (!(await isFreighterAvailable())) return null;
     const allowed = await isAllowed();
     if (!allowed.isAllowed) return null;
     const { address, error } = await getAddress();
@@ -81,8 +108,16 @@ export async function getActiveFreighterAddress(): Promise<string | null> {
 }
 
 export async function connectWallet(): Promise<WalletConnection> {
-  if (!(await isFreighterInstalled())) {
-    throw new Error("Install the Freighter wallet extension to continue.");
+  const availability = await getFreighterAvailability();
+  if (availability !== "available") {
+    throw new Error(FREIGHTER_UNAVAILABLE_MESSAGES[availability]);
+  }
+  // Check the network *before* asking for access (#937): getNetwork needs no
+  // permission, and a user on the wrong network should be told to switch
+  // before being shown a permission prompt that would then be rejected.
+  const earlyMismatch = await checkNetworkMismatch();
+  if (earlyMismatch) {
+    throw new Error(earlyMismatch);
   }
   const allowed = await isAllowed();
   if (!allowed.isAllowed) {
@@ -95,9 +130,10 @@ export async function connectWallet(): Promise<WalletConnection> {
   if (error || !address) {
     throw new Error(error?.message ?? "Unable to read wallet address.");
   }
-  // Pre-flight: verify the extension's network matches the app's.
-  // A mismatch means any signed transaction will be rejected by Soroban,
-  // but only after the user has already approved it in the extension (#2).
+  // Re-check after access is granted: the user can switch network in the
+  // extension while the permission prompt is open. A mismatch means any
+  // signed transaction will be rejected by Soroban, but only after the user
+  // has already approved it in the extension (#2).
   const mismatchMsg = await checkNetworkMismatch();
   if (mismatchMsg) {
     throw new Error(mismatchMsg);

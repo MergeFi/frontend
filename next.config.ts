@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { loadValidatedEnv } from "./src/lib/env";
+import { imageRemotePatterns, imgSrcDirective } from "./src/lib/image-hosts";
 
 /**
  * Validated at module-evaluation time — i.e. as soon as `next build`,
@@ -53,7 +54,9 @@ const apiOrigin = new URL(env.apiBaseUrl).origin;
  *   <script> tags and inline event handlers no longer execute.
  * - connect-src is set dynamically in middleware (apiOrigin is computed
  *   at build time from env, so it's baked into the middleware output).
- * - img-src allows GitHub avatars; fallback identicons are local data: URIs (#929).
+ * - img-src allows GitHub avatars and the GitHub hosts issue-markdown images
+ *   come from; fallback identicons are local data: URIs (#929). Built from
+ *   src/lib/image-hosts.ts, shared with middleware.ts and remotePatterns (#940).
  * - Freighter wallet extension content scripts are not blocked by CSP
  *   (browser extensions inject with extension privileges).
  */
@@ -72,7 +75,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' https://avatars.githubusercontent.com https://github.com https://user-images.githubusercontent.com https://private-user-images.githubusercontent.com https://raw.githubusercontent.com https://camo.githubusercontent.com data:",
+      imgSrcDirective(),
       "font-src 'self'",
       `connect-src 'self' ${apiOrigin}`,
       "frame-ancestors 'none'",
@@ -87,9 +90,7 @@ const nextConfig: NextConfig = {
   images: {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     contentDispositionType: "attachment",
-    remotePatterns: [
-      { protocol: "https", hostname: "avatars.githubusercontent.com" },
-    ],
+    remotePatterns: imageRemotePatterns(),
   },
   async headers() {
     return [

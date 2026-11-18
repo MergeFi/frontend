@@ -24,7 +24,7 @@ function makeMilestone(overrides: Partial<Milestone> = {}): Milestone {
     distributed: 2100,
     asset: "USDC",
     issueCount: 5,
-    completedCount: 2,
+    distributedFraction: 2100 / 6000,
     ...overrides,
   };
 }

@@ -99,7 +99,7 @@ export const mockMilestones: Milestone[] = [
     distributed: 4300,
     asset: "USDC",
     issueCount: 12,
-    completedCount: 4,
+    distributedFraction: 4300 / 12000,
   },
   {
     id: "m2",
@@ -110,7 +110,7 @@ export const mockMilestones: Milestone[] = [
     distributed: 16837.25,
     asset: "XLM",
     issueCount: 8,
-    completedCount: 3,
+    distributedFraction: 16837.25 / 48000,
   },
 ];
 

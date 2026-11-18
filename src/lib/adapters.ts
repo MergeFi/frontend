@@ -7,7 +7,9 @@ import type {
   ReputationProfile,
 } from "@/types";
 import {
+  coerceAsset,
   coerceDecimal,
+  coerceDifficulty,
   coerceNonNegative,
   coercePercentage,
   coerceStatus,
@@ -101,7 +103,7 @@ export interface RawBounty {
  *   milestone" indicator below, since it already has the single Bounty
  *   object this field now lives on — no new fetch needed. MilestonesPage
  *   cross-linking to member bounties is recommended *against* for this
- *   PR: Milestone only carries aggregate issueCount/completedCount
+ *   PR: Milestone only carries aggregate issueCount/distributedFraction
  *   numbers today, and listing member bounties would need either a new
  *   backend endpoint (bounties filtered by milestoneId) or fetching every
  *   bounty on a funding-overview page just to filter client-side —
@@ -142,8 +144,8 @@ export function adaptBounty(raw: RawBounty): Bounty {
     title: raw.issue?.title ?? "Untitled issue",
     description: raw.issue?.body ?? "",
     reward: coerceNonNegative(raw.amount),
-    asset: raw.asset,
-    difficulty: raw.difficulty,
+    asset: coerceAsset(raw.asset),
+    difficulty: coerceDifficulty(raw.difficulty),
     status: coerceStatus(raw.status),
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
@@ -199,14 +201,11 @@ export function adaptMilestone(raw: RawMilestone): Milestone {
     status: raw.status ?? "unknown",
     deadline: raw.deadline ?? null,
     issueCount: issues.length,
-    // #615 — base progress on payouts (distributed / budget), not on
-    // GitHub-closed issue counts. Issues closed as "not planned", or closed
-    // by a merge but not yet paid, previously inflated this number so the
-    // progress bar disagreed with the money actually paid out. When budget
-    // is zero (not yet funded), fall back to 0 rather than a meaningless
-    // division.
-    completedCount:
-      budget > 0 ? Math.floor((distributed / budget) * issues.length) : 0,
+    // #615 — progress is based on payouts (distributed / budget), not on
+    // GitHub-closed issue counts. #894 — it is exposed as the fraction it is,
+    // not scaled into a fabricated "completed issues" count. When budget is
+    // zero (not yet funded), fall back to 0 rather than a meaningless division.
+    distributedFraction: budget > 0 ? distributed / budget : 0,
   };
 }
 

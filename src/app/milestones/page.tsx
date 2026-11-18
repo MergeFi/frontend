@@ -84,7 +84,7 @@ export default async function MilestonesPage() {
           />
         ) : milestones.map((m) => {
           const isUnfunded = m.budget <= 0;
-          const rawPct = isUnfunded ? 0 : m.distributed / m.budget;
+          const rawPct = isUnfunded ? 0 : m.distributedFraction;
           const pct = Math.min(rawPct, 1);
           return (
             <Card key={m.id}>
@@ -112,7 +112,7 @@ export default async function MilestonesPage() {
                 </span>
               </div>
               <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                {m.completedCount} of {m.issueCount} issues complete
+                {m.issueCount} {m.issueCount === 1 ? "issue" : "issues"} in this milestone
               </p>
               <MilestoneFundButton milestoneId={m.id} milestoneName={m.name} />
             </Card>
@@ -151,7 +151,7 @@ export default async function MilestonesPage() {
                   asset={m.asset}
                 />
                 <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                  {m.completedCount} of {m.issueCount} issues complete
+                  {m.issueCount} {m.issueCount === 1 ? "issue" : "issues"} in this milestone
                 </p>
                 {m.status === "open" && (
                   <MilestoneFundButton

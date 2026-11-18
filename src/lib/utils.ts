@@ -120,6 +120,10 @@ export function formatCurrency(
   // is true, so testing the ceiling first would render a non-finite amount as
   // "0 USDC ⚠" instead of the plain "0 USDC" the contract promises.
   if (!Number.isFinite(amount)) return `0 ${asset}`;
+  const fmt = asset === "XLM" ? currencyFormat7 : currencyFormat2;
+  const formatted = fmt.format(amount);
+  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
+  return `${formatted} ${asset}`;
   const formatted = formatCryptoAmount(amount, asset, locale);
   if (!isPlausibleAmount(amount)) return `${formatted} ⚠`;
   return formatted;
@@ -229,6 +233,19 @@ export function parseMoneyInput(
     };
   }
 
+  // Normalize: string-based normalization to avoid precision loss.
+  // Trim trailing zeros and pad to maxDecimals if needed.
+  let normalized = canonical;
+  if (normalized.includes(".")) {
+    // Trim trailing zeros after decimal point
+    normalized = normalized.replace(/\.?0+$/, "");
+    // If we removed everything after decimal, remove the decimal too
+    if (normalized.endsWith(".")) {
+      normalized = normalized.slice(0, -1);
+    }
+  }
+
+  return { valid: true, normalized };
   // Normalize to the canonical dot-decimal wire form, dropping any trailing
   // zeros the viewer's locale added ("12,50" → "12.5"). `toFixed` is the
   // correct primitive here precisely because it is locale-independent.

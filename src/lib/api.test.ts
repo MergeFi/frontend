@@ -1,3 +1,20 @@
+import {
+  fetchBounties,
+  fetchBounty,
+  fetchMilestones,
+  fetchMaintenancePools,
+  fetchMyRepositories,
+  fetchReputationByUsername,
+  fetchIndexableReputationHandles,
+  fetchPlatformStats,
+  type FetchResult,
+} from "./api";
+import {
+  adaptBounty,
+  adaptMilestone,
+  adaptMaintenancePool,
+  adaptReputation,
+} from "./adapters";
 import { fetchIndexableReputationHandles, fetchMyRepositories } from "./api";
 import { ApiUnavailableError, fetchBounty, fetchIndexableReputationHandles } from "./api";
 import type { Bounty } from "@/types";
@@ -74,6 +91,13 @@ describe("fetchIndexableReputationHandles", () => {
   });
 });
 
+/**
+ * The mock-vs-live fallback contract every fetcher implements: any throw from
+ * `request` resolves to the caller's fallback with `source: "mock"`, the
+ * fallback is returned unmodified, and a successful fetch adapts the raw
+ * payload with `source: "live"`.
+ */
+describe("fetchers — mock-vs-live fallback contract (#941)", () => {
 describe("fetchMyRepositories", () => {
   const originalFetch = global.fetch;
 
@@ -91,6 +115,164 @@ describe("fetchBounty HTTP status handling (#925)", () => {
     global.fetch = originalFetch;
   });
 
+  const rawBounty = {
+    id: "b1",
+    amount: "100.5",
+    asset: "USDC",
+    difficulty: "easy",
+    status: "open",
+    deadline: null,
+    escrowId: "e1",
+    issue: {
+      number: 7,
+      title: "Fix crash",
+      body: null,
+      labels: ["bug"],
+      repository: { owner: "acme", name: "api" },
+    },
+  } as never;
+
+  const rawMilestone = {
+    id: "m1",
+    title: "Q1 goals",
+    budget: "5000",
+    distributed: "1250",
+    asset: "USDC",
+    status: "open",
+    deadline: null,
+    repository: { owner: "acme", name: "api" },
+    issues: [{ state: "closed" }, { state: "open" }],
+  } as never;
+
+  const rawPool = {
+    id: "p1",
+    name: "Maintenance",
+    monthlyDeposit: "200",
+    balance: "900",
+    asset: "USDC",
+    status: "active",
+    repository: { owner: "acme", name: "api" },
+  } as never;
+
+  const rawUser = {
+    id: "u1",
+    username: "priya",
+    avatarUrl: null,
+    isProfilePublic: true,
+  } as never;
+
+  const rawSnapshot = {
+    totalEarnings: "2500.75",
+    mergedPrCount: 12,
+    completionRate: "90",
+    avgReviewTimeHours: "4.5",
+    onTimeDeliveryPercentage: "95",
+    languages: { TypeScript: 3 },
+    orgsContributedTo: ["acme"],
+  } as never;
+
+  const cases = [
+    {
+      name: "fetchBounties",
+      run: (fallback: never) => fetchBounties(fallback),
+      fallback: [{ id: "fallback-bounty" }],
+      raws: [rawBounty],
+      expectedLive: [adaptBounty(rawBounty)],
+    },
+    {
+      name: "fetchBounty",
+      run: (fallback: never) => fetchBounty("b1", fallback),
+      fallback: { id: "fallback-bounty" },
+      raws: [rawBounty],
+      expectedLive: adaptBounty(rawBounty),
+    },
+    {
+      name: "fetchMilestones",
+      run: (fallback: never) => fetchMilestones(fallback),
+      fallback: [{ id: "fallback-milestone" }],
+      raws: [rawMilestone],
+      expectedLive: [adaptMilestone(rawMilestone)],
+    },
+    {
+      name: "fetchMaintenancePools",
+      run: (fallback: never) => fetchMaintenancePools(fallback),
+      fallback: [{ id: "fallback-pool" }],
+      raws: [rawPool],
+      expectedLive: [adaptMaintenancePool(rawPool)],
+    },
+    {
+      name: "fetchMyRepositories",
+      run: (fallback: never) => fetchMyRepositories(fallback),
+      fallback: [{ org: "fallback", repo: "fallback", url: "" }],
+      raws: [[{ id: "r1", org: "acme", name: "api", htmlUrl: "https://github.com/acme/api" }]],
+      expectedLive: [{ org: "acme", repo: "api", url: "https://github.com/acme/api" }],
+    },
+    {
+      name: "fetchReputationByUsername",
+      run: (fallback: never) => fetchReputationByUsername("priya", fallback),
+      fallback: { handle: "fallback-user" },
+      raws: [rawUser, rawSnapshot],
+      expectedLive: adaptReputation(rawUser, rawSnapshot),
+    },
+    {
+      name: "fetchIndexableReputationHandles",
+      run: (fallback: never) => fetchIndexableReputationHandles(fallback),
+      fallback: ["fallback-handle"],
+      raws: [[{ id: "u1", username: "public-priya", isProfilePublic: true }]],
+      expectedLive: ["public-priya"],
+    },
+    {
+      name: "fetchPlatformStats",
+      run: (fallback: never) => fetchPlatformStats(fallback),
+      fallback: { totalBounties: -1, totalPaidOut: -1, totalRepos: -1 },
+      raws: [{ totalBounties: 3, totalPaidOut: 1250.5, totalRepos: 2 }],
+      expectedLive: { totalBounties: 3, totalPaidOut: 1250.5, totalRepos: 2 },
+    },
+  ];
+
+  it("falls back to the unmodified fallback with source 'mock' on any throw, and adapts live responses", async () => {
+    for (const c of cases) {
+      const fallback = c.fallback as never;
+
+      global.fetch = jest.fn().mockRejectedValue(new Error("offline")) as unknown as typeof fetch;
+      let result = await c.run(fallback);
+      expect(result.source).toBe("mock");
+      expect(result.data).toBe(fallback);
+
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue({ ok: false, status: 500, statusText: "Server Error" }) as unknown as typeof fetch;
+      result = await c.run(fallback);
+      expect(result.source).toBe("mock");
+      expect(result.data).toBe(fallback);
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => {
+          throw new SyntaxError("Unexpected token <");
+        },
+      }) as unknown as typeof fetch;
+      result = await c.run(fallback);
+      expect(result.source).toBe("mock");
+      expect(result.data).toBe(fallback);
+
+      const mockFetch = jest.fn();
+      for (const raw of c.raws) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          json: async () => raw,
+        });
+      }
+      global.fetch = mockFetch as unknown as typeof fetch;
+      result = await c.run(fallback);
+      expect(result.source).toBe("live");
+      expect(result.data).toEqual(c.expectedLive);
+      expect(result.data).not.toBe(fallback);
+    }
   it("maps a Repository entity body via RawRepository owner/name (#945)", async () => {
     // Fixture mirrors mergefi-backend Repository entity serialization
     // (src/common/entities/repository.entity.ts): the columns are

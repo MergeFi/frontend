@@ -203,3 +203,41 @@ describe("SponsorDashboardClient — success state", () => {
     });
   });
 });
+
+// â”€â”€ degraded session (#944) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+describe("SponsorDashboardClient â€” degraded session (#944)", () => {
+  it("shows an error/retry state with no mock figures when signed out with a degraded session", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      loading: false,
+      degraded: true,
+      refresh: jest.fn(),
+    });
+    mockApiRequest.mockReset();
+
+    render(<SponsorDashboardClient />);
+
+    expect(await screen.findByTestId("degraded-error-state")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    expect(screen.queryByText("Demo data")).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId("stat-card")).toHaveLength(0);
+  });
+
+  it("shows demo data when signed out with a healthy (non-degraded) session", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      loading: false,
+      degraded: false,
+      refresh: jest.fn(),
+    });
+    mockApiRequest.mockReset();
+
+    render(<SponsorDashboardClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Demo data")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("degraded-error-state")).not.toBeInTheDocument();
+  });
+});

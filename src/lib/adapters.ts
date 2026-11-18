@@ -13,6 +13,7 @@ import {
   coerceStatus,
   validateTeamSplits,
 } from "./utils";
+import { identiconDataUri } from "./identicon";
 
 // Shapes returned by mergefi-backend's TypeORM entities (see
 // mergefi-backend/src/common/entities). These are intentionally loose since
@@ -147,8 +148,13 @@ export function adaptBounty(raw: RawBounty): Bounty {
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
     // timestamp that would make daysUntil() render it as already expired
-    // (#193). Consumers must render a "No deadline" state for null.
-    deadline: raw.deadline,
+    // (#193). Consumers must render a "No deadline" state for null. A
+    // non-null value that isn't a parseable date is also normalized to null
+    // (#949) so it shows as "No deadline" instead of "Deadline passed".
+    deadline:
+      raw.deadline != null && Number.isNaN(new Date(raw.deadline).getTime())
+        ? null
+        : raw.deadline,
     createdAt: raw.createdAt ?? undefined,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
@@ -258,9 +264,7 @@ export function adaptReputation(
 ): ReputationProfile {
   return {
     handle: user.username,
-    avatarUrl:
-      user.avatarUrl ??
-      `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username)}`,
+    avatarUrl: user.avatarUrl ?? identiconDataUri(user.username),
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
     completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,

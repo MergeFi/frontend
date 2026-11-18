@@ -12,7 +12,8 @@ import type { StellarNetwork } from "./env";
 
 export interface WalletConnection {
   address: string;
-  network: string;
+  /** Passphrase the extension is actually on, or null when it can't be read. */
+  networkPassphrase: string | null;
 }
 
 /**
@@ -101,7 +102,7 @@ export async function connectWallet(): Promise<WalletConnection> {
   if (mismatchMsg) {
     throw new Error(mismatchMsg);
   }
-  return { address, network: STELLAR_NETWORK };
+  return { address, networkPassphrase: await getFreighterNetworkPassphrase() };
 }
 
 export async function signTransaction(xdr: string, address: string) {

@@ -22,6 +22,7 @@ import {
   type RawReputationSnapshot,
   type RawUserProfile,
 } from "./adapters";
+import { identiconDataUri } from "./identicon";
 import type { Bounty } from "@/types";
 
 function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
@@ -408,10 +409,11 @@ describe("adaptReputation", () => {
     expect(profile.languages).toEqual(["TypeScript", "Rust", "Go"]);
   });
 
-  it("escapes the username when falling back to a generated dicebear avatar URL", () => {
+  it("falls back to a local identicon without sending the username to a third party (#929)", () => {
     const profile = adaptReputation(rawUserProfile({ username: "a&b" }), null);
-    expect(profile.avatarUrl).toContain("seed=a%26b");
-    expect(profile.avatarUrl).not.toContain("seed=a&b");
+    expect(profile.avatarUrl).toBe(identiconDataUri("a&b"));
+    expect(profile.avatarUrl).not.toContain("a&b");
+    expect(profile.avatarUrl).not.toContain("dicebear");
   });
 
   it("uses the provided avatarUrl instead of generating one when present", () => {

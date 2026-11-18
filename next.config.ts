@@ -42,7 +42,10 @@ const apiOrigin = new URL(env.apiBaseUrl).origin;
  *   issues, raise max-age and add `includeSubDomains`, and only add
  *   `preload` (and submit to hstspreload.org) once *that* has been stable
  *   too. The browser ignores this header entirely over plain HTTP, so
- *   it's harmless to always send.
+ *   it's harmless to always send. Graduation targets (#930):
+ *   `max-age=31536000; includeSubDomains` next, then `preload`.
+ *   scripts/verify-security-headers.mjs only enforces a max-age floor, so
+ *   raising this value needs no change there.
  *
  * Content-Security-Policy (#4, #610):
  * - Now set in middleware.ts with a per-request nonce (see middleware.ts).
@@ -50,7 +53,7 @@ const apiOrigin = new URL(env.apiBaseUrl).origin;
  *   <script> tags and inline event handlers no longer execute.
  * - connect-src is set dynamically in middleware (apiOrigin is computed
  *   at build time from env, so it's baked into the middleware output).
- * - img-src allows GitHub avatars and DiceBear identicons.
+ * - img-src allows GitHub avatars; fallback identicons are local data: URIs (#929).
  * - Freighter wallet extension content scripts are not blocked by CSP
  *   (browser extensions inject with extension privileges).
  */
@@ -69,7 +72,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' https://avatars.githubusercontent.com https://api.dicebear.com https://github.com https://user-images.githubusercontent.com https://private-user-images.githubusercontent.com https://raw.githubusercontent.com https://camo.githubusercontent.com data:",
+      "img-src 'self' https://avatars.githubusercontent.com https://github.com https://user-images.githubusercontent.com https://private-user-images.githubusercontent.com https://raw.githubusercontent.com https://camo.githubusercontent.com data:",
       "font-src 'self'",
       `connect-src 'self' ${apiOrigin}`,
       "frame-ancestors 'none'",
@@ -82,12 +85,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   devIndicators: false,
   images: {
-    dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     contentDispositionType: "attachment",
     remotePatterns: [
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
-      { protocol: "https", hostname: "api.dicebear.com" },
     ],
   },
   async headers() {
@@ -103,13 +104,15 @@ const nextConfig: NextConfig = {
       // The sitemap moved from a single /sitemap.xml to chunked
       // /sitemaps/<id>.xml files (src/app/sitemaps/[id]/route.ts) so it can
       // respect the 50,000-URL-per-file limit search engines enforce.
-      // `permanent: true` emits a 308, so any crawler or integration still
-      // requesting the old URL follows to the new location instead of a 404,
-      // and the redirect itself is cached rather than re-derived per request.
+      // Temporary (307) rather than permanent (#926): crawlers cache a 308
+      // aggressively, and this is the canonical sitemap URL submitted to
+      // search consoles — a temporary redirect stays revisable while the
+      // chunked layout settles in production. /sitemaps/0.xml always serves a
+      // valid (possibly empty) urlset, so the target never 404s.
       {
         source: "/sitemap.xml",
         destination: "/sitemaps/0.xml",
-        permanent: true,
+        permanent: false,
       },
     ];
   },

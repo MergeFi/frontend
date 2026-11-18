@@ -16,7 +16,15 @@ import {
 import type { Bounty, Milestone, MaintenancePool, ReputationProfile } from "@/types";
 import { buildBountyQueryString, type BountyQuery } from "./bounty-query";
 
-export class ApiUnavailableError extends Error {}
+export class ApiUnavailableError extends Error {
+  // Set only for HTTP responses; undefined for transport (network/timeout/parse) failures.
+  constructor(
+    message: string,
+    public status?: number,
+  ) {
+    super(message);
+  }
+}
 
 export class ApiRequestError extends Error {
   constructor(
@@ -50,7 +58,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       cache: "no-store",
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
-      signal: init?.signal ?? timeout,
+      signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "TimeoutError") {
@@ -62,7 +70,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     logFetchError(path, "http", `${res.status} ${res.statusText}`);
-    throw new ApiUnavailableError(`Request to ${path} failed: ${res.status}`);
+    throw new ApiUnavailableError(`Request to ${path} failed: ${res.status}`, res.status);
   }
   try {
     return (await res.json()) as T;
@@ -123,7 +131,7 @@ export async function apiRequest<T>(
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...init?.headers,
         },
-        signal: init?.signal ?? timeout,
+        signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "TimeoutError") {
@@ -211,7 +219,12 @@ export const fetchBounty = cache(
     try {
       const raw = await request<RawBounty>(`/bounties/${id}`);
       return { data: adaptBounty(raw), source: "live" };
-    } catch {
+    } catch (err) {
+      // A 404 is the backend answering "no such bounty", not an outage, so
+      // it must not be papered over with mock data (#925).
+      if (err instanceof ApiUnavailableError && err.status === 404) {
+        return { data: undefined, source: "live" };
+      }
       return { data: fallback, source: "mock" };
     }
   },
@@ -228,16 +241,16 @@ export const fetchMilestones = cache(
   },
 );
 
-export async function fetchMaintenancePools(
-  fallback: MaintenancePool[],
-): Promise<FetchResult<MaintenancePool[]>> {
-  try {
-    const raw = await request<RawMaintenancePool[]>("/maintenance-pools");
-    return { data: raw.map(adaptMaintenancePool), source: "live" };
-  } catch {
-    return { data: fallback, source: "mock" };
-  }
-}
+export const fetchMaintenancePools = cache(
+  async (fallback: MaintenancePool[]): Promise<FetchResult<MaintenancePool[]>> => {
+    try {
+      const raw = await request<RawMaintenancePool[]>("/maintenance-pools");
+      return { data: raw.map(adaptMaintenancePool), source: "live" };
+    } catch {
+      return { data: fallback, source: "mock" };
+    }
+  },
+);
 
 export interface MaintainerRepository {
   org: string;
@@ -266,6 +279,27 @@ export async function fetchMyRepositories(
     return { data: fallback, source: "mock" };
   }
 }
+export const fetchMyRepositories = cache(
+  async (
+    fallback: MaintainerRepository[],
+  ): Promise<FetchResult<MaintainerRepository[]>> => {
+    try {
+      const raw = await request<
+        { id: string; org: string; name: string; htmlUrl: string }[]
+      >("/repositories/my");
+      return {
+        data: raw.map((r) => ({
+          org: r.org,
+          repo: r.name,
+          url: r.htmlUrl,
+        })),
+        source: "live",
+      };
+    } catch {
+      return { data: fallback, source: "mock" };
+    }
+  },
+);
 
 export const fetchReputationByUsername = cache(
   async (
@@ -353,24 +387,24 @@ export interface PlatformStats {
   totalRepos: number;
 }
 
-export async function fetchPlatformStats(
-  fallback: PlatformStats,
-): Promise<FetchResult<PlatformStats>> {
-  try {
-    const raw = await request<{
-      totalBounties: number;
-      totalPaidOut: number;
-      totalRepos: number;
-    }>("/analytics/platform");
-    return {
-      data: {
-        totalBounties: raw.totalBounties,
-        totalPaidOut: raw.totalPaidOut,
-        totalRepos: raw.totalRepos,
-      },
-      source: "live",
-    };
-  } catch {
-    return { data: fallback, source: "mock" };
-  }
-}
+export const fetchPlatformStats = cache(
+  async (fallback: PlatformStats): Promise<FetchResult<PlatformStats>> => {
+    try {
+      const raw = await request<{
+        totalBounties: number;
+        totalPaidOut: number;
+        totalRepos: number;
+      }>("/analytics/platform");
+      return {
+        data: {
+          totalBounties: raw.totalBounties,
+          totalPaidOut: raw.totalPaidOut,
+          totalRepos: raw.totalRepos,
+        },
+        source: "live",
+      };
+    } catch {
+      return { data: fallback, source: "mock" };
+    }
+  },
+);

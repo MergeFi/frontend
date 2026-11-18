@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
+    "test:coverage-floor": "node scripts/check-coverage-floor.mjs",
     "verify:headers": "node scripts/verify-security-headers.mjs",
     "verify:env": "node scripts/verify-env-validation.mjs"
   },

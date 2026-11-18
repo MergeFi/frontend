@@ -20,6 +20,36 @@ import { apiRequest, ApiRequestError } from "@/lib/api";
 import { useCrossTabStorage } from "@/hooks/useCrossTabStorage";
 import type { AuthUser } from "@/types";
 
+/**
+ * Backoff between session-resolve attempts (#935). Sized for what the retries
+ * exist to ride out — a backend restart or a cold serverless start takes
+ * seconds, not the 600ms the old 200/400ms schedule waited in total. Each
+ * delay is jittered so tabs that lost the backend together don't retry in
+ * lockstep, and the whole loop is capped by wall clock, not attempt count.
+ */
+const REFRESH_RETRY_DELAYS_MS = [500, 2000, 5000] as const;
+const REFRESH_RETRY_BUDGET_MS = 10_000;
+
+/** Transport failures (raw fetch errors, timeouts) and 429/5xx are transient. */
+function isRetryableRefreshError(err: unknown): boolean {
+  if (!(err instanceof ApiRequestError)) return true;
+  return err.status === 0 || err.status === 429 || err.status >= 500;
+}
+
+/**
+ * Delay before the next attempt, or `null` when the schedule is exhausted.
+ * A 429's `Retry-After` is honoured as given; other delays are jittered into
+ * `[50%, 100%)` of the scheduled value.
+ */
+function refreshRetryDelay(err: unknown, attempt: number): number | null {
+  if (attempt >= REFRESH_RETRY_DELAYS_MS.length) return null;
+  if (err instanceof ApiRequestError && err.retryAfter !== undefined) {
+    return err.retryAfter * 1000;
+  }
+  const base = REFRESH_RETRY_DELAYS_MS[attempt];
+  return Math.round(base * (0.5 + Math.random() * 0.5));
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   /**
@@ -85,8 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // user id in `sub`; fetch the profile directly and keep `/auth/me` as the
     // fallback for tokens whose subject can't be decoded.
     const subject = getTokenSubject(token);
-    const MAX_RETRIES = 3;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const deadline = Date.now() + REFRESH_RETRY_BUDGET_MS;
+    for (let attempt = 0; attempt <= REFRESH_RETRY_DELAYS_MS.length; attempt++) {
       try {
         const userId =
           subject ??
@@ -113,9 +143,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return null;
         }
-        if (attempt < MAX_RETRIES - 1) {
-          await new Promise((r) => setTimeout(r, 2 ** attempt * 200));
-        }
+        // #935 — a 400/404/422 (malformed subject, deleted user) will not
+        // change on a retry; only transport failures, timeouts, 429 and 5xx
+        // are worth waiting out.
+        if (!isRetryableRefreshError(err)) break;
+        const delay = refreshRetryDelay(err, attempt);
+        if (delay === null || Date.now() + delay > deadline) break;
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
     // All retries exhausted. The token is still valid as far as we know, but we

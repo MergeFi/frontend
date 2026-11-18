@@ -61,4 +61,45 @@ describe("useCrossTabStorage", () => {
     dispatchStorageEvent("key_b", "should-fire");
     expect(onChange).toHaveBeenCalledWith("should-fire");
   });
+
+  // #936 — an inline callback changes identity every render; that must not
+  // detach and re-attach the listener (a storage event in that gap is lost).
+  it("subscribes once per key even when onChange changes identity every render", () => {
+    const addSpy = jest.spyOn(window, "addEventListener");
+    const removeSpy = jest.spyOn(window, "removeEventListener");
+    try {
+      const { rerender } = renderHook(
+        ({ cb }) => useCrossTabStorage("watched_key", cb),
+        { initialProps: { cb: (v: string | null) => void v } },
+      );
+      const storageAdds = () => addSpy.mock.calls.filter(([type]) => type === "storage").length;
+      const storageRemoves = () =>
+        removeSpy.mock.calls.filter(([type]) => type === "storage").length;
+      const addsAfterMount = storageAdds();
+      const removesAfterMount = storageRemoves();
+
+      rerender({ cb: (v: string | null) => void v });
+      rerender({ cb: (v: string | null) => void v });
+
+      expect(storageAdds()).toBe(addsAfterMount);
+      expect(storageRemoves()).toBe(removesAfterMount);
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
+  });
+
+  it("calls the latest onChange passed in, not the one from the first render", () => {
+    const first = jest.fn();
+    const latest = jest.fn();
+    const { rerender } = renderHook(({ cb }) => useCrossTabStorage("watched_key", cb), {
+      initialProps: { cb: first },
+    });
+
+    rerender({ cb: latest });
+    dispatchStorageEvent("watched_key", "value");
+
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledWith("value");
+  });
 });

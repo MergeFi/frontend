@@ -1,15 +1,19 @@
 import Link from "next/link";
-import { Layers, Clock, Coins, FolderGit2, CheckCircle2 } from "lucide-react";
-import { fetchBounties } from "@/lib/api";
+import { Layers, Clock, Coins, FolderGit2, CheckCircle2, GitBranch } from "lucide-react";
+import { fetchBounties, fetchMyRepositories } from "@/lib/api";
 import { mockBounties, recentActivity, bountiesCompletedSparkline } from "@/lib/mock-data";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ActivityList } from "@/components/dashboard/ActivityList";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SampleDataChip } from "@/components/ui/DataSourceNotice";
 import { Avatar } from "@/components/ui/Avatar";
-import { formatCurrency } from "@/lib/utils";
+import { Card } from "@/components/ui/Card";
+import { formatCurrency, sumMoney } from "@/lib/utils";
+import { t } from "@/lib/messages";
 import { PipelineBoard, ESCROW_LOCKED_EXCLUDED_STATUSES } from "./PipelineBoard";
+import { GitHubSyncPanel } from "./GitHubSyncPanel";
 
 export const metadata = {
   title: "Maintainer Dashboard | MergeFi",
@@ -26,15 +30,30 @@ export default async function MaintainerDashboardPage() {
   // fetch, so this reliably distinguishes "live data" from "backend down,
   // showing mockBounties" without changing fetchBounties' shared contract
   // (#240).
-  const bounties = await fetchBounties(mockBounties);
-  const statStatus: "loaded" | "error" = bounties === mockBounties ? "error" : "loaded";
+  const { data: allBounties, source } = await fetchBounties(mockBounties);
+  const statStatus: "loaded" | "error" = source === "live" ? "loaded" : "error";
+
+  // Filter bounties to only those belonging to the maintainer's own
+  // repositories (#641). When no repositories are connected, show an
+  // empty state with a "Connect repository" CTA.
+  const myRepos = await fetchMyRepositories([]);
+  const maintainerRepoKeys = new Set(myRepos.map((r) => `${r.org}/${r.repo}`));
+  const bounties =
+    myRepos.length > 0
+      ? allBounties.filter((b) => maintainerRepoKeys.has(`${b.org}/${b.repo}`))
+      : [];
 
   const needsReview = bounties.filter((b) => b.status === "in_review");
   const open = bounties.filter((b) => b.status === "open" || b.status === "funded");
   const repoCount = new Set(bounties.map((b) => `${b.org}/${b.repo}`)).size;
-  const totalEscrow = bounties
-    .filter((b) => !ESCROW_LOCKED_EXCLUDED_STATUSES.includes(b.status))
-    .reduce((sum, b) => sum + b.reward, 0);
+  // Summed in integer minor units to avoid float drift (#353). 7 decimals
+  // covers both USDC (2) and XLM (7) rewards without truncation.
+  const totalEscrow = sumMoney(
+    bounties
+      .filter((b) => !ESCROW_LOCKED_EXCLUDED_STATUSES.includes(b.status))
+      .map((b) => b.reward),
+    7,
+  );
 
   return (
     <DashboardShell
@@ -42,11 +61,8 @@ export default async function MaintainerDashboardPage() {
       title="Bounty pipeline"
       subtitle="Create bounties from your GitHub issues and approve completed work. Payout release happens automatically once a linked pull request is merged."
       action={
-        // Bounties are created from your GitHub issues (per the subtitle
-        // above) — /issues is the same destination the contributor and
-        // sponsor dashboards' equivalent action buttons already link to
-        // for picking a bounty to work with (#241).
-        <Link href="/issues">
+        // #636 — Link to the create-bounty form instead of the bounty board.
+        <Link href="/issues/create">
           <span className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
             Create bounty
           </span>
@@ -91,7 +107,29 @@ export default async function MaintainerDashboardPage() {
         />
       </div>
 
-      <PipelineBoard bounties={bounties} />
+      {myRepos.length === 0 ? (
+        <EmptyState
+          icon={GitBranch}
+          title="No repositories connected"
+          description="Connect a GitHub repository to start tracking your bounty pipeline."
+          action={
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              Connect repository
+            </Link>
+          }
+        />
+      ) : (
+        <PipelineBoard bounties={bounties} />
+      )}
+
+      {/* #637 — GitHub repository sync UI so maintainers can bring their
+          issues onto the platform without manual API calls. */}
+      <div className="mt-8">
+        <GitHubSyncPanel />
+      </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div>
@@ -100,9 +138,10 @@ export default async function MaintainerDashboardPage() {
           </h2>
           <div className="mt-4 space-y-3">
             {needsReview.map((bounty) => (
-              <div
+              <Card
                 key={bounty.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                padding="sm"
+                className="flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3">
                   <Avatar seed={`${bounty.org}/${bounty.repo}`} size={36} className="rounded-xl" />
@@ -124,21 +163,39 @@ export default async function MaintainerDashboardPage() {
                     {formatCurrency(bounty.reward, bounty.asset)}
                   </span>
                 </div>
-              </div>
+              </Card>
             ))}
             {needsReview.length === 0 && (
+              /* A maintainer with zero items to review has *finished*, not
+                 failed — the review queue draining is the success case. Toned
+                 as success with no CTA pushing more work at them, and the
+                 secondary action points at bounties they could open rather
+                 than at more reviews. */
               <EmptyState
                 icon={CheckCircle2}
-                title="All caught up"
-                description="No pull requests are waiting on your review right now."
+                tone="success"
+                size="sm"
+                title={t("empty.review.clear.title")}
+                description={t("empty.review.clear.description")}
+                secondaryAction={
+                  <Link
+                    href="/issues"
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                  >
+                    {t("empty.review.clear.cta")}
+                  </Link>
+                }
               />
             )}
           </div>
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-            Recent activity
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+              Recent activity
+            </h2>
+            {source === "mock" && <SampleDataChip />}
+          </div>
           <div className="mt-4">
             <ActivityList events={recentActivity.slice(0, 5)} />
           </div>

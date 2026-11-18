@@ -324,4 +324,34 @@ describe("StatCard — sparkline", () => {
     const wrapper = screen.getByTestId("statcard-sparkline");
     expect(wrapper.querySelector("svg")).not.toBeNull();
   });
+
+  it("names the sparkline after the card's own label", () => {
+    render(
+      <StatCard label="Earnings history" status="loaded" value={100} sparkline={[10, 20, 15, 30]} />,
+    );
+    // The stat card is the only place that knows what the trend represents, so
+    // it has to supply the name — otherwise the sparkline announces as an
+    // unlabelled graphic.
+    const svg = screen.getByRole("img");
+    expect(svg).toHaveAccessibleName(
+      "Earnings history: 4 data points, trending up from 10 to 30, range 10 to 30",
+    );
+  });
+
+  it("formats sparkline values when format is currency (#709)", () => {
+    render(
+      <StatCard
+        label="Lifetime earnings"
+        status="loaded"
+        value={8420}
+        format="currency"
+        asset="USDC"
+        sparkline={[1234.5, 8420]}
+      />,
+    );
+    const svg = screen.getByRole("img");
+    expect(svg).toHaveAccessibleName(
+      expect.stringContaining("trending up from 1,234.5 USDC to 8,420 USDC"),
+    );
+  });
 });

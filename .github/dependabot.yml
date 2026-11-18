@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # No custom `labels:` (#903). Neither `dependencies` nor `github-actions`
+  # exists on this repo, so Dependabot opened every PR unlabelled. With the
+  # key omitted, Dependabot applies — and creates if missing — its default
+  # labels: `dependencies` plus the ecosystem label (`javascript` for npm,
+  # `github_actions` for Actions), matching MergeFi/contracts' spelling.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps):"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps):"

@@ -65,6 +65,60 @@ const CASES = [
     },
     expectSuccess: true,
   },
+  {
+    // PUBLIC is the production-critical network value — a regression that
+    // broke the build specifically for "PUBLIC" while leaving "TESTNET"
+    // working would pass every case above undetected.
+    name: "valid NEXT_PUBLIC_STELLAR_NETWORK=PUBLIC builds successfully",
+    env: { NEXT_PUBLIC_STELLAR_NETWORK: "PUBLIC" },
+    expectSuccess: true,
+  },
+  {
+    // validateApiUrl explicitly rejects javascript:/file:/non-http(s)
+    // schemes (#204), but the existing "not-a-url" case only tests an
+    // unparseable URL — not a well-formed URL with a disallowed scheme.
+    name: 'rejected URL scheme (javascript:) fails the build',
+    env: {
+      NEXT_PUBLIC_STELLAR_NETWORK: "TESTNET",
+      NEXT_PUBLIC_API_URL: "javascript:alert(1)",
+    },
+    expectSuccess: false,
+    expectedMessageFragment: 'uses the "javascript:" scheme',
+  },
+  {
+    // A trailing slash in NEXT_PUBLIC_API_URL used to survive validation,
+    // making every composed path ".../api//bounties" (#683). A URL with a
+    // trailing slash must be accepted AND normalized (this case only
+    // asserts the build succeeds; the normalization itself is pinned by
+    // src/lib/env.test.ts).
+    name: "NEXT_PUBLIC_API_URL with a trailing slash builds successfully",
+    env: {
+      NEXT_PUBLIC_STELLAR_NETWORK: "TESTNET",
+      NEXT_PUBLIC_API_URL: "https://api.example.com/api/",
+    },
+    expectSuccess: true,
+  },
+  {
+    // A PUBLIC (mainnet) build must not talk to an unencrypted API (#683)
+    // — except on loopback, where plain http is local dev only.
+    name: "plain http NEXT_PUBLIC_API_URL with PUBLIC network fails the build",
+    env: {
+      NEXT_PUBLIC_STELLAR_NETWORK: "PUBLIC",
+      NEXT_PUBLIC_API_URL: "http://api.example.com/api",
+    },
+    expectSuccess: false,
+    expectedMessageFragment: 'must talk to the API over "https:"',
+  },
+  {
+    // The loopback exemption above must not break a PUBLIC build against
+    // a local backend (the documented local quickstart).
+    name: "plain http localhost NEXT_PUBLIC_API_URL with PUBLIC network builds successfully",
+    env: {
+      NEXT_PUBLIC_STELLAR_NETWORK: "PUBLIC",
+      NEXT_PUBLIC_API_URL: "http://localhost:4000/api",
+    },
+    expectSuccess: true,
+  },
 ];
 
 function runBuild(envOverrides) {

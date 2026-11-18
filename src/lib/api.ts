@@ -321,7 +321,6 @@ export const fetchReputationByUsername = cache(
  */
 export const fetchIndexableReputationHandles = cache(
   async (fallback: string[]): Promise<FetchResult<string[]>> => {
-): Promise<FetchResult<string[]>> {
   try {
     const users = await request<(RawUserProfile & { id: string })[]>("/users");
     // The backend's PublicUserDto currently has no isProfilePublic field,

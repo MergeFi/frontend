@@ -165,3 +165,37 @@ describe("ContributorDashboardClient — out-of-order response guard", () => {
     expect(await screen.findByText("Live data")).toBeInTheDocument();
   });
 });
+
+// â”€â”€ degraded session (#944) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+describe("ContributorDashboardClient â€” degraded session (#944)", () => {
+  it("shows an error/retry state with no mock figures when signed out with a degraded session", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      loading: false,
+      degraded: true,
+      refresh: jest.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
+
+    render(<ContributorDashboardClient />);
+
+    expect(await screen.findByTestId("degraded-error-state")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    expect(screen.queryByText("Demo data")).not.toBeInTheDocument();
+    expect(screen.queryByText(/priyaeth/i)).not.toBeInTheDocument();
+  });
+
+  it("shows demo data when signed out with a healthy (non-degraded) session", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      loading: false,
+      degraded: false,
+      refresh: jest.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
+
+    render(<ContributorDashboardClient />);
+
+    expect(await screen.findByText("Demo data")).toBeInTheDocument();
+    expect(screen.queryByTestId("degraded-error-state")).not.toBeInTheDocument();
+  });
+});

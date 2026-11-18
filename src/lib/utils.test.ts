@@ -626,6 +626,11 @@ describe("parseMoneyInput — accepts the viewer's own number notation (#456)", 
     expect(r).toEqual({ valid: true, normalized: "1234.5" });
   });
 
+  it("normalizes an XLM amount with full 7-decimal precision in locale notation", () => {
+    const r = parseMoneyInput("1.234,5678901", "XLM", "de-DE");
+    expect(r).toEqual({ valid: true, normalized: "1234.5678901" });
+  });
+
   it("rejects two decimal separators rather than guessing", () => {
     const r = parseMoneyInput("1.2.3", "USDC", "en-US");
     expect(r).toEqual({ valid: false, error: "Enter a valid number." });

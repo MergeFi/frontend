@@ -50,7 +50,7 @@ const spendChartData = sponsorSpendHistory.map((value, i) => ({
 const maxRepoSpend = Math.max(...sponsorSpendByRepo.map((r) => r.amount));
 
 export default function SponsorDashboardClient() {
-  const { user, loading } = useAuth();
+  const { user, loading, degraded, refresh } = useAuth();
   const [data, setData] = useState<SponsorDashboardData | null>(null);
   const [isLive, setIsLive] = useState(false);
   // Explicit fetch status so StatCards can show skeletons rather than
@@ -69,6 +69,12 @@ export default function SponsorDashboardClient() {
     if (loading) return;
 
     if (!user) {
+      // A degraded session is an outage, not a signed-out demo: mock figures
+      // must never be presented as the user's own spending (#587, #944).
+      if (degraded) {
+        setFetchStatus("error");
+        return;
+      }
       // Demo-mode fallback when signed out.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setData({
@@ -147,6 +153,27 @@ export default function SponsorDashboardClient() {
     (data?.totalSpent ?? 0) > 0 ||
     (data?.budgetLocked ?? 0) > 0 ||
     (data?.repoCount ?? 0) > 0;
+
+  if (!loading && !user && degraded) {
+    return (
+      <DashboardShell
+        role="sponsor"
+        title="We couldn't load your dashboard"
+        subtitle="The server is unreachable right now, so we can't confirm your session. No sample figures are shown while your data is uncertain."
+      >
+        <div data-testid="degraded-error-state">
+          <p>Could not reach the server. Your spending and budget are unavailable until the connection recovers.</p>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+          >
+            Try again
+          </button>
+        </div>
+      </DashboardShell>
+    );
+  }
 
   return (
     <DashboardShell

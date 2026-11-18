@@ -32,9 +32,18 @@ export function middleware(request: NextRequest) {
     "form-action 'self'",
   ].join("; ");
 
-  const response = NextResponse.next();
+  // The nonce must travel on the *request* so `headers()` in layout.tsx can
+  // read it — setting it on the response left the inline init scripts with
+  // an undefined nonce, which the nonce-based CSP then blocked (#833).
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
   response.headers.set("Content-Security-Policy", csp);
-  response.headers.set("x-nonce", nonce);
   return response;
 }
 

@@ -108,4 +108,58 @@ describe("stripMarkdownToPlainText", () => {
       "Line one Line two Line three",
     );
   });
+
+  it("strips thematic breaks without needing a pipe (#902)", () => {
+    expect(stripMarkdownToPlainText("Intro\n\n---\n\nNext")).toBe("Intro Next");
+    expect(stripMarkdownToPlainText("Intro\n\n***\n\nNext")).toBe("Intro Next");
+    expect(stripMarkdownToPlainText("Intro\n\n- - -\n\nNext")).toBe("Intro Next");
+  });
+
+  it("keeps a setext heading's text and drops only its underline (#902)", () => {
+    expect(stripMarkdownToPlainText("Title\n=====\nBody")).toBe("Title Body");
+    expect(stripMarkdownToPlainText("Title\n-----\nBody")).toBe("Title Body");
+  });
+
+  it("still drops a GFM separator row written without outer pipes (#902)", () => {
+    expect(stripMarkdownToPlainText("a | b\n--- | ---\n1 | 2")).toBe("a b 1 2");
+  // #901 — the remaining GitHub-issue constructs that leaked into previews.
+  it("strips raw HTML tags and comments, keeping their text", () => {
+    expect(
+      stripMarkdownToPlainText(
+        "Crash on save<br>\n<details><summary>Logs</summary>stack trace</details><!-- hidden -->",
+      ),
+    ).toBe("Crash on save Logsstack trace");
+  });
+
+  it("drops an <img> tag entirely", () => {
+    expect(stripMarkdownToPlainText('Before <img src="https://x.png" alt="x"> after')).toBe(
+      "Before after",
+    );
+  });
+
+  it("leaves comparison operators in prose alone", () => {
+    expect(stripMarkdownToPlainText("Fails when a < b and c > d")).toBe(
+      "Fails when a < b and c > d",
+    );
+  });
+
+  it("unwraps an autolink to its URL", () => {
+    expect(stripMarkdownToPlainText("See <https://example.com/issue/1> for context")).toBe(
+      "See https://example.com/issue/1 for context",
+    );
+  });
+
+  it("keeps reference-style link text and drops the definition line", () => {
+    expect(
+      stripMarkdownToPlainText(
+        "Read [the docs][docs] and [the FAQ][].\n\n[docs]: https://example.com/docs\n[the FAQ]: https://example.com/faq",
+      ),
+    ).toBe("Read the docs and the FAQ.");
+  });
+
+  it("drops reference-style images", () => {
+    expect(stripMarkdownToPlainText("Before ![shot][img] after\n\n[img]: https://x.png")).toBe(
+      "Before after",
+    );
+  });
 });

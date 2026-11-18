@@ -14,6 +14,9 @@ import {
   filterBounties,
   isFilterActive,
   parseBountyQuery,
+  REWARD_COMPARISON_NOTE,
+  SORT_LABELS,
+  XLM_TO_USD_APPROX,
 } from "./bounty-query";
 import type { Bounty } from "@/types";
 
@@ -262,5 +265,28 @@ describe("buildIssuesHref", () => {
 
   it("clearing a facet back to its default drops it from the URL", () => {
     expect(buildIssuesHref({ status: "open" }, { status: undefined })).toBe("/issues");
+  });
+});
+
+describe("status filter coverage (#899)", () => {
+  it.each(["paid", "refunded", "expired", "unknown"] as const)(
+    "accepts and filters on %p instead of falling back to all",
+    (status) => {
+      const query = parseBountyQuery({ status });
+      expect(query.status).toBe(status);
+
+      const board = [bounty({ id: "a", status: "open" }), bounty({ id: "b", status })];
+      expect(filterBounties(board, query).map((b) => b.id)).toEqual(["b"]);
+    },
+  );
+describe("reward conversion is visible to the user (#898)", () => {
+  it("states the XLM rate the reward filter and sort use", () => {
+    expect(REWARD_COMPARISON_NOTE).toContain(`$${XLM_TO_USD_APPROX} per XLM`);
+    expect(REWARD_COMPARISON_NOTE).toMatch(/not a live rate/);
+  });
+
+  it("labels the reward sort orders as USD-equivalent", () => {
+    expect(SORT_LABELS["reward-desc"]).toMatch(/USD equiv/);
+    expect(SORT_LABELS["reward-asc"]).toMatch(/USD equiv/);
   });
 });

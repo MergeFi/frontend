@@ -22,10 +22,25 @@ export function stripMarkdownToPlainText(markdown: string): string {
     // above can't match it, so strip the leftover ``` markers/language tag
     // directly rather than leaving them visible in the preview (#199).
     .replace(/```[a-zA-Z0-9]*\n?/g, "")
+    // Autolinks "<https://...>" -> the bare URL. Must run before the HTML
+    // tag pass below, which would otherwise delete the URL with its brackets.
+    .replace(/<(https?:\/\/[^<>\s]+)>/g, "$1")
+    // Raw HTML (#901): comments, then tags such as <details>, <summary>,
+    // <br> and <img ...>. Only "<" followed by a letter or "/" counts as a
+    // tag, so prose like "a < b > c" is left alone.
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<\/?[A-Za-z][^<>]*>/g, "")
+    // Reference-style link definitions ("[docs]: https://...") are metadata,
+    // not text — drop the whole line (#901).
+    .replace(/^ {0,3}\[[^\]]+\]:[ \t]*\S+.*$/gm, "")
     // Images: drop entirely — alt text isn't meaningful in a short preview.
+    // Inline "![alt](url)" and reference-style "![alt][ref]".
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-    // Links: keep the link text, drop the URL.
+    .replace(/!\[[^\]]*\]\[[^\]]*\]/g, "")
+    // Links: keep the link text, drop the URL — inline "[text](url)" and
+    // reference-style "[text][ref]" / "[text][]" (#901).
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\[[^\]]*\]/g, "$1")
     // Inline code.
     .replace(/`([^`]+)`/g, "$1")
     // Bold+italic, then bold, then italic (order matters — longest marker first).
@@ -38,6 +53,12 @@ export function stripMarkdownToPlainText(markdown: string): string {
     .replace(/^#{1,6}\s+/gm, "")
     // Blockquotes.
     .replace(/^>\s?/gm, "")
+    // Thematic breaks (---, ***, ___, - - -) and setext heading underlines
+    // (=== / ---): a line made of one repeated marker character. Stripping
+    // only the underline keeps a setext heading's text, the same as the ATX
+    // rule above (#902). Runs before the list-marker rule, which would
+    // otherwise eat the first "- " of "- - -".
+    .replace(/^[ \t]*([-*_=])(?:[ \t]*\1)+[ \t]*$/gm, "")
     // GFM task-list markers: "- [ ] item" / "- [x] item" — strip the whole
     // "- [ ] " prefix (checkbox included) before the generic list-marker
     // rule below would leave "[ ] item" behind as visible noise (#682).
@@ -48,11 +69,13 @@ export function stripMarkdownToPlainText(markdown: string): string {
     // GFM tables: drop the separator row (|---|---| / | :-- | --: | / |-|-|)
     // and turn the remaining column pipes into spaces so "| a | b |" reads
     // as "a b" in a one-line preview instead of showing raw table syntax
-    // (#682). The separator rule matches any line composed solely of
-    // pipes/colons/dashes/whitespace containing at least one dash — it must
-    // run before the pipe replacement, because once the pipes are spaces a
-    // separator row is just a whitespace-only line.
-    .replace(/^[ \t]*[\t| :-]*-[\t| :-]*$/gm, "")
+    // (#682). The separator rule matches a line composed solely of
+    // pipes/colons/dashes/whitespace that contains at least one pipe and one
+    // dash — a real GFM separator always has a pipe, so dash-only lines are
+    // left to the thematic-break rule above (#902). It must run before the
+    // pipe replacement, because once the pipes are spaces a separator row is
+    // just a whitespace-only line.
+    .replace(/^(?=[^\n]*\|)(?=[^\n]*-)[ \t|:-]+$/gm, "")
     .replace(/\|/g, " ")
     // Collapse newlines/whitespace into single spaces for inline flow.
     .replace(/\r\n/g, "\n")

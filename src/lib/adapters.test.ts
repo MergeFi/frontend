@@ -387,6 +387,19 @@ describe("adaptReputation", () => {
     expect(profile.onTimeDeliveryRate).toBeCloseTo(0.88);
   });
 
+  it("clamps out-of-range rates to 0-1 and warns instead of passing them through (#895)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const profile = adaptReputation(
+      rawUserProfile(),
+      rawReputationSnapshot({ completionRate: "150", onTimeDeliveryPercentage: "-5" }),
+    );
+    expect(profile.completionRate).toBe(1);
+    expect(profile.onTimeDeliveryRate).toBe(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("completionRate = 150"));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("onTimeDeliveryPercentage = -5"));
+    warn.mockRestore();
+  });
+
   // The search-engine opt-in mapped from the backend's `isProfilePublic`
   // (see src/lib/seo-policy.ts). Only an explicit `true` may enable indexing.
   it.each([

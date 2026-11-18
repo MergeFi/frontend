@@ -121,6 +121,18 @@ export function subscribeBounty(
   };
 }
 
+/**
+ * Test seam (#909): stops every poller and empties the registry so each test
+ * starts from a clean module state instead of inheriting another test's
+ * subscriptions.
+ */
+export function __resetRegistry(): void {
+  for (const entry of registry.values()) {
+    stopPolling(entry);
+  }
+  registry.clear();
+}
+
 export function refetchBounty(id: string): void {
   const entry = registry.get(id);
   if (!entry) return;

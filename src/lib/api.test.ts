@@ -1,4 +1,5 @@
-import { fetchIndexableReputationHandles } from "./api";
+import { ApiUnavailableError, fetchBounty, fetchIndexableReputationHandles } from "./api";
+import type { Bounty } from "@/types";
 
 /**
  * The privacy filter in fetchIndexableReputationHandles is the point where a
@@ -69,5 +70,58 @@ describe("fetchIndexableReputationHandles", () => {
 
     expect(result.source).toBe("mock");
     expect(result.data).toEqual(["mock-handle"]);
+  });
+});
+
+describe("fetchBounty HTTP status handling (#925)", () => {
+  const originalFetch = global.fetch;
+  const fallback = { id: "b1" } as Bounty;
+
+  beforeEach(() => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  function mockStatus(status: number) {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status,
+      statusText: "",
+      json: async () => ({}),
+    }) as unknown as typeof fetch;
+  }
+
+  it("treats a 404 as a real not-found instead of serving mock data", async () => {
+    mockStatus(404);
+
+    const result = await fetchBounty("missing", fallback);
+
+    expect(result).toEqual({ data: undefined, source: "live" });
+  });
+
+  it("still falls back to mock data on a 5xx", async () => {
+    mockStatus(500);
+
+    const result = await fetchBounty("b1", fallback);
+
+    expect(result).toEqual({ data: fallback, source: "mock" });
+  });
+
+  it("still falls back to mock data when the backend is unreachable", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("offline")) as unknown as typeof fetch;
+
+    const result = await fetchBounty("b1", fallback);
+
+    expect(result).toEqual({ data: fallback, source: "mock" });
+  });
+});
+
+describe("ApiUnavailableError", () => {
+  it("carries the HTTP status when one is known", () => {
+    expect(new ApiUnavailableError("failed", 404).status).toBe(404);
+    expect(new ApiUnavailableError("offline").status).toBeUndefined();
   });
 });

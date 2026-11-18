@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -73,7 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = getToken();
     if (!token) {
       setUser(null);
-      setLoading(false);
+      // #882 — loading is cleared by endResolve, never here: a direct
+      // setLoading(false) bypasses the in-flight counter and flips the UI
+      // signed-out while a concurrent refresh is still running.
       setDegraded(false);
       return null;
     }
@@ -89,6 +92,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           subject ??
           (await apiRequest<{ userId: string; username: string }>("/auth/me")).userId;
         const profile = await apiRequest<AuthUser>(`/users/${userId}`);
+        // #883 — never commit a resolve for a token that has since changed
+        // (cross-tab switch); the new token's own refresh owns the state.
+        if (getToken() !== token) return null;
         setUser(profile);
         setDegraded(false);
         return profile;
@@ -98,9 +104,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // retry — silently logging the user out on a flaky connection
         // was a significant UX issue (#4).
         if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
-          clearToken();
-          setUser(null);
-          setDegraded(false);
+          // #883 — only tear down the session if this is still the active
+          // token; otherwise a stale 401 would sign out the new account.
+          if (getToken() === token) {
+            clearToken();
+            setUser(null);
+            setDegraded(false);
+          }
           return null;
         }
         if (attempt < MAX_RETRIES - 1) {
@@ -113,6 +123,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // letting `user === null` read as "signed out": every dashboard's
     // `if (!user)` branch renders mock data, so a transient outage would
     // otherwise present fabricated numbers as the user's own.
+    // #883 — stale resolve (token changed mid-flight): leave state to the new
+    // token's own refresh.
+    if (getToken() !== token) return null;
+    // #883 — if the failed token belongs to a *different* account than the one
+    // on screen (cross-tab switch), the previous profile must not survive:
+    // the UI would show account A's identity while requests carry B's token.
+    // For the current account, keep `user` and degrade instead.
+    setUser((prev) => (prev && subject && prev.id !== subject ? null : prev));
     setDegraded(true);
     return null;
   }, []);
@@ -171,8 +189,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDegraded(false);
   }, []);
 
+  // #885 — memoized so auth state changes re-render only consumers that
+  // actually read the changed fields, not every useAuth() subscriber.
+  const value = useMemo(
+    () => ({ user, loading, login, logout, refresh, degraded }),
+    [user, loading, degraded, login, logout, refresh],
+  );
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh, degraded }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

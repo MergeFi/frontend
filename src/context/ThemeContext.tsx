@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 type Theme = "light" | "dark";
 
@@ -52,7 +52,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
   }, []);
 
-  function toggle() {
+  // #885 — stable identity so the memoized provider value below only changes
+  // when `theme` does.
+  const toggle = useCallback(() => {
     setTheme((prev) => {
       const next = prev === "dark" ? "light" : "dark";
       document.documentElement.classList.toggle("dark", next === "dark");
@@ -64,10 +66,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  }
+  }, []);
+
+  // #885 — memoized value keeps consumers from re-rendering on every
+  // ThemeProvider render.
+  const value = useMemo(() => ({ theme, toggle }), [theme, toggle]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggle }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

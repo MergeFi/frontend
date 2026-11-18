@@ -14,13 +14,10 @@
  * HYDRATION
  * ─────────
  * The server cannot know the viewer's locale, so server-rendered HTML is
- * always formatted in {@link DEFAULT_LOCALE}. If the first *client* render
- * used the viewer's locale, React would report a hydration mismatch on every
- * number on the page. So the provider deliberately starts at
- * {@link DEFAULT_LOCALE} — byte-identical to what the server sent — and
- * upgrades to the viewer's locale in a post-mount effect. The visible cost is
- * that numbers re-format once, after mount. The alternative (a hydration
- * error, or permanently-wrong en-US) is worse.
+ * always formatted in {@link DEFAULT_LOCALE}. How the provider chooses its
+ * locale on the first client render is explained on the `useState`
+ * initializer inside {@link LocaleProvider}; that comment is the single source
+ * of truth for it, so it is not restated here (#888).
  *
  * `lang` and `dir` do NOT have that constraint, because they are attributes
  * on `<html>` and are set by {@link localeInitScript} before React hydrates —
@@ -38,6 +35,7 @@ import {
 import {
   DEFAULT_LOCALE,
   isRTLLocale,
+  LOCALE_STORAGE_KEY,
   normalizeLocale,
   resolveLocale,
 } from "@/lib/locale";
@@ -62,7 +60,7 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
  * frame later the way the React-side locale does. Detects an explicit
  * override first, then the browser's preferred language list.
  */
-export const localeInitScript = `(function(){try{var l=null;try{l=localStorage.getItem("mergefi_locale");}catch(e){}if(!l){var n=navigator.languages||[navigator.language];l=n&&n.length?n[0]:null;}if(!l)return;var r=["ar","arc","dv","fa","he","khw","ks","ps","sd","ur","yi"];var b=l.split("-")[0].toLowerCase();document.documentElement.setAttribute("lang",l);if(r.indexOf(b)!==-1)document.documentElement.setAttribute("dir","rtl");}catch(e){}})();`;
+export const localeInitScript = `(function(){try{var l=null;try{l=localStorage.getItem("mergefi_locale");}catch(e){}if(!l){var n=navigator.languages||[navigator.language];l=n&&n.length?n[0]:null;}if(!l)return;var r=["ar","arc","dv","fa","he","khw","ks","ps","sd","ur","yi"];var b=l.split("-")[0].toLowerCase();document.documentElement.setAttribute("lang",l);document.documentElement.setAttribute("dir",r.indexOf(b)!==-1?"rtl":"ltr");}catch(e){}})();`;
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   /* Lazy initializer, the same technique ThemeContext uses for the dark-mode
@@ -99,13 +97,32 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     [locale, detected],
   );
 
-  // Re-render only if the document's lang is replaced after hydration (e.g.
-  // by an in-app locale switcher writing a new override).
+  // The `mergefi_locale` localStorage override is authoritative, then the
+  // browser's language list — the same order the init script and
+  // resolveLocale() use (#891). Re-resolve when either source changes:
+  // `languagechange` fires when the browser's preferred languages change,
+  // and `storage` fires when another tab writes or clears the override.
+  // (Neither fires for a write to <html lang>, so nothing here watches it.)
   useEffect(() => {
-    const onLangChange = () => setLocale(normalizeLocale(resolveLocale()));
-    window.addEventListener("languagechange", onLangChange);
-    return () => window.removeEventListener("languagechange", onLangChange);
+    const reresolve = () => setLocale(normalizeLocale(resolveLocale()));
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === LOCALE_STORAGE_KEY || event.key === null) reresolve();
+    };
+    window.addEventListener("languagechange", reresolve);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("languagechange", reresolve);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
+
+  // Keep <html lang> and <html dir> in step with the resolved locale after a
+  // runtime change, so the document never stays mirrored after switching
+  // away from an RTL locale while useLocale().direction says "ltr" (#890).
+  useEffect(() => {
+    document.documentElement.setAttribute("lang", locale);
+    document.documentElement.setAttribute("dir", value.direction);
+  }, [locale, value.direction]);
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }

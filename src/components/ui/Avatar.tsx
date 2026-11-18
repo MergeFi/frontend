@@ -2,11 +2,8 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { identiconDataUri } from "@/lib/identicon";
 import { cn } from "@/lib/utils";
-
-function seedToUrl(seed: string) {
-  return `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(seed)}&backgroundType=gradientLinear`;
-}
 
 /**
  * Must match next.config.ts's `images.remotePatterns` — the only hosts an
@@ -15,7 +12,7 @@ function seedToUrl(seed: string) {
  * `javascript:`/`data:` scheme or an unexpected third-party host must be
  * rejected here rather than trusted through to `<Image>`.
  */
-const ALLOWED_AVATAR_HOSTS = new Set(["avatars.githubusercontent.com", "api.dicebear.com"]);
+const ALLOWED_AVATAR_HOSTS = new Set(["avatars.githubusercontent.com"]);
 
 function isSafeAvatarUrl(value: string): boolean {
   try {
@@ -40,10 +37,10 @@ export function Avatar({
   /** Alt text override. Use empty string when the avatar is decorative (next to a visible name). */
   alt?: string;
 }) {
-  const fallback = seedToUrl(seed);
+  const fallback = identiconDataUri(seed);
   const requested = src && isSafeAvatarUrl(src) ? src : fallback;
 
-  // Falls back to the dicebear identicon on a real load failure (404,
+  // Falls back to the local identicon on a real load failure (404,
   // unreachable host, ...) in addition to the safety check above. Tracking
   // the specific src that errored — not a plain boolean — means a later
   // render with a *different* `src` prop (e.g. the user updates their GitHub
@@ -55,13 +52,11 @@ export function Avatar({
 
   return (
     <Image
-      src={src ?? seedToUrl(seed)}
-      alt={alt ?? seed}
       src={resolved}
-      alt={seed}
+      alt={alt ?? seed}
       width={size}
       height={size}
-      unoptimized={resolved.startsWith("https://api.dicebear.com")}
+      unoptimized={resolved === fallback}
       onError={() => setErroredSrc(requested)}
       className={cn(
         "rounded-full border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800",

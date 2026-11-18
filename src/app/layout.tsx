@@ -8,6 +8,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { WalletProvider } from "@/context/WalletContext";
 import { ThemeProvider, themeInitScript } from "@/context/ThemeContext";
 import { LocaleProvider, localeInitScript } from "@/context/LocaleContext";
+import { validateSiteUrl } from "@/lib/env";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,9 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://mergefi.app",
-  ),
+  metadataBase: new URL(validateSiteUrl(process.env.NEXT_PUBLIC_SITE_URL)),
   title: "MergeFi | Merge code. Earn instantly.",
   description:
     "MergeFi is the financial infrastructure for open source: fund GitHub issues, escrow payment with Soroban smart contracts on Stellar, and pay contributors automatically when work is merged.",

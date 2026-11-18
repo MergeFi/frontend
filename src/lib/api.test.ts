@@ -15,6 +15,9 @@ import {
   adaptMaintenancePool,
   adaptReputation,
 } from "./adapters";
+import { fetchIndexableReputationHandles, fetchMyRepositories } from "./api";
+import { ApiUnavailableError, fetchBounty, fetchIndexableReputationHandles } from "./api";
+import type { Bounty } from "@/types";
 
 /**
  * The privacy filter in fetchIndexableReputationHandles is the point where a
@@ -95,10 +98,16 @@ describe("fetchIndexableReputationHandles", () => {
  * payload with `source: "live"`.
  */
 describe("fetchers — mock-vs-live fallback contract (#941)", () => {
+describe("fetchMyRepositories", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     jest.clearAllMocks();
+describe("fetchBounty HTTP status handling (#925)", () => {
+  const originalFetch = global.fetch;
+  const fallback = { id: "b1" } as Bounty;
+
+  beforeEach(() => {
     jest.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -264,5 +273,80 @@ describe("fetchers — mock-vs-live fallback contract (#941)", () => {
       expect(result.data).toEqual(c.expectedLive);
       expect(result.data).not.toBe(fallback);
     }
+  it("maps a Repository entity body via RawRepository owner/name (#945)", async () => {
+    // Fixture mirrors mergefi-backend Repository entity serialization
+    // (src/common/entities/repository.entity.ts): the columns are
+    // owner/name — there is no org or htmlUrl field.
+    const entity = {
+      id: "3f0a2b9c-1111-2222-3333-444455556666",
+      githubRepoId: "12345678",
+      owner: "acme",
+      name: "widgets",
+      fullName: "acme/widgets",
+      description: null,
+      defaultBranch: "main",
+      private: false,
+      primaryLanguage: "TypeScript",
+      stargazersCount: 42,
+      maintainer: null,
+      maintainerId: null,
+      issues: [],
+      lastSyncedAt: "2026-01-01T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [entity],
+    }) as unknown as typeof fetch;
+
+    const result = await fetchMyRepositories([]);
+
+    expect(result.source).toBe("live");
+    expect(result.data).toEqual([
+      {
+        org: "acme",
+        repo: "widgets",
+        url: "https://github.com/acme/widgets",
+      },
+    ]);
+  function mockStatus(status: number) {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status,
+      statusText: "",
+      json: async () => ({}),
+    }) as unknown as typeof fetch;
+  }
+
+  it("treats a 404 as a real not-found instead of serving mock data", async () => {
+    mockStatus(404);
+
+    const result = await fetchBounty("missing", fallback);
+
+    expect(result).toEqual({ data: undefined, source: "live" });
+  });
+
+  it("still falls back to mock data on a 5xx", async () => {
+    mockStatus(500);
+
+    const result = await fetchBounty("b1", fallback);
+
+    expect(result).toEqual({ data: fallback, source: "mock" });
+  });
+
+  it("still falls back to mock data when the backend is unreachable", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("offline")) as unknown as typeof fetch;
+
+    const result = await fetchBounty("b1", fallback);
+
+    expect(result).toEqual({ data: fallback, source: "mock" });
+  });
+});
+
+describe("ApiUnavailableError", () => {
+  it("carries the HTTP status when one is known", () => {
+    expect(new ApiUnavailableError("failed", 404).status).toBe(404);
+    expect(new ApiUnavailableError("offline").status).toBeUndefined();
   });
 });

@@ -138,9 +138,40 @@ export function validateApiUrl(raw: string | undefined, network: StellarNetwork)
   return value.replace(/\/+$/, "");
 }
 
+const DEFAULT_SITE_URL = "https://mergefi.app";
+
+/**
+ * Validates `NEXT_PUBLIC_SITE_URL`, the public origin used for absolute URLs
+ * in the sitemap, robots.txt and `metadataBase` (#927). Unset keeps the
+ * production default; a set value must be a well-formed http(s) URL, so a
+ * typo fails the build instead of publishing broken absolute URLs. Trailing
+ * slashes are stripped so `${SITE_URL}${route}` never produces `//`.
+ */
+export function validateSiteUrl(raw: string | undefined): string {
+  const value = raw === undefined || raw === "" ? DEFAULT_SITE_URL : raw;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new EnvValidationError(
+      `NEXT_PUBLIC_SITE_URL is set to "${value}", which is not a valid URL. It must be a ` +
+        'full URL including protocol, e.g. "https://mergefi.app".',
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new EnvValidationError(
+      `NEXT_PUBLIC_SITE_URL is set to "${value}", which uses the "${parsed.protocol}" ` +
+        'scheme. It must use "http:" or "https:" — e.g. "https://mergefi.app".',
+    );
+  }
+  return value.replace(/\/+$/, "");
+}
+
 export interface ValidatedEnv {
   stellarNetwork: StellarNetwork;
   apiBaseUrl: string;
+  siteUrl: string;
 }
 
 /** Reads and validates every `NEXT_PUBLIC_*` variable this app depends on. */
@@ -151,5 +182,6 @@ export function loadValidatedEnv(): ValidatedEnv {
     // The network is validated first because it constrains the API URL —
     // a PUBLIC (mainnet) build requires an https: API URL (#683).
     apiBaseUrl: validateApiUrl(process.env.NEXT_PUBLIC_API_URL, stellarNetwork),
+    siteUrl: validateSiteUrl(process.env.NEXT_PUBLIC_SITE_URL),
   };
 }

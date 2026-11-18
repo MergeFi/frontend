@@ -24,7 +24,16 @@ export function coerceDecimal(value: string | null | undefined, fallback = 0): n
 
 export function coerceNonNegative(value: string | null | undefined, fallback = 0): number {
   const n = coerceDecimal(value, fallback);
-  return n < 0 ? fallback : n;
+  if (n < 0) {
+    // A negative value in a non-negative field is a data bug (#947). Clamp,
+    // but never silently: log so the evidence isn't destroyed at the display
+    // layer without a trace.
+    console.warn(
+      `[utils] coerceNonNegative clamped a negative value to ${fallback} (#947)`,
+    );
+    return fallback;
+  }
+  return n;
 }
 
 export function coerceFraction(value: string | null | undefined, fallback = 0): number {
@@ -67,16 +76,6 @@ export function getNumberFormat(locale: string, options: Intl.NumberFormatOption
   }
   return fmt;
 }
-
-// ── Locale-independent formatting (#656) ──────────────────────────────────────
-// Use explicit "en-US" locale so server and client always produce identical
-// output regardless of the viewer's system locale.
-
-const currencyFormat2 = getNumberFormat("en-US", { maximumFractionDigits: 2 });
-const currencyFormat7 = getNumberFormat("en-US", { maximumFractionDigits: 7 });
-const countFormat = getNumberFormat("en-US", { maximumFractionDigits: 0 });
-const parseNormalizeFormat2 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-const parseNormalizeFormat7 = getNumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 7 });
 
 /**
  * Format a numeric amount as a currency string with the specified asset label.
@@ -125,11 +124,14 @@ export function formatCurrency(
   const formatted = fmt.format(amount);
   if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
   return `${formatted} ${asset}`;
+  const formatted = formatCryptoAmount(amount, asset, locale);
+  if (!isPlausibleAmount(amount)) return `${formatted} ⚠`;
+  return formatted;
 }
 
 /**
- * Check whether a currency amount is within a plausible range.
- * Useful for conditionally rendering a warning badge or tooltip.
+ * Check whether a currency amount is within a plausible range — the same
+ * check `formatCurrency` uses to decide whether to append its "⚠" (#896).
  */
 export function isPlausibleAmount(amount: number): boolean {
   return Number.isFinite(amount) && Math.abs(amount) <= SANITY_CEILING;
@@ -181,9 +183,6 @@ export function parseMoneyInput(
     return { valid: false, error: "Enter a deposit amount." };
   }
 
-  // Use Number only for range checks, not for normalization.
-  // Normalization is done string-based to avoid precision loss on large amounts.
-  const num = Number(trimmed);
   const { group, decimal } = localeSeparators(locale);
 
   // Two notations have to be accepted, and they conflict on exactly one
@@ -247,6 +246,12 @@ export function parseMoneyInput(
   }
 
   return { valid: true, normalized };
+  // Normalize to the canonical dot-decimal wire form, dropping any trailing
+  // zeros the viewer's locale added ("12,50" → "12.5"). `toFixed` is the
+  // correct primitive here precisely because it is locale-independent.
+  const normalized = num.toFixed(maxDecimals).replace(/\.?0+$/, "");
+
+  return { valid: true, normalized: normalized === "" ? "0" : normalized };
 }
 
 /**
@@ -281,8 +286,9 @@ export function formatHours(value: number, locale: string = resolveLocale()) {
  * Uses UTC date arithmetic (not wall-clock ms division) so results are
  * consistent regardless of the viewer's timezone or DST state.
  */
-export function daysUntil(dateIso: string) {
+export function daysUntil(dateIso: string): number | null {
   const deadline = new Date(dateIso);
+  if (Number.isNaN(deadline.getTime())) return null;
   const now = new Date();
   // Compare UTC calendar dates to avoid DST/off-by-one issues
   const deadlineUtc = Date.UTC(deadline.getUTCFullYear(), deadline.getUTCMonth(), deadline.getUTCDate());
@@ -335,9 +341,17 @@ export function coerceStatus(value: string | null | undefined): BountyStatus {
 
 export function validateTeamSplits(
   splits: Array<{ percentage: string | number }>,
-  tolerance = 0.01
+  options: { tolerance?: number; allowEmpty?: boolean } = {},
 ): { valid: boolean; sum: number; message?: string } {
-  if (!splits || splits.length === 0) return { valid: true, sum: 0 };
+  const { tolerance = 0.01, allowEmpty = false } = options;
+  if (!splits || splits.length === 0) {
+    // An empty split set is the clearest violation of the "must sum to 100%"
+    // rule (#948): never wave it through unless the caller explicitly opts
+    // in via `allowEmpty`.
+    return allowEmpty
+      ? { valid: true, sum: 0 }
+      : { valid: false, sum: 0, message: "Team has no members" };
+  }
   // coerceDecimal degrades a malformed percentage string to 0 instead of
   // NaN, so one bad split can't poison the whole sum into "NaN%" (#198).
   const percentages = splits.map((s) =>
@@ -387,25 +401,39 @@ export function generateIdempotencyKey(): string {
  * USDC has 2 decimal places → "12.50" → 1250.
  * XLM has 7 decimal places → "1.0000000" → 10000000.
  *
- * This avoids IEEE-754 float drift when summing many amounts — integers
- * don't have representation gaps in the ranges we care about.
+ * This avoids IEEE-754 float drift when summing many amounts — but only while
+ * the minor-unit integer stays within `Number.MAX_SAFE_INTEGER` (about 900
+ * million XLM at 7 decimals). Beyond that, or for input that isn't a plain
+ * decimal, it throws a `RangeError` rather than returning a silently wrong
+ * amount (#897). Module-private: callers go through `sumMoney`/`subtractMoney`
+ * (#896).
  */
-export function toCents(value: string | number, decimals = 2): number {
+function toCents(value: string | number, decimals = 2): number {
   const raw = (typeof value === "number" ? value.toFixed(decimals) : String(value)).trim();
   // Apply the sign to the whole amount: "-12.50" is -1250, not -1200 + 50 (#353).
   const negative = raw.startsWith("-");
   const str = negative || raw.startsWith("+") ? raw.slice(1) : raw;
+  // parseInt alone is lenient — "1e5" parses as 1 and "12abc" as 12 — so
+  // reject anything that isn't a plain decimal before parsing (#897).
+  if (!/^(\d+(\.\d*)?|\.\d+)$/.test(str)) {
+    throw new RangeError(`toCents: "${String(value)}" is not a plain decimal amount`);
+  }
   const [whole = "0", frac = ""] = str.split(".");
   const padded = frac.padEnd(decimals, "0").slice(0, decimals);
   const cents = parseInt(whole || "0", 10) * 10 ** decimals + parseInt(padded || "0", 10);
+  if (!Number.isSafeInteger(cents)) {
+    throw new RangeError(
+      `toCents: "${String(value)}" exceeds the safe-integer range at ${decimals} decimals`,
+    );
+  }
   return negative ? -cents : cents;
 }
 
 /**
  * Convert integer minor units back to a major-unit float for display.
- * 1250 → 12.5 (for USDC with 2 decimals).
+ * 1250 → 12.5 (for USDC with 2 decimals). Module-private (#896).
  */
-export function toMajorUnits(cents: number, decimals = 2): number {
+function toMajorUnits(cents: number, decimals = 2): number {
   return cents / 10 ** decimals;
 }
 

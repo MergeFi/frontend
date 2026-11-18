@@ -65,7 +65,7 @@ export function ClaimButton({
   });
 
   const [state, dispatch] = useReducer(claimReducer, initialState);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // The handlers this effect needs are not identity-stable:
   // `onClaimSuccess` is an inline callback owned by the parent, and

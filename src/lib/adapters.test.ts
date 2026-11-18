@@ -22,6 +22,7 @@ import {
   type RawReputationSnapshot,
   type RawUserProfile,
 } from "./adapters";
+import { identiconDataUri } from "./identicon";
 import type { Bounty } from "@/types";
 
 function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
@@ -210,11 +211,15 @@ describe("adaptBounty — teamSplitsValid", () => {
     expect(bounty.teamSplitsValid).toBeUndefined();
   });
 
-  it("treats an empty splits array as valid with a zero sum, not as invalid", () => {
+  it("reports an empty splits array as invalid — a team with nobody cannot be paid (#948)", () => {
     const bounty: Bounty = adaptBounty(rawBounty({ team: { splits: [] } }));
 
     expect(bounty.teamSplits).toEqual([]);
-    expect(bounty.teamSplitsValid).toEqual({ valid: true, sum: 0 });
+    expect(bounty.teamSplitsValid).toEqual({
+      valid: false,
+      sum: 0,
+      message: "Team has no members",
+    });
   });
 });
 
@@ -268,9 +273,19 @@ describe("adaptMilestone", () => {
     expect(milestone.completedCount).toBe(0);
   });
 
-  it("joins repository owner/name, or falls back to \"unassigned\"", () => {
+  it("joins repository owner/name, or falls back to a visible gap marker (#946)", () => {
     expect(adaptMilestone(rawMilestone()).repo).toBe("acme/widgets");
-    expect(adaptMilestone(rawMilestone({ repository: undefined })).repo).toBe("unassigned");
+    expect(adaptMilestone(rawMilestone({ repository: undefined })).repo).toBe(
+      "(unavailable)",
+    );
+  });
+
+  it("defaults a missing status to \"unknown\", not a live status (#946)", () => {
+    expect(adaptMilestone(rawMilestone({ status: undefined })).status).toBe("unknown");
+  });
+
+  it("passes a negative distributed through so the sign is visible (#947)", () => {
+    expect(adaptMilestone(rawMilestone({ distributed: "-50" })).distributed).toBe(-50);
   });
 
   it("sets every Milestone field to a defined value given a fully-populated raw milestone", () => {
@@ -306,11 +321,21 @@ function rawMaintenancePool(
 }
 
 describe("adaptMaintenancePool", () => {
-  it("joins repository owner/name, or falls back to \"platform-wide\" when null", () => {
+  it("joins repository owner/name, or falls back to a visible gap marker when null (#946)", () => {
     expect(adaptMaintenancePool(rawMaintenancePool()).repo).toBe("acme/widgets");
     expect(
       adaptMaintenancePool(rawMaintenancePool({ repository: null })).repo,
-    ).toBe("platform-wide");
+    ).toBe("(unavailable)");
+  });
+
+  it("defaults a missing status to \"unknown\", not a live status (#946)", () => {
+    expect(adaptMaintenancePool(rawMaintenancePool({ status: undefined })).status).toBe(
+      "unknown",
+    );
+  });
+
+  it("passes a negative balance through so the sign is visible (#947)", () => {
+    expect(adaptMaintenancePool(rawMaintenancePool({ balance: "-50" })).balance).toBe(-50);
   });
 
   it("sets every MaintenancePool field to a defined value given a fully-populated raw pool", () => {
@@ -353,6 +378,19 @@ describe("adaptReputation", () => {
     expect(profile.onTimeDeliveryRate).toBeCloseTo(0.88);
   });
 
+  it("clamps out-of-range rates to 0-1 and warns instead of passing them through (#895)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const profile = adaptReputation(
+      rawUserProfile(),
+      rawReputationSnapshot({ completionRate: "150", onTimeDeliveryPercentage: "-5" }),
+    );
+    expect(profile.completionRate).toBe(1);
+    expect(profile.onTimeDeliveryRate).toBe(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("completionRate = 150"));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("onTimeDeliveryPercentage = -5"));
+    warn.mockRestore();
+  });
+
   // The search-engine opt-in mapped from the backend's `isProfilePublic`
   // (see src/lib/seo-policy.ts). Only an explicit `true` may enable indexing.
   it.each([
@@ -384,10 +422,11 @@ describe("adaptReputation", () => {
     expect(profile.languages).toEqual(["TypeScript", "Rust", "Go"]);
   });
 
-  it("escapes the username when falling back to a generated dicebear avatar URL", () => {
+  it("falls back to a local identicon without sending the username to a third party (#929)", () => {
     const profile = adaptReputation(rawUserProfile({ username: "a&b" }), null);
-    expect(profile.avatarUrl).toContain("seed=a%26b");
-    expect(profile.avatarUrl).not.toContain("seed=a&b");
+    expect(profile.avatarUrl).toBe(identiconDataUri("a&b"));
+    expect(profile.avatarUrl).not.toContain("a&b");
+    expect(profile.avatarUrl).not.toContain("dicebear");
   });
 
   it("uses the provided avatarUrl instead of generating one when present", () => {

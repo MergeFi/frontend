@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { GitPullRequest, FilterX } from "lucide-react";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
@@ -15,6 +16,7 @@ import {
   buildIssuesHref,
   isFilterActive,
   parseBountyQuery,
+  REWARD_COMPARISON_NOTE,
   SORT_LABELS,
   SORT_VALUES,
   STATUS_VALUES,
@@ -83,6 +85,12 @@ export default async function IssuesPage({
   const { data: bounties, source } = await fetchBounties(mockBounties, query);
   const { items: visible, page, totalPages, filteredCount } = applyBountyQuery(bounties, query);
   const total = bounties.length;
+
+  // #900 — applyBountyQuery clamps an out-of-range page; make the URL agree
+  // with the page actually rendered, so every link built from these params,
+  // a reload and a shared URL all match what is on screen.
+  const canonicalHref = buildIssuesHref(params, { page: String(page) });
+  if (canonicalHref !== buildIssuesHref(params, {})) redirect(canonicalHref);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
@@ -181,6 +189,7 @@ export default async function IssuesPage({
             name="minReward"
             defaultValue={query.minReward ?? ""}
             placeholder="0"
+            aria-describedby="reward-comparison-note"
             className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           />
         </label>
@@ -194,6 +203,7 @@ export default async function IssuesPage({
             name="maxReward"
             defaultValue={query.maxReward ?? ""}
             placeholder="Any"
+            aria-describedby="reward-comparison-note"
             className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           />
         </label>
@@ -225,6 +235,12 @@ export default async function IssuesPage({
             Clear all
           </Link>
         )}
+        <p
+          id="reward-comparison-note"
+          className="basis-full text-xs text-slate-500 dark:text-slate-400"
+        >
+          {REWARD_COMPARISON_NOTE}
+        </p>
       </IssuesFilterForm>
 
       {visible.length === 0 ? (

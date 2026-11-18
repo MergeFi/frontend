@@ -31,9 +31,23 @@ const EXPECTED_HEADERS = {
   "x-frame-options": "DENY",
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
-  "strict-transport-security": "max-age=86400",
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
 };
+
+// HSTS is on a staged rollout (see next.config.ts), so assert a floor rather
+// than the exact starter value — raising max-age or adding includeSubDomains
+// must not require editing this script (#930).
+const MIN_HSTS_MAX_AGE_SECONDS = 86400;
+
+function checkHsts(value) {
+  if (value === null) return "(missing)";
+  const match = /(?:^|;)\s*max-age=(\d+)\s*(?:;|$)/i.exec(value);
+  if (!match) return `"${value}" has no max-age`;
+  if (Number(match[1]) < MIN_HSTS_MAX_AGE_SECONDS) {
+    return `"${value}" is below max-age=${MIN_HSTS_MAX_AGE_SECONDS}`;
+  }
+  return null;
+}
 
 // A representative spread: the static homepage, a dynamic route, the OAuth
 // callback page specifically named in the issue, a non-page asset route,
@@ -96,6 +110,54 @@ function killServerGroup(server) {
   }
 }
 
+// middleware.ts (#610) sets a per-request nonce CSP plus `x-nonce` on the
+// routes its `matcher` covers. Like the static headers above, presence in
+// source doesn't prove it runs on a given route, so check it over HTTP (#907):
+// page routes get exactly one CSP carrying the response's own nonce; static
+// assets fall outside the matcher; a router prefetch still gets a policy.
+const MIDDLEWARE_ROUTES = ["/", "/issues"];
+const MATCHER_EXCLUDED_ASSET = "/icon.png";
+
+function countPolicies(csp) {
+  // fetch joins repeated headers with ", "; each policy has one default-src.
+  return csp === null ? 0 : (csp.match(/(?:^|[;,]\s*)default-src\b/g) ?? []).length;
+}
+
+async function checkMiddleware() {
+  const problems = [];
+
+  for (const route of MIDDLEWARE_ROUTES) {
+    const response = await fetch(`${BASE_URL}${route}`);
+    const nonce = response.headers.get("x-nonce");
+    const csp = response.headers.get("content-security-policy");
+    if (!nonce) {
+      problems.push(`${route}: middleware did not run (no x-nonce header)`);
+      continue;
+    }
+    const policies = countPolicies(csp);
+    if (policies !== 1) {
+      problems.push(`${route}: expected exactly one content-security-policy, got ${policies}`);
+    }
+    if (!csp || !csp.includes(`'nonce-${nonce}'`)) {
+      problems.push(`${route}: content-security-policy does not carry this response's nonce`);
+    }
+  }
+
+  const asset = await fetch(`${BASE_URL}${MATCHER_EXCLUDED_ASSET}`);
+  if (asset.headers.get("x-nonce") !== null) {
+    problems.push(`${MATCHER_EXCLUDED_ASSET}: static asset matched the middleware matcher`);
+  }
+
+  const prefetch = await fetch(`${BASE_URL}/issues`, {
+    headers: { "next-router-prefetch": "1", purpose: "prefetch" },
+  });
+  if (countPolicies(prefetch.headers.get("content-security-policy")) === 0) {
+    problems.push("/issues (prefetch): response carries no content-security-policy at all");
+  }
+
+  return problems;
+}
+
 async function main() {
   const server = spawn(NEXT_BIN, ["start", "-p", String(PORT)], {
     cwd: PROJECT_ROOT,
@@ -124,7 +186,13 @@ async function main() {
           );
         }
       }
+      const hstsProblem = checkHsts(response.headers.get("strict-transport-security"));
+      if (hstsProblem) {
+        failures.push(`${route}: strict-transport-security ${hstsProblem}`);
+      }
     }
+
+    failures.push(...(await checkMiddleware()));
   } catch (err) {
     console.error(serverOutput);
     throw err;

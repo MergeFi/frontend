@@ -51,6 +51,23 @@ function pollingReducer(state: PollingState, action: PollingAction): PollingStat
   }
 }
 
+// #881 — default change detector: shallow field equality. O(fields) instead of
+// serializing the payload twice per tick, insensitive to key order, and a
+// field becoming `undefined` counts as a change (JSON.stringify hid it).
+function shallowEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
+    return false;
+  }
+  const aRec = a as Record<string, unknown>;
+  const bRec = b as Record<string, unknown>;
+  const aKeys = Object.keys(aRec);
+  if (aKeys.length !== Object.keys(bRec).length) return false;
+  return aKeys.every(
+    (key) => Object.hasOwn(bRec, key) && Object.is(aRec[key], bRec[key]),
+  );
+}
+
 export function useSmartPolling<T>({
   fetchFn,
   interval = 5000,
@@ -58,7 +75,7 @@ export function useSmartPolling<T>({
   backoffMultiplier = 1.5,
   maxBackoff = 30000,
   unchangedThreshold = 3,
-  compareFn = (a, b) => JSON.stringify(a) === JSON.stringify(b),
+  compareFn = shallowEqual,
   onDataChange,
 }: UseSmartPollingOptions<T>): UseSmartPollingResult<T> {
   const [data, setData] = useState<T | null>(null);
@@ -66,7 +83,7 @@ export function useSmartPolling<T>({
   const [error, setError] = useState<Error | null>(null);
   const [pollingState, dispatch] = useReducer(pollingReducer, pollingInitialState);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentIntervalRef = useRef(interval);
   const unchangedCountRef = useRef(0);
   const isMountedRef = useRef(true);

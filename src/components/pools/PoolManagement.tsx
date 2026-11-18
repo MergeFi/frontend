@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost } from "@/lib/api-client";
-import { generateIdempotencyKey } from "@/lib/idempotency";
+import { apiPost } from "@/lib/api";
+import { generateIdempotencyKey } from "@/lib/utils";
 
 /**
  * Pool management components for creating maintenance pools and
@@ -27,14 +27,19 @@ export function CreatePoolButton({ org, repo }: { org?: string; repo?: string })
     }
     setError(null);
     setPending(true);
+    const idempotencyKey = generateIdempotencyKey();
     try {
-      await apiPost("/maintenance-pools", {
-        name: name.trim(),
-        asset,
-        repo: org && repo ? `${org}/${repo}` : undefined,
-        initialDeposit: parseFloat(initialDeposit) || 0,
-        idempotencyKey: generateIdempotencyKey(),
-      });
+      await apiPost(
+        "/maintenance-pools",
+        {
+          name: name.trim(),
+          asset,
+          repo: org && repo ? `${org}/${repo}` : undefined,
+          initialDeposit: parseFloat(initialDeposit) || 0,
+          idempotencyKey,
+        },
+        idempotencyKey,
+      );
       setSuccess(true);
       setOpen(false);
       setName("");
@@ -148,12 +153,13 @@ export function AssignRewardButton({
   async function handleAssign() {
     setError(null);
     setPending(true);
+    const idempotencyKey = generateIdempotencyKey();
     try {
-      await apiPost(`/maintenance-pools/${poolId}/assign-reward`, {
-        bountyId,
-        amount: parseFloat(amount) || 0,
-        idempotencyKey: generateIdempotencyKey(),
-      });
+      await apiPost(
+        `/maintenance-pools/${poolId}/assign-reward`,
+        { bountyId, amount: parseFloat(amount) || 0, idempotencyKey },
+        idempotencyKey,
+      );
       setSuccess(true);
       setOpen(false);
       router.refresh();

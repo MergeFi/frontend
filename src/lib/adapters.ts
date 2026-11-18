@@ -13,11 +13,19 @@ import {
   coerceStatus,
   validateTeamSplits,
 } from "./utils";
+import { identiconDataUri } from "./identicon";
 
 // Shapes returned by mergefi-backend's TypeORM entities (see
 // mergefi-backend/src/common/entities). These are intentionally loose since
 // we only read the fields the UI needs.
-interface RawRepository {
+/**
+ * Wire shape of mergefi-backend's Repository entity, verified field-by-field
+ * against `mergefi-backend/src/common/entities/repository.entity.ts` (#945).
+ * The entity's columns are `owner`/`name` — there is no `org` or `htmlUrl`
+ * field, so any code reading those silently gets `undefined`.
+ */
+export interface RawRepository {
+  id: string;
   owner: string;
   name: string;
 }
@@ -125,8 +133,11 @@ export function adaptBounty(raw: RawBounty): Bounty {
 
   return {
     id: raw.id,
-    repo: raw.issue?.repository?.name ?? "unknown-repo",
-    org: raw.issue?.repository?.owner ?? "unknown-org",
+    // Missing repository data must not render as plausible content (#946):
+    // "(unavailable)" is visibly non-data, unlike "unknown-repo"/"unknown-org"
+    // which read like real names.
+    repo: raw.issue?.repository?.name ?? "(unavailable)",
+    org: raw.issue?.repository?.owner ?? "(unavailable)",
     issueNumber: raw.issue?.number ?? 0,
     title: raw.issue?.title ?? "Untitled issue",
     description: raw.issue?.body ?? "",
@@ -137,8 +148,13 @@ export function adaptBounty(raw: RawBounty): Bounty {
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
     // timestamp that would make daysUntil() render it as already expired
-    // (#193). Consumers must render a "No deadline" state for null.
-    deadline: raw.deadline,
+    // (#193). Consumers must render a "No deadline" state for null. A
+    // non-null value that isn't a parseable date is also normalized to null
+    // (#949) so it shows as "No deadline" instead of "Deadline passed".
+    deadline:
+      raw.deadline != null && Number.isNaN(new Date(raw.deadline).getTime())
+        ? null
+        : raw.deadline,
     createdAt: raw.createdAt ?? undefined,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
@@ -166,15 +182,21 @@ export interface RawMilestone {
 export function adaptMilestone(raw: RawMilestone): Milestone {
   const issues = raw.issues ?? [];
   const budget = coerceNonNegative(raw.budget);
-  const distributed = coerceNonNegative(raw.distributed);
+  // `distributed` can legitimately be negative (refunds exceeding payouts,
+  // accounting corrections) — pass it through and let formatCurrency render
+  // the sign rather than hiding it behind a 0 (#947).
+  const distributed = coerceDecimal(raw.distributed);
   return {
     id: raw.id,
     name: raw.title,
-    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "unassigned",
+    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "(unavailable)",
     budget,
     distributed,
     asset: raw.asset,
-    status: raw.status ?? "open",
+    // A missing status is not an implicit "open" (#946): that presents a
+    // possibly-broken record as live and fundable. "unknown" is rendered as
+    // a warning by the status badges, matching coerceStatus (#596).
+    status: raw.status ?? "unknown",
     deadline: raw.deadline ?? null,
     issueCount: issues.length,
     // #615 — base progress on payouts (distributed / budget), not on
@@ -202,11 +224,15 @@ export function adaptMaintenancePool(raw: RawMaintenancePool): MaintenancePool {
   return {
     id: raw.id,
     name: raw.name ?? null,
-    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "platform-wide",
+    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "(unavailable)",
     monthlyDeposit: coerceNonNegative(raw.monthlyDeposit),
-    balance: coerceNonNegative(raw.balance),
+    // `balance` can legitimately be negative (refunds exceeding deposits,
+    // accounting corrections) — pass it through and let formatCurrency
+    // render the sign (#947).
+    balance: coerceDecimal(raw.balance),
     asset: raw.asset,
-    status: raw.status ?? "active",
+    // A missing status is not an implicit "active" (#946).
+    status: raw.status ?? "unknown",
   };
 }
 
@@ -232,20 +258,36 @@ export interface RawUserProfile {
   isProfilePublic?: boolean | null;
 }
 
+const warnedPercentFields = new Set<string>();
+
+/**
+ * Backend percentage (0–100) → fraction (0–1), clamped (#895). An
+ * out-of-range value is logged once per field instead of silently rendering
+ * as "0%" or "100%", so a unit mismatch on the backend leaves a trace.
+ */
+function percentToFraction(field: string, raw: string): number {
+  const n = coerceDecimal(raw);
+  if ((n < 0 || n > 100) && !warnedPercentFields.has(field)) {
+    warnedPercentFields.add(field);
+    console.warn(`[adapters] ${field} = ${raw} is outside 0-100; clamping (#895)`);
+  }
+  return coercePercentage(raw) / 100;
+}
+
 export function adaptReputation(
   user: RawUserProfile,
   snapshot: RawReputationSnapshot | null,
 ): ReputationProfile {
   return {
     handle: user.username,
-    avatarUrl:
-      user.avatarUrl ??
-      `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username)}`,
+    avatarUrl: user.avatarUrl ?? identiconDataUri(user.username),
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
-    completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
+    completionRate: snapshot ? percentToFraction("completionRate", snapshot.completionRate) : 0,
     avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
-    onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
+    onTimeDeliveryRate: snapshot
+      ? percentToFraction("onTimeDeliveryPercentage", snapshot.onTimeDeliveryPercentage)
+      : 0,
     // Object.keys() alone discards the usage weight and returns keys in
     // insertion order, not "most used first" — sort by value descending so
     // the rendered badge order actually means something (#196).

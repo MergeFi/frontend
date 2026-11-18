@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test": "jest",
+    "lint": "eslint --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --coverage",
     "test:watch": "jest --watch",
     "verify:headers": "node scripts/verify-security-headers.mjs",
     "verify:env": "node scripts/verify-env-validation.mjs"
@@ -46,7 +47,7 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9.0"
   },
   "overrides": {
     "postcss": "^8.5.10"

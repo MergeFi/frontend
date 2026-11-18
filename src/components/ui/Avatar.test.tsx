@@ -7,9 +7,11 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
+import { identiconDataUri } from "@/lib/identicon";
 import { Avatar, AvatarStack } from "./Avatar";
 
 const GITHUB_AVATAR = "https://avatars.githubusercontent.com/u/1?v=4";
+const LOCAL_IDENTICON = /^data:image\/svg\+xml,/;
 
 describe("Avatar", () => {
   it("renders with the given seed as alt text", () => {
@@ -25,18 +27,17 @@ describe("Avatar", () => {
     expect(img.getAttribute("src")).toContain("avatars.githubusercontent.com");
   });
 
-  it("falls back to a dicebear URL when no src is provided", () => {
+  it("falls back to the local identicon when no src is provided", () => {
     render(<Avatar seed="bob" />);
     const img = screen.getByRole("img", { name: "bob" });
-    const src = img.getAttribute("src") ?? "";
-    expect(src).toContain("api.dicebear.com");
-    expect(src).toContain("seed=bob");
+    expect(img.getAttribute("src")).toBe(identiconDataUri("bob"));
   });
 
-  it("uses dicebear URL for unoptimized external images", () => {
+  it("never requests a third-party host for the fallback (#929)", () => {
     render(<Avatar seed="carol" />);
     const img = screen.getByRole("img", { name: "carol" });
-    expect(img.getAttribute("src")).toContain("dicebear.com");
+    expect(img.getAttribute("src")).toMatch(LOCAL_IDENTICON);
+    expect(img.getAttribute("src")).not.toContain("dicebear");
   });
 
   it("does not set unoptimized for allowlisted custom src URLs", () => {
@@ -58,33 +59,33 @@ describe("Avatar", () => {
     expect(img.className).toMatch(/test-extra/);
   });
 
-  it("falls back to the dicebear identicon for a src on a non-allowlisted host", () => {
+  it("falls back to the local identicon for a src on a non-allowlisted host", () => {
     render(<Avatar seed="gina" src="https://evil.example.com/gina.png" />);
     const img = screen.getByRole("img", { name: "gina" });
-    expect(img.getAttribute("src")).toContain("dicebear.com");
+    expect(img.getAttribute("src")).toMatch(LOCAL_IDENTICON);
   });
 
-  it("falls back to the dicebear identicon for a javascript: scheme src", () => {
+  it("falls back to the local identicon for a javascript: scheme src", () => {
     render(<Avatar seed="hank" src="javascript:alert(1)" />);
     const img = screen.getByRole("img", { name: "hank" });
-    expect(img.getAttribute("src")).toContain("dicebear.com");
+    expect(img.getAttribute("src")).toMatch(LOCAL_IDENTICON);
   });
 
-  it("falls back to the dicebear identicon for a data: scheme src", () => {
+  it("falls back to the local identicon for a data: scheme src", () => {
     render(<Avatar seed="ivy" src="data:text/html,<script>alert(1)</script>" />);
     const img = screen.getByRole("img", { name: "ivy" });
-    expect(img.getAttribute("src")).toContain("dicebear.com");
+    expect(img.getAttribute("src")).toMatch(LOCAL_IDENTICON);
   });
 
-  it("falls back to the dicebear identicon when the allowlisted src fails to load", () => {
+  it("falls back to the local identicon when the allowlisted src fails to load", () => {
     render(<Avatar seed="jack" src={GITHUB_AVATAR} />);
     const img = screen.getByRole("img", { name: "jack" });
     expect(img.getAttribute("src")).toContain("avatars.githubusercontent.com");
 
     fireEvent.error(img);
 
-    expect(screen.getByRole("img", { name: "jack" }).getAttribute("src")).toContain(
-      "dicebear.com",
+    expect(screen.getByRole("img", { name: "jack" }).getAttribute("src")).toBe(
+      identiconDataUri("jack"),
     );
   });
 });

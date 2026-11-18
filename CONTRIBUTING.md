@@ -39,7 +39,7 @@ get started.
 
 ### Prerequisites
 
-- **Node.js 20+** (see `.nvmrc` for the exact version)
+- **Node.js 20.9+** (Next.js 16 minimum; see `.nvmrc` for the exact version)
 - **npm** (comes with Node.js)
 
 ### Installation

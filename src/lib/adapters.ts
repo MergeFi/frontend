@@ -13,6 +13,7 @@ import {
   coerceStatus,
   validateTeamSplits,
 } from "./utils";
+import { identiconDataUri } from "./identicon";
 
 // Shapes returned by mergefi-backend's TypeORM entities (see
 // mergefi-backend/src/common/entities). These are intentionally loose since
@@ -243,9 +244,7 @@ export function adaptReputation(
 ): ReputationProfile {
   return {
     handle: user.username,
-    avatarUrl:
-      user.avatarUrl ??
-      `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username)}`,
+    avatarUrl: user.avatarUrl ?? identiconDataUri(user.username),
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
     completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,

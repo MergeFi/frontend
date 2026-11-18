@@ -10,6 +10,13 @@ import { fetchBounty } from '@/lib/api';
 import type { Bounty } from '@/types/bounty';
 import { TERMINAL_STATUSES } from '@/types/bounty';
 
+interface BountySnapshot {
+  bounty: Bounty | null;
+  source: 'live' | 'mock' | null;
+  loading: boolean;
+  error: Error | null;
+}
+
 interface PollerEntry {
   bounty: Bounty | null;
   source: 'live' | 'mock' | null;
@@ -18,11 +25,23 @@ interface PollerEntry {
   interval: number;
   loading: boolean;
   error: Error | null;
+  /** Cached snapshot reference — rebuilt only in notify() so useSyncExternalStore sees a stable reference between ticks. */
+  snapshot: BountySnapshot;
 }
 
 const registry = new Map<string, PollerEntry>();
 
+function buildSnapshot(entry: PollerEntry): BountySnapshot {
+  return {
+    bounty: entry.bounty,
+    source: entry.source,
+    loading: entry.loading,
+    error: entry.error,
+  };
+}
+
 function notify(entry: PollerEntry): void {
+  entry.snapshot = buildSnapshot(entry);
   for (const listener of entry.listeners) {
     listener();
   }
@@ -70,19 +89,10 @@ function stopPolling(entry: PollerEntry): void {
   }
 }
 
-export function getBountySnapshot(id: string): {
-  bounty: Bounty | null;
-  source: 'live' | 'mock' | null;
-  loading: boolean;
-  error: Error | null;
-} {
-  const entry = registry.get(id);
-  return {
-    bounty: entry?.bounty ?? null,
-    source: entry?.source ?? null,
-    loading: entry?.loading ?? false,
-    error: entry?.error ?? null,
-  };
+const EMPTY_SNAPSHOT: BountySnapshot = { bounty: null, source: null, loading: false, error: null };
+
+export function getBountySnapshot(id: string): BountySnapshot {
+  return registry.get(id)?.snapshot ?? EMPTY_SNAPSHOT;
 }
 
 export function subscribeBounty(
@@ -92,7 +102,7 @@ export function subscribeBounty(
 ): () => void {
   let entry = registry.get(id);
   if (!entry) {
-    entry = {
+    const initial: Omit<PollerEntry, 'snapshot'> = {
       bounty: null,
       source: null,
       listeners: new Set(),
@@ -101,6 +111,7 @@ export function subscribeBounty(
       loading: true,
       error: null,
     };
+    entry = { ...initial, snapshot: buildSnapshot(initial as PollerEntry) };
     registry.set(id, entry);
     startPolling(id, entry, interval);
   }

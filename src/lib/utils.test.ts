@@ -18,8 +18,6 @@ import {
   coerceStatus,
   validateTeamSplits,
   generateIdempotencyKey,
-  toCents,
-  toMajorUnits,
   sumMoney,
   subtractMoney,
 } from "./utils";
@@ -427,68 +425,71 @@ describe("generateIdempotencyKey", () => {
   });
 });
 
-// ─── toCents / toMajorUnits ────────────────────────────────────────────────
+// ─── Minor-unit conversion, via sumMoney / subtractMoney ────────────────────
+// toCents/toMajorUnits are module-private (#896); their behaviour is pinned
+// through the public helpers that use them.
 
-describe("toCents", () => {
-  it("converts a USDC string to cents", () => {
-    expect(toCents("12.50")).toBe(1250);
-    expect(toCents("0.01")).toBe(1);
-    expect(toCents("100")).toBe(10000);
+describe("minor-unit conversion", () => {
+  it("round-trips USDC amounts exactly", () => {
+    expect(sumMoney(["12.50"])).toBe(12.5);
+    expect(sumMoney(["0.01"])).toBe(0.01);
+    expect(sumMoney(["100"])).toBe(100);
   });
 
-  it("converts an XLM string to minor units (7 decimals)", () => {
-    expect(toCents("1.0000000", 7)).toBe(10000000);
-    expect(toCents("0.0000001", 7)).toBe(1);
+  it("round-trips XLM amounts at 7 decimals", () => {
+    expect(sumMoney(["1.0000000"], 7)).toBe(1);
+    expect(sumMoney(["0.0000001"], 7)).toBe(0.0000001);
   });
 
-  it("converts a number to cents", () => {
-    expect(toCents(12.5)).toBe(1250);
-    expect(toCents(0.01)).toBe(1);
-  });
-
-  it("handles whole numbers without a decimal point", () => {
-    expect(toCents("100")).toBe(10000);
+  it("accepts numbers as well as strings", () => {
+    expect(sumMoney([12.5])).toBe(12.5);
+    expect(sumMoney([0.01])).toBe(0.01);
   });
 
   it("sums without float drift (#17)", () => {
-    // 0.1 + 0.2 in float = 0.30000000000000004
-    const a = toCents("0.1");
-    const b = toCents("0.2");
-    expect(a + b).toBe(30); // exact integer
-    expect(toMajorUnits(a + b)).toBe(0.3);
+    expect(sumMoney(["0.1", "0.2"])).toBe(0.3);
   });
 });
 
-describe("toMajorUnits", () => {
-  it("converts cents to dollars", () => {
-    expect(toMajorUnits(1250)).toBe(12.5);
-    expect(toMajorUnits(1)).toBe(0.01);
-    expect(toMajorUnits(0)).toBe(0);
-  });
-
-  it("converts minor units back for XLM (7 decimals)", () => {
-    expect(toMajorUnits(10000000, 7)).toBe(1);
-    expect(toMajorUnits(1, 7)).toBe(0.0000001);
-  });
-});
-
-// ─── Negative amounts + sumMoney / subtractMoney (#353) ──────────────────────
-
-describe("toCents with negative amounts (#353)", () => {
+describe("negative amounts (#353)", () => {
   it("applies the sign to the whole amount", () => {
-    expect(toCents("-12.50")).toBe(-1250);
-    expect(toCents(-12.5)).toBe(-1250);
-    expect(toCents("-0.01")).toBe(-1);
-    expect(toCents("-0.0000001", 7)).toBe(-1);
+    expect(sumMoney(["-12.50"])).toBe(-12.5);
+    expect(sumMoney([-12.5])).toBe(-12.5);
+    expect(sumMoney(["-0.01"])).toBe(-0.01);
+    expect(sumMoney(["-0.0000001"], 7)).toBe(-0.0000001);
   });
 
   it("accepts an explicit plus sign and surrounding whitespace", () => {
-    expect(toCents("+12.50")).toBe(1250);
-    expect(toCents(" 12.50 ")).toBe(1250);
+    expect(sumMoney(["+12.50"])).toBe(12.5);
+    expect(sumMoney([" 12.50 "])).toBe(12.5);
   });
 
-  it("round-trips negatives through toMajorUnits", () => {
-    expect(toMajorUnits(toCents("-12.34"))).toBe(-12.34);
+  it("round-trips negatives", () => {
+    expect(sumMoney(["-12.34"])).toBe(-12.34);
+  });
+});
+
+describe("malformed and out-of-range amounts (#897)", () => {
+  it.each(["1e5", "12abc", "", "-", "1.2.3", "NaN", "0x10"])(
+    "rejects %p instead of parsing a prefix of it",
+    (value) => {
+      expect(() => sumMoney([value])).toThrow(RangeError);
+    },
+  );
+
+  it("rejects non-finite numbers", () => {
+    expect(() => sumMoney([Number.NaN])).toThrow(RangeError);
+    expect(() => sumMoney([Number.POSITIVE_INFINITY])).toThrow(RangeError);
+  });
+
+  it("rejects an XLM amount past the safe-integer range instead of drifting", () => {
+    // 1e9 XLM at 7 decimals is 1e16 minor units, above 2^53 - 1.
+    expect(() => sumMoney(["1000000000"], 7)).toThrow(RangeError);
+    expect(() => subtractMoney("1000000000", "1", 7)).toThrow(RangeError);
+  });
+
+  it("still accepts the largest safe XLM amount", () => {
+    expect(sumMoney(["900000000"], 7)).toBe(900000000);
   });
 });
 

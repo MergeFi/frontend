@@ -41,10 +41,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
+      # #906 — the audit reads only package-lock.json, so it runs first: a
+      # high-severity advisory is reported in seconds, and still reported
+      # when a later step (install, lint, tests, build) fails.
+      - run: npm audit --audit-level=high
       - run: npm ci
       - run: npm run lint
       - run: npm test
       - run: npm run verify:env
       - run: npm run build
       - run: npm run verify:headers
-      - run: npm audit --audit-level=high

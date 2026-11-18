@@ -54,6 +54,10 @@ const STATUS_FILTERS = [
   { value: "in_review", label: "In review" },
   { value: "merged", label: "Awaiting payout" },
   { value: "release_failed", label: "Payout failed" },
+  { value: "paid", label: "Paid out" },
+  { value: "refunded", label: "Refunded" },
+  { value: "expired", label: "Expired" },
+  { value: "unknown", label: "Status unavailable" },
 ] as const satisfies readonly { value: (typeof STATUS_VALUES)[number]; label: string }[];
 
 const DIFFICULTY_LABELS: Record<(typeof DIFFICULTY_VALUES)[number], string> = {

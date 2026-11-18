@@ -264,3 +264,16 @@ describe("buildIssuesHref", () => {
     expect(buildIssuesHref({ status: "open" }, { status: undefined })).toBe("/issues");
   });
 });
+
+describe("status filter coverage (#899)", () => {
+  it.each(["paid", "refunded", "expired", "unknown"] as const)(
+    "accepts and filters on %p instead of falling back to all",
+    (status) => {
+      const query = parseBountyQuery({ status });
+      expect(query.status).toBe(status);
+
+      const board = [bounty({ id: "a", status: "open" }), bounty({ id: "b", status })];
+      expect(filterBounties(board, query).map((b) => b.id)).toEqual(["b"]);
+    },
+  );
+});

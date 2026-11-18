@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost, apiPatch } from "@/lib/api-client";
-import { generateIdempotencyKey } from "@/lib/idempotency";
-import { validateTeamSplits } from "@/lib/utils";
+import { apiPost, apiRequest } from "@/lib/api";
+import { generateIdempotencyKey, validateTeamSplits } from "@/lib/utils";
 
 /**
  * Team management components for creating teams, editing splits,
@@ -225,12 +224,15 @@ export function EditTeamSplitsButton({
     setError(null);
     setPending(true);
     try {
-      const updated = await apiPatch<Team>(`/teams/${team.id}/splits`, {
-        members: members.map((m) => ({
-          address: m.address.trim(),
-          percentage: m.percentage,
-        })),
-        idempotencyKey: generateIdempotencyKey(),
+      const updated = await apiRequest<Team>(`/teams/${team.id}/splits`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          members: members.map((m) => ({
+            address: m.address.trim(),
+            percentage: m.percentage,
+          })),
+          idempotencyKey: generateIdempotencyKey(),
+        }),
       });
       setOpen(false);
       onUpdate?.(updated);

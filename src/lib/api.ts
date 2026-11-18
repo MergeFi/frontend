@@ -291,40 +291,21 @@ export interface MaintainerRepository {
   url: string;
 }
 
-export async function fetchMyRepositories(
-  fallback: MaintainerRepository[],
-): Promise<FetchResult<MaintainerRepository[]>> {
-  try {
-    // RawRepository is the single description of the wire format (#945),
-    // verified against mergefi-backend's Repository entity: `owner`/`name`,
-    // not `org`/`htmlUrl` (neither of those exists on the entity).
-    const raw = await request<RawRepository[]>("/repositories/my");
-    return {
-      data: raw.map((r) => ({
-        org: r.owner,
-        repo: r.name,
-        // The entity has no htmlUrl column; derive the canonical GitHub URL.
-        url: `https://github.com/${r.owner}/${r.name}`,
-      })),
-      source: "live",
-    };
-  } catch {
-    return { data: fallback, source: "mock" };
-  }
-}
 export const fetchMyRepositories = cache(
   async (
     fallback: MaintainerRepository[],
   ): Promise<FetchResult<MaintainerRepository[]>> => {
     try {
-      const raw = await request<
-        { id: string; org: string; name: string; htmlUrl: string }[]
-      >("/repositories/my");
+      // RawRepository is the single description of the wire format (#945),
+      // verified against mergefi-backend's Repository entity: `owner`/`name`,
+      // not `org`/`htmlUrl` (neither of those exists on the entity).
+      const raw = await request<RawRepository[]>("/repositories/my");
       return {
         data: raw.map((r) => ({
-          org: r.org,
+          org: r.owner,
           repo: r.name,
-          url: r.htmlUrl,
+          // The entity has no htmlUrl column; derive the canonical GitHub URL.
+          url: `https://github.com/${r.owner}/${r.name}`,
         })),
         source: "live",
       };

@@ -25,6 +25,12 @@ export const STATUS_VALUES = [
   "in_review",
   "merged",
   "release_failed",
+  // #899 — every status coerceStatus can produce is filterable, including
+  // the terminal ones and the #596 "unknown" fallback.
+  "paid",
+  "refunded",
+  "expired",
+  "unknown",
 ] as const;
 export type StatusFilter = (typeof STATUS_VALUES)[number];
 

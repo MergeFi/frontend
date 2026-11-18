@@ -268,6 +268,17 @@ describe("buildIssuesHref", () => {
   });
 });
 
+describe("status filter coverage (#899)", () => {
+  it.each(["paid", "refunded", "expired", "unknown"] as const)(
+    "accepts and filters on %p instead of falling back to all",
+    (status) => {
+      const query = parseBountyQuery({ status });
+      expect(query.status).toBe(status);
+
+      const board = [bounty({ id: "a", status: "open" }), bounty({ id: "b", status })];
+      expect(filterBounties(board, query).map((b) => b.id)).toEqual(["b"]);
+    },
+  );
 describe("reward conversion is visible to the user (#898)", () => {
   it("states the XLM rate the reward filter and sort use", () => {
     expect(REWARD_COMPARISON_NOTE).toContain(`$${XLM_TO_USD_APPROX} per XLM`);

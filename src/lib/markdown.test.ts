@@ -109,6 +109,19 @@ describe("stripMarkdownToPlainText", () => {
     );
   });
 
+  it("strips thematic breaks without needing a pipe (#902)", () => {
+    expect(stripMarkdownToPlainText("Intro\n\n---\n\nNext")).toBe("Intro Next");
+    expect(stripMarkdownToPlainText("Intro\n\n***\n\nNext")).toBe("Intro Next");
+    expect(stripMarkdownToPlainText("Intro\n\n- - -\n\nNext")).toBe("Intro Next");
+  });
+
+  it("keeps a setext heading's text and drops only its underline (#902)", () => {
+    expect(stripMarkdownToPlainText("Title\n=====\nBody")).toBe("Title Body");
+    expect(stripMarkdownToPlainText("Title\n-----\nBody")).toBe("Title Body");
+  });
+
+  it("still drops a GFM separator row written without outer pipes (#902)", () => {
+    expect(stripMarkdownToPlainText("a | b\n--- | ---\n1 | 2")).toBe("a b 1 2");
   // #901 — the remaining GitHub-issue constructs that leaked into previews.
   it("strips raw HTML tags and comments, keeping their text", () => {
     expect(

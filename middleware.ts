@@ -14,7 +14,11 @@ import { NextResponse, type NextRequest } from "next/server";
  * without a separate origin allowlist entry.
  */
 export function middleware(request: NextRequest) {
-  const nonce = btoa(crypto.randomUUID());
+  // 16 random bytes = 128 bits of entropy, base64-encoded to 24 characters.
+  // The nonce must be unique per response: CSP only allows inline scripts
+  // carrying this response's nonce, so a nonce reused across responses would
+  // let a captured one authorize scripts on later pages.
+  const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
 
   const apiOrigin = process.env.NEXT_PUBLIC_API_URL
     ? new URL(process.env.NEXT_PUBLIC_API_URL).origin

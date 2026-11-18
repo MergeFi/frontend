@@ -137,8 +137,13 @@ export function adaptBounty(raw: RawBounty): Bounty {
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
     // timestamp that would make daysUntil() render it as already expired
-    // (#193). Consumers must render a "No deadline" state for null.
-    deadline: raw.deadline,
+    // (#193). Consumers must render a "No deadline" state for null. A
+    // non-null value that isn't a parseable date is also normalized to null
+    // (#949) so it shows as "No deadline" instead of "Deadline passed".
+    deadline:
+      raw.deadline != null && Number.isNaN(new Date(raw.deadline).getTime())
+        ? null
+        : raw.deadline,
     createdAt: raw.createdAt ?? undefined,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,

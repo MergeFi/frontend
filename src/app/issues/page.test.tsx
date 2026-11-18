@@ -16,8 +16,13 @@ import IssuesPage from "./page";
 import { fetchBounties } from "@/lib/api";
 import { mockBounties } from "@/lib/mock-data";
 import type { Bounty } from "@/types";
+import { redirect } from "next/navigation";
 
 jest.mock("@/lib/api", () => ({ fetchBounties: jest.fn() }));
+jest.mock("next/navigation", () => ({
+  ...jest.requireActual("next/navigation"),
+  redirect: jest.fn(),
+}));
 
 jest.mock("next/link", () => {
   // `prefetch` is a next/link-only prop; spreading it onto a real <a> makes
@@ -216,5 +221,36 @@ describe("/issues — sample data composes with emptiness (#456)", () => {
     await renderPage();
 
     expect(screen.queryByText(/Sample data/)).not.toBeInTheDocument();
+  });
+});
+
+// ─── Out-of-range page keeps the URL in sync (#900) ─────────────────────────
+
+describe("/issues — page parameter", () => {
+  const threeBounties = () =>
+    mockFetchBounties.mockResolvedValue({ data: OPEN_BOUNTIES.slice(0, 3), source: "live" });
+
+  beforeEach(() => {
+    (redirect as unknown as jest.Mock).mockClear();
+  });
+
+  it.each(["99", "0", "-2", "abc"])(
+    "redirects page=%p to the clamped page the user actually sees",
+    async (page) => {
+      threeBounties();
+
+      await renderPage({ page, status: "open" });
+
+      expect(redirect).toHaveBeenCalledWith("/issues?status=open");
+    },
+  );
+
+  it("does not redirect when the page is already valid", async () => {
+    threeBounties();
+
+    await renderPage({ page: "1", status: "open" });
+    await renderPage({ status: "open" });
+
+    expect(redirect).not.toHaveBeenCalled();
   });
 });

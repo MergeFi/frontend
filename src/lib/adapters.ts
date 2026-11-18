@@ -258,6 +258,22 @@ export interface RawUserProfile {
   isProfilePublic?: boolean | null;
 }
 
+const warnedPercentFields = new Set<string>();
+
+/**
+ * Backend percentage (0–100) → fraction (0–1), clamped (#895). An
+ * out-of-range value is logged once per field instead of silently rendering
+ * as "0%" or "100%", so a unit mismatch on the backend leaves a trace.
+ */
+function percentToFraction(field: string, raw: string): number {
+  const n = coerceDecimal(raw);
+  if ((n < 0 || n > 100) && !warnedPercentFields.has(field)) {
+    warnedPercentFields.add(field);
+    console.warn(`[adapters] ${field} = ${raw} is outside 0-100; clamping (#895)`);
+  }
+  return coercePercentage(raw) / 100;
+}
+
 export function adaptReputation(
   user: RawUserProfile,
   snapshot: RawReputationSnapshot | null,
@@ -267,9 +283,11 @@ export function adaptReputation(
     avatarUrl: user.avatarUrl ?? identiconDataUri(user.username),
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
-    completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
+    completionRate: snapshot ? percentToFraction("completionRate", snapshot.completionRate) : 0,
     avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
-    onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
+    onTimeDeliveryRate: snapshot
+      ? percentToFraction("onTimeDeliveryPercentage", snapshot.onTimeDeliveryPercentage)
+      : 0,
     // Object.keys() alone discards the usage weight and returns keys in
     // insertion order, not "most used first" — sort by value descending so
     // the rendered badge order actually means something (#196).

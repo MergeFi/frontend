@@ -120,14 +120,18 @@ export function formatCurrency(
   // is true, so testing the ceiling first would render a non-finite amount as
   // "0 USDC ⚠" instead of the plain "0 USDC" the contract promises.
   if (!Number.isFinite(amount)) return `0 ${asset}`;
+  const fmt = asset === "XLM" ? currencyFormat7 : currencyFormat2;
+  const formatted = fmt.format(amount);
+  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ${asset} ⚠`;
+  return `${formatted} ${asset}`;
   const formatted = formatCryptoAmount(amount, asset, locale);
-  if (Math.abs(amount) > SANITY_CEILING) return `${formatted} ⚠`;
+  if (!isPlausibleAmount(amount)) return `${formatted} ⚠`;
   return formatted;
 }
 
 /**
- * Check whether a currency amount is within a plausible range.
- * Useful for conditionally rendering a warning badge or tooltip.
+ * Check whether a currency amount is within a plausible range — the same
+ * check `formatCurrency` uses to decide whether to append its "⚠" (#896).
  */
 export function isPlausibleAmount(amount: number): boolean {
   return Number.isFinite(amount) && Math.abs(amount) <= SANITY_CEILING;
@@ -229,6 +233,19 @@ export function parseMoneyInput(
     };
   }
 
+  // Normalize: string-based normalization to avoid precision loss.
+  // Trim trailing zeros and pad to maxDecimals if needed.
+  let normalized = canonical;
+  if (normalized.includes(".")) {
+    // Trim trailing zeros after decimal point
+    normalized = normalized.replace(/\.?0+$/, "");
+    // If we removed everything after decimal, remove the decimal too
+    if (normalized.endsWith(".")) {
+      normalized = normalized.slice(0, -1);
+    }
+  }
+
+  return { valid: true, normalized };
   // Normalize to the canonical dot-decimal wire form, dropping any trailing
   // zeros the viewer's locale added ("12,50" → "12.5"). `toFixed` is the
   // correct primitive here precisely because it is locale-independent.
@@ -384,25 +401,39 @@ export function generateIdempotencyKey(): string {
  * USDC has 2 decimal places → "12.50" → 1250.
  * XLM has 7 decimal places → "1.0000000" → 10000000.
  *
- * This avoids IEEE-754 float drift when summing many amounts — integers
- * don't have representation gaps in the ranges we care about.
+ * This avoids IEEE-754 float drift when summing many amounts — but only while
+ * the minor-unit integer stays within `Number.MAX_SAFE_INTEGER` (about 900
+ * million XLM at 7 decimals). Beyond that, or for input that isn't a plain
+ * decimal, it throws a `RangeError` rather than returning a silently wrong
+ * amount (#897). Module-private: callers go through `sumMoney`/`subtractMoney`
+ * (#896).
  */
-export function toCents(value: string | number, decimals = 2): number {
+function toCents(value: string | number, decimals = 2): number {
   const raw = (typeof value === "number" ? value.toFixed(decimals) : String(value)).trim();
   // Apply the sign to the whole amount: "-12.50" is -1250, not -1200 + 50 (#353).
   const negative = raw.startsWith("-");
   const str = negative || raw.startsWith("+") ? raw.slice(1) : raw;
+  // parseInt alone is lenient — "1e5" parses as 1 and "12abc" as 12 — so
+  // reject anything that isn't a plain decimal before parsing (#897).
+  if (!/^(\d+(\.\d*)?|\.\d+)$/.test(str)) {
+    throw new RangeError(`toCents: "${String(value)}" is not a plain decimal amount`);
+  }
   const [whole = "0", frac = ""] = str.split(".");
   const padded = frac.padEnd(decimals, "0").slice(0, decimals);
   const cents = parseInt(whole || "0", 10) * 10 ** decimals + parseInt(padded || "0", 10);
+  if (!Number.isSafeInteger(cents)) {
+    throw new RangeError(
+      `toCents: "${String(value)}" exceeds the safe-integer range at ${decimals} decimals`,
+    );
+  }
   return negative ? -cents : cents;
 }
 
 /**
  * Convert integer minor units back to a major-unit float for display.
- * 1250 → 12.5 (for USDC with 2 decimals).
+ * 1250 → 12.5 (for USDC with 2 decimals). Module-private (#896).
  */
-export function toMajorUnits(cents: number, decimals = 2): number {
+function toMajorUnits(cents: number, decimals = 2): number {
   return cents / 10 ** decimals;
 }
 

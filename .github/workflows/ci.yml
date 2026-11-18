@@ -46,6 +46,9 @@ jobs:
       # when a later step (install, lint, tests, build) fails.
       - run: npm audit --audit-level=high
       - run: npm ci
+      # #905 — cheapest, most specific gate first: names every type error in
+      # seconds, before the full lint/test/build cycle.
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm test
       - run: npm run verify:env

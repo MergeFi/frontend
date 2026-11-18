@@ -239,27 +239,26 @@ function rawMilestone(overrides: Partial<RawMilestone> = {}): RawMilestone {
 }
 
 describe("adaptMilestone", () => {
-  it("derives issueCount from raw.issues and completedCount from distributed/budget (#615)", () => {
+  it("derives issueCount from raw.issues and distributedFraction from distributed/budget (#615, #894)", () => {
     const milestone = adaptMilestone(rawMilestone());
     expect(milestone.issueCount).toBe(3);
-    // distributed=2000, budget=5000 → 40% of 3 issues = 1
-    expect(milestone.completedCount).toBe(1);
+    // distributed=2000, budget=5000
+    expect(milestone.distributedFraction).toBeCloseTo(0.4);
   });
 
-  it("defaults issueCount/completedCount to 0 when raw.issues is absent", () => {
+  it("defaults issueCount to 0 when raw.issues is absent", () => {
     const milestone = adaptMilestone(rawMilestone({ issues: undefined }));
     expect(milestone.issueCount).toBe(0);
-    expect(milestone.completedCount).toBe(0);
   });
 
-  it("returns 0 completedCount when budget is zero (#615)", () => {
+  it("returns 0 distributedFraction when budget is zero (#615)", () => {
     const milestone = adaptMilestone(
       rawMilestone({ budget: "0", distributed: "500", issues: [{ state: "closed" }, { state: "closed" }] }),
     );
-    expect(milestone.completedCount).toBe(0);
+    expect(milestone.distributedFraction).toBe(0);
   });
 
-  it("bases completedCount on payouts, not GitHub-closed issue count (#615)", () => {
+  it("bases distributedFraction on payouts, not GitHub-closed issue count (#615)", () => {
     // All issues closed on GitHub, but only 10% of budget distributed
     const milestone = adaptMilestone(
       rawMilestone({
@@ -269,8 +268,18 @@ describe("adaptMilestone", () => {
       }),
     );
     expect(milestone.issueCount).toBe(4);
-    // 10% of 4 issues = 0 (not 4 from GitHub-closed count)
-    expect(milestone.completedCount).toBe(0);
+    expect(milestone.distributedFraction).toBeCloseTo(0.1);
+  });
+
+  // #894 — the money ratio is not scaled by the issue count, so adding an
+  // issue (or topping up the budget) cannot fabricate "completed" issues.
+  it("does not change distributedFraction when issues are added", () => {
+    const fewer = adaptMilestone(rawMilestone({ issues: [{ state: "open" }] }));
+    const more = adaptMilestone(
+      rawMilestone({ issues: [{ state: "open" }, { state: "open" }, { state: "open" }] }),
+    );
+    expect(more.distributedFraction).toBe(fewer.distributedFraction);
+    expect(more).not.toHaveProperty("completedCount");
   });
 
   it("joins repository owner/name, or falls back to a visible gap marker (#946)", () => {
@@ -298,7 +307,7 @@ describe("adaptMilestone", () => {
       "distributed",
       "asset",
       "issueCount",
-      "completedCount",
+      "distributedFraction",
     ] as const) {
       expect(milestone[field]).not.toBeUndefined();
     }
@@ -452,5 +461,26 @@ describe("adaptReputation", () => {
     ] as const) {
       expect(profile[field]).not.toBeUndefined();
     }
+  });
+});
+
+// #893 — asset and difficulty arrive as untrusted JSON, like status.
+describe("adaptBounty asset/difficulty validation (#893)", () => {
+  it("passes recognised values through", () => {
+    const bounty = adaptBounty(rawBounty({ asset: "XLM", difficulty: "expert" }));
+    expect(bounty.asset).toBe("XLM");
+    expect(bounty.difficulty).toBe("expert");
+  });
+
+  it("maps an unrecognised asset to \"unknown\" instead of treating it as USDC", () => {
+    const bounty = adaptBounty(rawBounty({ asset: "BTC" as unknown as RawBounty["asset"] }));
+    expect(bounty.asset).toBe("unknown");
+  });
+
+  it("maps an unrecognised difficulty to \"unknown\"", () => {
+    const bounty = adaptBounty(
+      rawBounty({ difficulty: "legendary" as unknown as RawBounty["difficulty"] }),
+    );
+    expect(bounty.difficulty).toBe("unknown");
   });
 });

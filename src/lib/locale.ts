@@ -56,6 +56,15 @@ export const ASSET_DECIMALS: Record<CryptoAsset, number> = {
 };
 
 /**
+ * An asset as displayed: a known {@link CryptoAsset}, or `"unknown"` for a
+ * backend value the frontend does not recognise (#893). Rendered with that
+ * label and the widest precision, never silently formatted as USDC.
+ */
+export type DisplayAsset = CryptoAsset | "unknown";
+
+const UNKNOWN_ASSET_DECIMALS = 7;
+
+/**
  * Script direction for locales whose writing system runs right-to-left.
  *
  * `Intl.Locale.prototype.getTextInfo()` is the correct API but is still
@@ -221,11 +230,11 @@ export function resetLocaleFormatters(): void {
  */
 export function formatCryptoAmount(
   value: number,
-  asset: CryptoAsset = "USDC",
+  asset: DisplayAsset = "USDC",
   locale: string = resolveLocale(),
 ): string {
   if (!Number.isFinite(value)) return `0 ${asset}`;
-  const digits = ASSET_DECIMALS[asset];
+  const digits = asset === "unknown" ? UNKNOWN_ASSET_DECIMALS : ASSET_DECIMALS[asset];
   const formatted = numberFormat(locale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: digits,

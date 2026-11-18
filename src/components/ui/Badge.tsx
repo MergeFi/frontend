@@ -118,6 +118,11 @@ const difficultyStyles: Record<Difficulty, BadgeStyle> = {
     className:
       "bg-fuchsia-50 text-fuchsia-800 ring-fuchsia-300 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:ring-fuchsia-500/40",
   },
+  unknown: {
+    Icon: CircleHelp,
+    className:
+      "bg-zinc-100 text-zinc-700 ring-zinc-300 ring-dashed dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-600",
+  },
 };
 
 function BaseBadge({

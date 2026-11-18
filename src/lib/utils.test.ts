@@ -16,6 +16,8 @@ import {
   coerceFraction,
   coercePercentage,
   coerceStatus,
+  coerceAsset,
+  coerceDifficulty,
   validateTeamSplits,
   generateIdempotencyKey,
   sumMoney,
@@ -657,3 +659,58 @@ describe("formatInteger", () => {
   });
 });
 
+
+// ─── coerceAsset / coerceDifficulty (#893) ───────────────────────────────────
+
+describe("coerceAsset", () => {
+  it.each(["USDC", "XLM"])("accepts %s", (asset) => {
+    expect(coerceAsset(asset)).toBe(asset);
+  });
+
+  it.each(["BTC", "usdc", "", null, undefined])("maps %p to \"unknown\"", (asset) => {
+    expect(coerceAsset(asset)).toBe("unknown");
+  });
+});
+
+describe("coerceDifficulty", () => {
+  it.each(["beginner", "intermediate", "advanced", "expert"])("accepts %s", (difficulty) => {
+    expect(coerceDifficulty(difficulty)).toBe(difficulty);
+  });
+
+  it.each(["legendary", "Beginner", "", null, undefined])("maps %p to \"unknown\"", (value) => {
+    expect(coerceDifficulty(value)).toBe("unknown");
+  });
+});
+
+describe("formatCurrency with an unknown asset (#893)", () => {
+  it("labels the amount as unknown rather than USDC", () => {
+    const formatted = formatCurrency(12.5, "unknown", "en-US");
+    expect(formatted).toContain("unknown");
+    expect(formatted).not.toContain("USDC");
+  });
+});
+
+// ─── parseMoneyInput separator cache (#892) ──────────────────────────────────
+
+describe("parseMoneyInput separator lookup (#892)", () => {
+  it("does not construct a new Intl.NumberFormat per keystroke", () => {
+    // Warm the per-locale cache once.
+    parseMoneyInput("1", "USDC", "de-DE");
+    const spy = jest.spyOn(Intl, "NumberFormat");
+    try {
+      for (const keystroke of ["1", "1.", "1.2", "1.23", "1.234", "1.234,", "1.234,5"]) {
+        parseMoneyInput(keystroke, "USDC", "de-DE");
+      }
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("still parses the locale's own notation", () => {
+    expect(parseMoneyInput("1.234,56", "USDC", "de-DE")).toEqual({
+      valid: true,
+      normalized: "1234.56",
+    });
+  });
+});

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { BountyStatus } from "@/types";
+import type { Bounty, BountyStatus, Difficulty } from "@/types";
 import {
   formatCount,
   formatCryptoAmount,
@@ -8,6 +8,7 @@ import {
   formatPercentValue,
   resolveLocale,
   type CryptoAsset,
+  type DisplayAsset,
 } from "@/lib/locale";
 import { t } from "@/lib/messages";
 
@@ -113,7 +114,7 @@ export function getNumberFormat(locale: string, options: Intl.NumberFormatOption
  */
 export function formatCurrency(
   amount: number,
-  asset: CryptoAsset = "USDC",
+  asset: DisplayAsset = "USDC",
   locale: string = resolveLocale(),
 ) {
   // Check non-finite *before* the sanity ceiling: `Math.abs(Infinity) > 1e9`
@@ -143,12 +144,21 @@ export function isPlausibleAmount(amount: number): boolean {
  * ("\u00a0"/".") and `fr-FR` ("\u202f"/",") — a `replace(/,/g, "")` strip
  * would leave those in and post a corrupt amount to the backend.
  */
+const separatorsByLocale = new Map<string, { group: string; decimal: string }>();
+
+// Called on every keystroke via parseMoneyInput, so it goes through the
+// cached formatter and memoizes the result per locale — a locale's
+// separators never change within a session (#892).
 function localeSeparators(locale: string): { group: string; decimal: string } {
-  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6);
-  return {
+  const cached = separatorsByLocale.get(locale);
+  if (cached) return cached;
+  const parts = getNumberFormat(locale, {}).formatToParts(12345.6);
+  const separators = {
     group: parts.find((p) => p.type === "group")?.value ?? ",",
     decimal: parts.find((p) => p.type === "decimal")?.value ?? ".",
   };
+  separatorsByLocale.set(locale, separators);
+  return separators;
 }
 
 /**
@@ -336,6 +346,35 @@ const VALID_STATUSES: ReadonlySet<string> = new Set<BountyStatus>([
  */
 export function coerceStatus(value: string | null | undefined): BountyStatus {
   if (value && VALID_STATUSES.has(value)) return value as BountyStatus;
+  return "unknown";
+}
+
+const VALID_ASSETS: ReadonlySet<string> = new Set<Bounty["asset"]>(["USDC", "XLM"]);
+
+/**
+ * Validate an untrusted asset string (#893). Falls back to "unknown" rather
+ * than passing it through: an unrecognised asset was otherwise formatted and
+ * priced as USDC (formatCurrency, rewardToUsd) with no sign anything was off.
+ */
+export function coerceAsset(value: string | null | undefined): Bounty["asset"] {
+  if (value && VALID_ASSETS.has(value)) return value as Bounty["asset"];
+  return "unknown";
+}
+
+const VALID_DIFFICULTIES: ReadonlySet<string> = new Set<Difficulty>([
+  "beginner",
+  "intermediate",
+  "advanced",
+  "expert",
+]);
+
+/**
+ * Validate an untrusted difficulty string (#893). Falls back to "unknown"
+ * rather than passing it through: an unrecognised value matched no
+ * difficulty filter and rendered with no badge style.
+ */
+export function coerceDifficulty(value: string | null | undefined): Difficulty {
+  if (value && VALID_DIFFICULTIES.has(value)) return value as Difficulty;
   return "unknown";
 }
 

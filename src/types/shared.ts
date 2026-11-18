@@ -1,7 +1,9 @@
 export type UserRole = "contributor" | "maintainer" | "sponsor";
 
 // Mirrors mergefi-backend's BountyDifficulty enum
-export type Difficulty = "beginner" | "intermediate" | "advanced" | "expert";
+// `"unknown"` is the coerceDifficulty fallback for a value the frontend does
+// not recognise (#893), rendered as such instead of silently dropped.
+export type Difficulty = "beginner" | "intermediate" | "advanced" | "expert" | "unknown";
 
 export interface TeamSplit {
   role: string;
@@ -19,7 +21,12 @@ export interface Milestone {
   status: string;
   deadline: string | null;
   issueCount: number;
-  completedCount: number;
+  /**
+   * Share of the budget paid out so far (`distributed / budget`, 0 when
+   * unfunded). Not a count of completed issues: that can only come from the
+   * backend, so it is not derived here (#894).
+   */
+  distributedFraction: number;
 }
 
 export interface ReputationProfile {

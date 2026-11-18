@@ -26,7 +26,7 @@ const ALL_STATUSES: BountyStatus[] = [
   "unknown",
 ];
 
-const ALL_DIFFICULTIES: Difficulty[] = ["beginner", "intermediate", "advanced", "expert"];
+const ALL_DIFFICULTIES: Difficulty[] = ["beginner", "intermediate", "advanced", "expert", "unknown"];
 
 /**
  * Explicit expected label per status. Asserted against a literal map rather

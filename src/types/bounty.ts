@@ -31,7 +31,7 @@ export interface Bounty {
   title: string;
   description: string;
   reward: number;
-  asset: "USDC" | "XLM";
+  asset: "USDC" | "XLM" | "unknown";
   difficulty: Difficulty;
   status: BountyStatus;
   org: string;

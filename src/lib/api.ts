@@ -49,7 +49,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       cache: "no-store",
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
-      signal: init?.signal ?? timeout,
+      signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "TimeoutError") {
@@ -122,7 +122,7 @@ export async function apiRequest<T>(
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...init?.headers,
         },
-        signal: init?.signal ?? timeout,
+        signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "TimeoutError") {

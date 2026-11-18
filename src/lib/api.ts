@@ -46,8 +46,41 @@ export interface FetchResult<T> {
   source: "live" | "mock";
 }
 
+/**
+ * Every caller of `request()` catches the failure and falls back to mock
+ * data, so a failed read is an expected, handled condition: it is logged at
+ * `warn`, not `error`, so error-level alerting doesn't page on it (#939).
+ *
+ * A dead backend would otherwise emit one line per fetch per render (and per
+ * sitemap chunk a crawler walks). Repeats of the same kind of failure on the
+ * same path are suppressed for FETCH_LOG_WINDOW_MS and summarised with a
+ * count on the next line logged after the window.
+ */
+export const FETCH_LOG_WINDOW_MS = 60_000;
+const FETCH_LOG_MAX_KEYS = 500;
+const fetchLogState = new Map<string, { at: number; suppressed: number }>();
+
 function logFetchError(path: string, kind: "network" | "http" | "parse", detail: string) {
-  console.error(`[api] ${kind} error on ${path}: ${detail}`);
+  const key = `${kind} ${path}`;
+  const now = Date.now();
+  const previous = fetchLogState.get(key);
+  if (previous && now - previous.at < FETCH_LOG_WINDOW_MS) {
+    previous.suppressed += 1;
+    return;
+  }
+  // Paths include ids and query strings; bound the map so a long-running
+  // server can't grow it without limit.
+  if (!previous && fetchLogState.size >= FETCH_LOG_MAX_KEYS) fetchLogState.clear();
+  fetchLogState.set(key, { at: now, suppressed: 0 });
+  const repeats = previous?.suppressed
+    ? ` (${previous.suppressed} similar failure${previous.suppressed === 1 ? "" : "s"} suppressed)`
+    : "";
+  console.warn(`[api] ${kind} error on ${path}: ${detail}${repeats}`);
+}
+
+/** Test seam: forgets which failures were already logged. */
+export function resetFetchErrorLog(): void {
+  fetchLogState.clear();
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

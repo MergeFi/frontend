@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { imgSrcDirective } from "./src/lib/image-hosts";
 
 /**
  * Nonce-based CSP middleware (#610).
@@ -28,7 +29,7 @@ export function middleware(request: NextRequest) {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' https://avatars.githubusercontent.com data:",
+    imgSrcDirective(),
     "font-src 'self'",
     `connect-src 'self' ${apiOrigin}`,
     "frame-ancestors 'none'",

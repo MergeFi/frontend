@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost, apiPatch } from "@/lib/api-client";
 import { generateIdempotencyKey } from "@/lib/idempotency";
+import { validateTeamSplits } from "@/lib/utils";
 
 /**
  * Team management components for creating teams, editing splits,
@@ -214,9 +215,11 @@ export function EditTeamSplitsButton({
   }
 
   async function handleSave() {
-    const total = members.reduce((sum, m) => sum + (m.percentage || 0), 0);
-    if (total !== 100) {
-      setError("Splits must total 100%.");
+    // Require at least one member summing to 100% (#948): an empty split set
+    // must not be saveable, or a team payout can be released to nobody.
+    const check = validateTeamSplits(members);
+    if (!check.valid) {
+      setError(check.message ?? "Splits must total 100%.");
       return;
     }
     setError(null);

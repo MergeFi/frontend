@@ -1,4 +1,4 @@
-import { fetchIndexableReputationHandles } from "./api";
+import { fetchIndexableReputationHandles, fetchMyRepositories } from "./api";
 
 /**
  * The privacy filter in fetchIndexableReputationHandles is the point where a
@@ -69,5 +69,56 @@ describe("fetchIndexableReputationHandles", () => {
 
     expect(result.source).toBe("mock");
     expect(result.data).toEqual(["mock-handle"]);
+  });
+});
+
+describe("fetchMyRepositories", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("maps a Repository entity body via RawRepository owner/name (#945)", async () => {
+    // Fixture mirrors mergefi-backend Repository entity serialization
+    // (src/common/entities/repository.entity.ts): the columns are
+    // owner/name — there is no org or htmlUrl field.
+    const entity = {
+      id: "3f0a2b9c-1111-2222-3333-444455556666",
+      githubRepoId: "12345678",
+      owner: "acme",
+      name: "widgets",
+      fullName: "acme/widgets",
+      description: null,
+      defaultBranch: "main",
+      private: false,
+      primaryLanguage: "TypeScript",
+      stargazersCount: 42,
+      maintainer: null,
+      maintainerId: null,
+      issues: [],
+      lastSyncedAt: "2026-01-01T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [entity],
+    }) as unknown as typeof fetch;
+
+    const result = await fetchMyRepositories([]);
+
+    expect(result.source).toBe("live");
+    expect(result.data).toEqual([
+      {
+        org: "acme",
+        repo: "widgets",
+        url: "https://github.com/acme/widgets",
+      },
+    ]);
   });
 });

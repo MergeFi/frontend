@@ -17,7 +17,14 @@ import {
 // Shapes returned by mergefi-backend's TypeORM entities (see
 // mergefi-backend/src/common/entities). These are intentionally loose since
 // we only read the fields the UI needs.
-interface RawRepository {
+/**
+ * Wire shape of mergefi-backend's Repository entity, verified field-by-field
+ * against `mergefi-backend/src/common/entities/repository.entity.ts` (#945).
+ * The entity's columns are `owner`/`name` — there is no `org` or `htmlUrl`
+ * field, so any code reading those silently gets `undefined`.
+ */
+export interface RawRepository {
+  id: string;
   owner: string;
   name: string;
 }
@@ -125,8 +132,11 @@ export function adaptBounty(raw: RawBounty): Bounty {
 
   return {
     id: raw.id,
-    repo: raw.issue?.repository?.name ?? "unknown-repo",
-    org: raw.issue?.repository?.owner ?? "unknown-org",
+    // Missing repository data must not render as plausible content (#946):
+    // "(unavailable)" is visibly non-data, unlike "unknown-repo"/"unknown-org"
+    // which read like real names.
+    repo: raw.issue?.repository?.name ?? "(unavailable)",
+    org: raw.issue?.repository?.owner ?? "(unavailable)",
     issueNumber: raw.issue?.number ?? 0,
     title: raw.issue?.title ?? "Untitled issue",
     description: raw.issue?.body ?? "",
@@ -166,15 +176,21 @@ export interface RawMilestone {
 export function adaptMilestone(raw: RawMilestone): Milestone {
   const issues = raw.issues ?? [];
   const budget = coerceNonNegative(raw.budget);
-  const distributed = coerceNonNegative(raw.distributed);
+  // `distributed` can legitimately be negative (refunds exceeding payouts,
+  // accounting corrections) — pass it through and let formatCurrency render
+  // the sign rather than hiding it behind a 0 (#947).
+  const distributed = coerceDecimal(raw.distributed);
   return {
     id: raw.id,
     name: raw.title,
-    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "unassigned",
+    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "(unavailable)",
     budget,
     distributed,
     asset: raw.asset,
-    status: raw.status ?? "open",
+    // A missing status is not an implicit "open" (#946): that presents a
+    // possibly-broken record as live and fundable. "unknown" is rendered as
+    // a warning by the status badges, matching coerceStatus (#596).
+    status: raw.status ?? "unknown",
     deadline: raw.deadline ?? null,
     issueCount: issues.length,
     // #615 — base progress on payouts (distributed / budget), not on
@@ -202,11 +218,15 @@ export function adaptMaintenancePool(raw: RawMaintenancePool): MaintenancePool {
   return {
     id: raw.id,
     name: raw.name ?? null,
-    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "platform-wide",
+    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "(unavailable)",
     monthlyDeposit: coerceNonNegative(raw.monthlyDeposit),
-    balance: coerceNonNegative(raw.balance),
+    // `balance` can legitimately be negative (refunds exceeding deposits,
+    // accounting corrections) — pass it through and let formatCurrency
+    // render the sign (#947).
+    balance: coerceDecimal(raw.balance),
     asset: raw.asset,
-    status: raw.status ?? "active",
+    // A missing status is not an implicit "active" (#946).
+    status: raw.status ?? "unknown",
   };
 }
 

@@ -127,6 +127,31 @@ describe("bountyPoller", () => {
     expect(mockFetchBounty.mock.calls.length).toBe(before + 1);
   });
 
+  it("returns the same snapshot reference on consecutive calls when state has not changed", async () => {
+    subscribeBounty("b1", jest.fn(), 1000);
+    await jest.advanceTimersByTimeAsync(1000);
+    await jest.advanceTimersByTimeAsync(0);
+
+    const first  = getBountySnapshot("b1");
+    const second = getBountySnapshot("b1");
+
+    expect(first).toBe(second);
+  });
+
+  it("returns a new snapshot reference after a notify (state change)", async () => {
+    subscribeBounty("b1", jest.fn(), 1000);
+    await jest.advanceTimersByTimeAsync(1000);
+    await jest.advanceTimersByTimeAsync(0);
+    const before = getBountySnapshot("b1");
+
+    // Advance another tick to trigger another notify
+    await jest.advanceTimersByTimeAsync(1000);
+    await jest.advanceTimersByTimeAsync(0);
+    const after = getBountySnapshot("b1");
+
+    expect(after).not.toBe(before);
+  });
+
   it("isolates registry state between tests through the reset seam", async () => {
     subscribeBounty("b1", jest.fn(), 1000);
     __resetRegistry();

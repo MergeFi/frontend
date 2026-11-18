@@ -15,6 +15,7 @@ import {
   buildIssuesHref,
   isFilterActive,
   parseBountyQuery,
+  REWARD_COMPARISON_NOTE,
   SORT_LABELS,
   SORT_VALUES,
   STATUS_VALUES,
@@ -181,6 +182,7 @@ export default async function IssuesPage({
             name="minReward"
             defaultValue={query.minReward ?? ""}
             placeholder="0"
+            aria-describedby="reward-comparison-note"
             className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           />
         </label>
@@ -194,6 +196,7 @@ export default async function IssuesPage({
             name="maxReward"
             defaultValue={query.maxReward ?? ""}
             placeholder="Any"
+            aria-describedby="reward-comparison-note"
             className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           />
         </label>
@@ -225,6 +228,12 @@ export default async function IssuesPage({
             Clear all
           </Link>
         )}
+        <p
+          id="reward-comparison-note"
+          className="basis-full text-xs text-slate-500 dark:text-slate-400"
+        >
+          {REWARD_COMPARISON_NOTE}
+        </p>
       </IssuesFilterForm>
 
       {visible.length === 0 ? (

@@ -45,8 +45,8 @@ export type SortOption = (typeof SORT_VALUES)[number];
 
 export const SORT_LABELS: Record<SortOption, string> = {
   default: "Newest",
-  "reward-desc": "Reward: high to low",
-  "reward-asc": "Reward: low to high",
+  "reward-desc": "Reward: high to low (USD equiv.)",
+  "reward-asc": "Reward: low to high (USD equiv.)",
   "deadline-asc": "Deadline: soonest",
 };
 
@@ -67,8 +67,18 @@ export type RawSearchParams = Record<string, string | string[] | undefined>;
  * assets (#613). This is a rough display approximation, not a live feed —
  * reward filtering and sorting across assets will drift as the rate moves.
  * Pin to 1.0 to treat XLM and USDC as equal.
+ *
+ * Last reviewed 2026-11-18 (#898). Because a stale rate gives a wrong order
+ * with no visible symptom, the assumption is shown to the user wherever it
+ * is applied: REWARD_COMPARISON_NOTE under the reward range inputs, and the
+ * "(USD equiv.)" suffix on the reward sort labels.
  */
 export const XLM_TO_USD_APPROX = 0.12;
+
+/** User-facing statement of the conversion the reward filter and sort use (#898). */
+export const REWARD_COMPARISON_NOTE =
+  `Reward range and reward sorting compare in USD, with XLM converted at an ` +
+  `approximate, fixed $${XLM_TO_USD_APPROX} per XLM (not a live rate).`;
 
 /** Convert a reward to USD-equivalent for cross-asset comparison (#613). */
 function rewardToUsd(reward: number, asset: string): number {

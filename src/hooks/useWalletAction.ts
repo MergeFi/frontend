@@ -18,6 +18,7 @@ export function useWalletAction() {
     addressMismatch,
     networkMismatch,
     recheckNetworkMismatch,
+    recheckAddressMismatch,
     getError,
   } = useWallet();
 
@@ -25,6 +26,13 @@ export function useWalletAction() {
     action: (walletAddress: string) => Promise<unknown>,
     connectError: string,
   ): Promise<WalletActionResult> {
+    // Always re-ask Freighter for the active account at action time — the
+    // cached `addressMismatch` can be a stale false if the user switched
+    // accounts inside the extension after page load, since there is no
+    // account-change event to trigger a re-check (#840).
+    if (addressMismatch || (await recheckAddressMismatch())) {
+      return { ok: false, error: ADDRESS_MISMATCH_ERROR };
+    }
     if (addressMismatch) return { ok: false, error: ADDRESS_MISMATCH_ERROR };
     // `networkMismatch` is only ever written on mount (and cleared on
     // connect/disconnect), so treating it as authoritative here locked a

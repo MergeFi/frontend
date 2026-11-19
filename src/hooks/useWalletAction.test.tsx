@@ -17,6 +17,10 @@ function setWallet(overrides: Partial<ReturnType<typeof useWallet>> = {}) {
     initializing: false,
     addressMismatch: false,
     networkMismatch: false,
+    // Live re-checks that agree with the cached flags — the default for
+    // every test that isn't specifically exercising a re-check.
+    recheckNetworkMismatch: jest.fn().mockResolvedValue(false),
+    recheckAddressMismatch: jest.fn().mockResolvedValue(false),
     // A live re-check that agrees with the cached flag — the default for
     // every test that isn't specifically exercising the re-check.
     recheckNetworkMismatch: jest.fn().mockResolvedValue(false),
@@ -136,6 +140,61 @@ describe("useWalletAction", () => {
     });
 
     expect(action).toHaveBeenCalledWith("GCONNECTED");
+  });
+});
+
+describe("useWalletAction — post-mount account switch (#840)", () => {
+  // Freighter has no account-change event. The cached `addressMismatch` is
+  // only written on mount, so it stays false if the user switches accounts
+  // inside the extension afterwards. `recheckAddressMismatch` is called on
+  // every action to catch this, regardless of the cached flag.
+  it("blocks when active account changed after mount (cached false, live true)", async () => {
+    const connect = jest.fn();
+    const recheckAddressMismatch = jest.fn().mockResolvedValue(true);
+    setWallet({ addressMismatch: false, recheckAddressMismatch, connect });
+    const action = jest.fn();
+    const { result } = renderHook(() => useWalletAction());
+
+    let response: Awaited<ReturnType<typeof result.current.runWithWallet>>;
+    await act(async () => {
+      response = await result.current.runWithWallet(action, "Fallback message.");
+    });
+
+    expect(response!).toEqual({ ok: false, error: expect.stringContaining("active account has changed") });
+    expect(recheckAddressMismatch).toHaveBeenCalledTimes(1);
+    expect(connect).not.toHaveBeenCalled();
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("proceeds when recheckAddressMismatch finds no mismatch", async () => {
+    const recheckAddressMismatch = jest.fn().mockResolvedValue(false);
+    setWallet({ addressMismatch: false, recheckAddressMismatch, address: "GCACHED", connect: jest.fn() });
+    const action = jest.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useWalletAction());
+
+    let response: Awaited<ReturnType<typeof result.current.runWithWallet>>;
+    await act(async () => {
+      response = await result.current.runWithWallet(action, "Fallback message.");
+    });
+
+    expect(response!).toEqual({ ok: true });
+    expect(recheckAddressMismatch).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledWith("GCACHED");
+  });
+
+  it("does not proceed when extension is unreachable but cached flag is false (safe default)", async () => {
+    // recheckAddressMismatch returns false when extension is unreachable —
+    // action is allowed through since we can't prove a mismatch.
+    const recheckAddressMismatch = jest.fn().mockResolvedValue(false);
+    setWallet({ addressMismatch: false, recheckAddressMismatch, address: "GCACHED", connect: jest.fn() });
+    const action = jest.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useWalletAction());
+
+    await act(async () => {
+      await result.current.runWithWallet(action, "Fallback message.");
+    });
+
+    expect(action).toHaveBeenCalledWith("GCACHED");
   });
 });
 

@@ -94,6 +94,15 @@ interface WalletContextValue {
    * one.
    */
   recheckNetworkMismatch: () => Promise<boolean>;
+  /**
+   * Re-read Freighter's active account at action time and update
+   * `addressMismatch`. Unlike `recheckNetworkMismatch`, this must run even
+   * when the cached flag is false — a stale false is precisely what lets a
+   * post-mount account switch go undetected. Returns false (no mismatch) when
+   * the extension is unreachable, to avoid blocking actions on a missing
+   * extension.
+   */
+  recheckAddressMismatch: () => Promise<boolean>;
   /** How durable the current connection is. See {@link WalletLinkState}. */
   linkState: WalletLinkState;
   /**
@@ -151,6 +160,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setNetworkMismatch(!!msg);
     return !!msg;
   }, []);
+
+  const recheckAddressMismatch = useCallback(async (): Promise<boolean> => {
+    const live = await getActiveFreighterAddress();
+    // Extension unreachable or not authorized — don't treat as a provable mismatch.
+    if (!live) return false;
+    const mismatch = address !== null && live !== address;
+    setAddressMismatch(mismatch);
+    return mismatch;
+  }, [address]);
 
   useEffect(() => {
     // localStorage is unavailable during SSR, so this can't be a lazy
@@ -444,6 +462,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       addressMismatch,
       networkMismatch,
       recheckNetworkMismatch,
+      recheckAddressMismatch,
       linkState,
       pendingRelinkAddress,
       confirmRelink,
@@ -461,6 +480,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       addressMismatch,
       networkMismatch,
       recheckNetworkMismatch,
+      recheckAddressMismatch,
       linkState,
       pendingRelinkAddress,
       confirmRelink,

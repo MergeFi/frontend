@@ -1,5 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+
+export const metadata: Metadata = {
+  title: "Page not found | MergeFi",
+  description: "The requested MergeFi page could not be found.",
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
 
 export default function NotFound() {
   return (

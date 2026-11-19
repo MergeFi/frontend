@@ -115,6 +115,7 @@ export default async function MaintainerDashboardPage() {
           action={
             <Link
               href="#connect-repository"
+              href="/settings"
               className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
               Connect repository
@@ -128,6 +129,7 @@ export default async function MaintainerDashboardPage() {
       {/* #637 — GitHub repository sync UI so maintainers can bring their
           issues onto the platform without manual API calls. */}
       <div id="connect-repository" className="mt-8">
+      <div className="mt-8">
         <GitHubSyncPanel />
       </div>
 

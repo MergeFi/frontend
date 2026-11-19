@@ -14,17 +14,21 @@ import {
   Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { Avatar, AvatarStack } from "@/components/ui/Avatar";
 import { ActivityList } from "@/components/dashboard/ActivityList";
+import { DataSourceNotice } from "@/components/ui/DataSourceNotice";
 import {
-  platformStats,
+  platformStats as mockPlatformStats,
   trustedOrgs,
   topContributors,
   recentActivity,
   faqs,
 } from "@/lib/mock-data";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatInteger } from "@/lib/utils";
+import { STELLAR_NETWORK } from "@/lib/config";
+import type { PlatformStats } from "@/lib/api";
 
 const integrations = [
   { icon: Code2, label: "GitHub" },
@@ -83,14 +87,40 @@ const features = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  // #633 — Fetch live platform stats from the backend with a 60s revalidate
+  // window. Falls back to mock values when the backend is unreachable.
+  let stats = mockPlatformStats;
+  let statsSource: "live" | "mock" = "mock";
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? ""}/analytics/platform`,
+      { next: { revalidate: 60 } },
+    );
+    if (res.ok) {
+      const raw = (await res.json()) as {
+        totalBounties: number;
+        totalPaidOut: number;
+        totalRepos: number;
+      };
+      stats = {
+        totalPaidOut: raw.totalPaidOut,
+        bountiesCompleted: raw.totalBounties,
+        activeContributors: raw.totalRepos,
+        avgPayoutTimeMinutes: mockPlatformStats.avgPayoutTimeMinutes,
+      };
+      statsSource = "live";
+    }
+  } catch {
+    // Backend unreachable — fall back to mock values.
+  }
   return (
     <div>
       <section className="bg-hero-gradient bg-grid border-b border-slate-200 dark:border-slate-800">
         <div className="mx-auto max-w-6xl px-6 pb-20 pt-20 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Built for Stellar Mainnet
+            {STELLAR_NETWORK === "PUBLIC" ? "Built for Stellar Mainnet" : "Built for Stellar (Testnet)"}
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl dark:text-white">
             Merge code.
@@ -106,7 +136,7 @@ export default function HomePage() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/issues">
               <Button size="lg" className="gap-2">
-                Browse paid issues <ArrowRight className="h-4 w-4" />
+                Browse paid issues <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </Link>
             <Link href="/connect">
@@ -118,7 +148,10 @@ export default function HomePage() {
           <div className="mt-8 flex items-center justify-center gap-3 text-sm text-slate-500 dark:text-slate-400">
             <AvatarStack seeds={topContributors.map((c) => c.handle)} />
             <span>
-              Joined by <strong className="text-slate-900 dark:text-white">341 contributors</strong>{" "}
+              Joined by{" "}
+              <strong className="text-slate-900 dark:text-white">
+                {formatInteger(platformStats.activeContributors)} contributors
+              </strong>{" "}
               already earning
             </span>
           </div>
@@ -130,45 +163,51 @@ export default function HomePage() {
           <p className="text-center text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
             Trusted by open-source teams on Stellar
           </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          <ul role="list" className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             {trustedOrgs.map((org) => (
-              <span key={org} className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+              <li key={org} className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
                 <Avatar seed={org} size={20} className="rounded-md" />
                 {org}
-              </span>
+              </li>
             ))}
-          </div>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 border-t border-slate-100 pt-6 dark:border-slate-800">
+          </ul>
+          <ul role="list" className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 border-t border-slate-100 pt-6 dark:border-slate-800">
             {integrations.map(({ icon: Icon, label }) => (
-              <span
+              <li
                 key={label}
                 className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
-                <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                 {label}
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
       <div className="mx-auto max-w-6xl px-6 py-16">
+        {statsSource === "mock" && <DataSourceNotice className="mb-6" />}
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard
             label="Total paid out"
-            value={formatCurrency(platformStats.totalPaidOut)}
+            value={stats.totalPaidOut}
+            format="currency"
           />
           <StatCard
             label="Bounties completed"
-            value={platformStats.bountiesCompleted.toLocaleString()}
+            value={stats.bountiesCompleted}
+            format="count"
           />
           <StatCard
             label="Active contributors"
-            value={platformStats.activeContributors.toLocaleString()}
+            value={stats.activeContributors}
+            format="count"
           />
+          {/* Avg. payout time is a duration (minutes), not a currency/count/percent —
+              no existing StatCardFormat covers it, so keep as pre-formatted string. */}
           <StatCard
             label="Avg. payout time"
-            value={`${platformStats.avgPayoutTimeMinutes} min`}
+            value={`${stats.avgPayoutTimeMinutes} min`}
           />
         </section>
 
@@ -183,22 +222,22 @@ export default function HomePage() {
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {features.map(({ icon: Icon, title, description }) => (
-              <div
+              <Card
                 key={title}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                className="transition-shadow hover:shadow-md"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900">
-                  <Icon className="h-5 w-5 text-white" />
+                  <Icon className="h-5 w-5 text-white" aria-hidden="true" />
                 </span>
                 <h3 className="mt-4 font-medium text-slate-900 dark:text-white">{title}</h3>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</p>
-              </div>
+              </Card>
             ))}
           </div>
         </section>
 
         <section className="mt-24 grid gap-8 lg:grid-cols-[1.1fr_1fr]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Card padding="xl">
             <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
               A typical bounty, start to finish
             </h2>
@@ -212,11 +251,11 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-          </div>
+          </Card>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Card padding="xl">
             <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-500" />
+              <Trophy className="h-5 w-5 text-amber-500" aria-hidden="true" />
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                 Top contributors this month
               </h2>
@@ -249,12 +288,12 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         </section>
 
         <section className="mt-24">
           <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-emerald-500" />
+            <Activity className="h-5 w-5 text-emerald-500" aria-hidden="true" />
             <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
               Live on the platform
             </h2>
@@ -282,7 +321,7 @@ export default function HomePage() {
                 <summary className="cursor-pointer list-none font-medium text-slate-900 marker:content-none dark:text-white">
                   <span className="flex items-center justify-between">
                     {faq.question}
-                    <span className="ml-4 text-slate-400 transition-transform group-open:rotate-45">+</span>
+                    <span aria-hidden="true" className="ms-4 text-slate-400 transition-transform group-open:rotate-45">+</span>
                   </span>
                 </summary>
                 <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">

@@ -2,7 +2,6 @@ import type {
   Bounty,
   Milestone,
   ReputationProfile,
-  SponsorSummary,
   MaintenancePool,
 } from "@/types";
 
@@ -46,8 +45,9 @@ export const mockBounties: Bounty[] = [
     title: "Document Soroban escrow contract API reference",
     description:
       "Write reference docs for fund/release/refund functions including auth requirements and error codes.",
-    reward: 60,
-    asset: "USDC",
+    // XLM-denominated (#367) so the demo exercises 7-decimal XLM formatting.
+    reward: 1250.5,
+    asset: "XLM",
     difficulty: "beginner",
     status: "open",
     deadline: new Date(Date.now() + 10 * 86400000).toISOString(),
@@ -99,17 +99,18 @@ export const mockMilestones: Milestone[] = [
     distributed: 4300,
     asset: "USDC",
     issueCount: 12,
-    completedCount: 4,
+    distributedFraction: 4300 / 12000,
   },
   {
     id: "m2",
     name: "v1.4: Indexer performance pass",
     repo: "core-indexer",
-    budget: 6000,
-    distributed: 2100,
-    asset: "USDC",
+    // XLM-denominated (#367): XLM trades far below 1 USD, so budgets are larger.
+    budget: 48000,
+    distributed: 16837.25,
+    asset: "XLM",
     issueCount: 8,
-    completedCount: 3,
+    distributedFraction: 16837.25 / 48000,
   },
 ];
 
@@ -120,6 +121,14 @@ export const mockMaintenancePools: MaintenancePool[] = [
     monthlyDeposit: 500,
     balance: 1240,
     asset: "USDC",
+  },
+  {
+    // XLM-denominated (#367); balance carries full 7-decimal stroop precision.
+    id: "p2",
+    repo: "stellar-wallet-kit",
+    monthlyDeposit: 2500,
+    balance: 8412.1234567,
+    asset: "XLM",
   },
 ];
 
@@ -134,7 +143,10 @@ export const mockReputationProfiles: Record<string, ReputationProfile> = {
     onTimeDeliveryRate: 0.88,
     languages: ["Rust", "TypeScript", "Go"],
     organizations: ["stellar-labs", "mergefi"],
-    topClients: ["stellar-labs", "openzeppelin"],
+    // Demo fixtures stand in for contributors who have opted into search-engine
+    // indexing, so local dev exercises the sitemap path the backend flag will
+    // drive in production (see src/lib/seo-policy.ts).
+    indexable: true,
   },
   "0xkoda": {
     handle: "0xkoda",
@@ -146,11 +158,62 @@ export const mockReputationProfiles: Record<string, ReputationProfile> = {
     onTimeDeliveryRate: 0.81,
     languages: ["Rust", "Solidity"],
     organizations: ["mergefi"],
-    topClients: ["mergefi"],
+    indexable: true,
+  },
+  devrel_ana: {
+    handle: "devrel_ana",
+    avatarUrl: "https://avatars.githubusercontent.com/u/3?v=4",
+    lifetimeEarnings: 2890,
+    mergedPRs: 24,
+    completionRate: 0.88,
+    avgReviewTimeHours: 18,
+    onTimeDeliveryRate: 0.85,
+    languages: ["TypeScript", "JavaScript"],
+    organizations: ["stellar-labs"],
+    indexable: true,
+  },
+  qa_marcus: {
+    handle: "qa_marcus",
+    avatarUrl: "https://avatars.githubusercontent.com/u/4?v=4",
+    lifetimeEarnings: 2140,
+    mergedPRs: 19,
+    completionRate: 0.92,
+    avgReviewTimeHours: 12,
+    onTimeDeliveryRate: 0.9,
+    languages: ["Go", "Python"],
+    organizations: ["stellar-labs", "mergefi"],
+    // Demo fixtures stand in for contributors who have opted into search-engine
+    // indexing, so local dev exercises the sitemap path the backend flag will
+    // drive in production (see src/lib/seo-policy.ts).
+    indexable: true,
+  },
+  linh_dev: {
+    handle: "linh_dev",
+    avatarUrl: "https://avatars.githubusercontent.com/u/5?v=4",
+    lifetimeEarnings: 1780,
+    mergedPRs: 15,
+    completionRate: 0.86,
+    avgReviewTimeHours: 22,
+    onTimeDeliveryRate: 0.78,
+    languages: ["TypeScript", "Rust"],
+    organizations: ["mergefi"],
+    indexable: true,
   },
 };
 
-export const mockSponsorSummary: SponsorSummary = {
+// Not modeled in types/index.ts alongside Bounty/Milestone/etc: this shape
+// only ever backs the signed-out demo title on the sponsor dashboard and
+// has no corresponding backend endpoint or adapter (#202) — keeping it
+// local here avoids implying parity with the adapter-backed domain types.
+interface MockSponsorSummary {
+  name: string;
+  totalFunded: number;
+  activeBounties: number;
+  budgetRemaining: number;
+  repos: string[];
+}
+
+export const mockSponsorSummary: MockSponsorSummary = {
   name: "Stellar Development Foundation",
   totalFunded: 42500,
   activeBounties: 9,
@@ -170,8 +233,8 @@ export const trustedOrgs = [
   "mergefi",
   "openzeppelin",
   "soroban-foundation",
-  "wallet-kit",
-  "core-indexer",
+  "obsrvr",
+  "lightsail-network",
 ];
 
 export interface LeaderboardEntry {
@@ -196,10 +259,27 @@ export interface ActivityEvent {
   target: string;
   amount?: number;
   asset?: "USDC" | "XLM";
+  /**
+   * ISO timestamp of when the event happened. ActivityList derives its
+   * "Nm/h/d ago" text from this at render time via Date.now() — a static
+   * minutesAgo literal would never advance, contradicting the "Live on the
+   * platform" framing this feed is rendered under (#201).
+   */
+  occurredAt: string;
+}
+
+// Raw mock events data template without pre-evaluated timestamps (#707).
+interface MockActivityTemplate {
+  id: string;
+  handle: string;
+  action: string;
+  target: string;
+  amount?: number;
+  asset?: "USDC" | "XLM";
   minutesAgo: number;
 }
 
-export const recentActivity: ActivityEvent[] = [
+const mockActivityTemplates: MockActivityTemplate[] = [
   {
     id: "a1",
     handle: "devrel_ana",
@@ -233,6 +313,15 @@ export const recentActivity: ActivityEvent[] = [
     minutesAgo: 71,
   },
   {
+    id: "a4b",
+    handle: "Stellar Community Fund",
+    action: "funded",
+    target: "v1.4: Indexer performance pass",
+    amount: 15000,
+    asset: "XLM",
+    minutesAgo: 95,
+  },
+  {
     id: "a5",
     handle: "priyaeth",
     action: "was paid",
@@ -249,6 +338,45 @@ export const recentActivity: ActivityEvent[] = [
     minutesAgo: 210,
   },
 ];
+
+// minutesAgo(n) anchors each mock event n minutes before the current time,
+// computed dynamically at request or render time rather than frozen at module load (#707).
+function minutesAgo(n: number): string {
+  return new Date(Date.now() - n * 60_000).toISOString();
+}
+
+/**
+ * Returns recent activity events with timestamps computed at call/request time (#707).
+ * Avoids stale timestamps on long-lived Next.js server processes.
+ */
+export function getRecentActivity(): ActivityEvent[] {
+  return mockActivityTemplates.map(({ minutesAgo: mins, ...event }) => ({
+    ...event,
+    occurredAt: minutesAgo(mins),
+  }));
+}
+
+/**
+ * Dynamic proxy export for recentActivity (#707).
+ * Dynamically computes timestamps whenever accessed or iterated so long-lived servers
+ * do not serve stale module-load timestamps.
+ */
+export const recentActivity: ActivityEvent[] = new Proxy([] as ActivityEvent[], {
+  get(_target, prop, receiver) {
+    const list = getRecentActivity();
+    const val = Reflect.get(list, prop, receiver);
+    return typeof val === "function" ? val.bind(list) : val;
+  },
+  has(_target, prop) {
+    return prop in getRecentActivity();
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Object.getOwnPropertyDescriptor(getRecentActivity(), prop);
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getRecentActivity());
+  },
+});
 
 
 // Weekly earnings/spend series (8 weeks) for dashboard charts.

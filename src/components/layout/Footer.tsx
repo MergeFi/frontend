@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GitMerge } from "lucide-react";
+import { CopyrightYear } from "./CopyrightYear";
 
 const columns = [
   {
@@ -56,7 +57,9 @@ export function Footer() {
           ))}
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-6 text-sm text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row">
-          <p>© {new Date().getFullYear()} MergeFi. All rights reserved.</p>
+          <p>
+            © <CopyrightYear /> MergeFi. All rights reserved.
+          </p>
           <p>Where open source meets finance.</p>
         </div>
       </div>

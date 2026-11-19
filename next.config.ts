@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { loadValidatedEnv } from "./src/lib/env";
+import { imageRemotePatterns, imgSrcDirective } from "./src/lib/image-hosts";
 
 /**
  * Validated at module-evaluation time — i.e. as soon as `next build`,
@@ -14,7 +15,8 @@ import { loadValidatedEnv } from "./src/lib/env";
  * guaranteed to resolve tsconfig path aliases the same way application
  * code does.
  */
-loadValidatedEnv();
+const env = loadValidatedEnv();
+const apiOrigin = new URL(env.apiBaseUrl).origin;
 
 /**
  * Production security headers (#50), applied to every route below.
@@ -41,34 +43,83 @@ loadValidatedEnv();
  *   issues, raise max-age and add `includeSubDomains`, and only add
  *   `preload` (and submit to hstspreload.org) once *that* has been stable
  *   too. The browser ignores this header entirely over plain HTTP, so
- *   it's harmless to always send.
+ *   it's harmless to always send. Graduation targets (#930):
+ *   `max-age=31536000; includeSubDomains` next, then `preload`.
+ *   scripts/verify-security-headers.mjs only enforces a max-age floor, so
+ *   raising this value needs no change there.
  *
- * Deliberately does NOT set Content-Security-Policy — that's tracked by a
- * separate issue so it can compose correctly with the theme-init inline
- * script (`themeInitScript` from ThemeContext, rendered in layout.tsx)
- * without this change guessing at a nonce/hash strategy it doesn't own.
+ * Content-Security-Policy (#4, #610):
+ * - Now set in middleware.ts with a per-request nonce (see middleware.ts).
+ *   The nonce replaces `'unsafe-inline'` for scripts, so injected inline
+ *   <script> tags and inline event handlers no longer execute.
+ * - connect-src is set dynamically in middleware (apiOrigin is computed
+ *   at build time from env, so it's baked into the middleware output).
+ * - img-src allows GitHub avatars and the GitHub hosts issue-markdown images
+ *   come from; fallback identicons are local data: URIs (#929). Built from
+ *   src/lib/image-hosts.ts, shared with middleware.ts and remotePatterns (#940).
+ * - Freighter wallet extension content scripts are not blocked by CSP
+ *   (browser extensions inject with extension privileges).
  */
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Strict-Transport-Security", value: "max-age=86400" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      imgSrcDirective(),
+      "font-src 'self'",
+      `connect-src 'self' ${apiOrigin}`,
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  },
 ];
 
 const nextConfig: NextConfig = {
+  // Expose the build-time-validated API origin to middleware via process.env.
+  // middleware.ts runs on the Edge runtime and cannot import src/lib/env.ts
+  // directly; this is the documented pattern for sharing build-time values.
+  env: {
+    MERGEFI_API_ORIGIN: apiOrigin,
+  },
   devIndicators: false,
   images: {
-    dangerouslyAllowSVG: true,
-    remotePatterns: [
-      { protocol: "https", hostname: "avatars.githubusercontent.com" },
-      { protocol: "https", hostname: "api.dicebear.com" },
-    ],
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    contentDispositionType: "attachment",
+    remotePatterns: imageRemotePatterns(),
   },
   async headers() {
     return [
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      // The sitemap moved from a single /sitemap.xml to chunked
+      // /sitemaps/<id>.xml files (src/app/sitemaps/[id]/route.ts) so it can
+      // respect the 50,000-URL-per-file limit search engines enforce.
+      // Temporary (307) rather than permanent (#926): crawlers cache a 308
+      // aggressively, and this is the canonical sitemap URL submitted to
+      // search consoles — a temporary redirect stays revisable while the
+      // chunked layout settles in production. /sitemaps/0.xml always serves a
+      // valid (possibly empty) urlset, so the target never 404s.
+      {
+        source: "/sitemap.xml",
+        destination: "/sitemaps/0.xml",
+        permanent: false,
       },
     ];
   },

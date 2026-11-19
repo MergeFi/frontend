@@ -7,13 +7,22 @@
 
 import {
   formatCurrency,
+  formatDaysUntil,
+  formatInteger,
   formatPercent,
+  parseMoneyInput,
   coerceDecimal,
   coerceNonNegative,
   coerceFraction,
   coercePercentage,
+  coerceStatus,
+  coerceAsset,
+  coerceDifficulty,
   validateTeamSplits,
   parseMoneyInput,
+  generateIdempotencyKey,
+  sumMoney,
+  subtractMoney,
 } from "./utils";
 
 // ─── formatCurrency ──────────────────────────────────────────────────────────
@@ -53,13 +62,22 @@ describe("formatCurrency", () => {
       expect(formatCurrency(-1234567.89, "USDC")).toBe("-1,234,567.89 USDC");
     });
 
-    it("limits decimal places to 2 by default", () => {
+    it("limits USDC to 2 decimal places", () => {
       expect(formatCurrency(123.456789, "USDC")).toBe("123.46 USDC");
-      expect(formatCurrency(-123.456789, "XLM")).toBe("-123.46 XLM");
+    });
+
+    it("shows up to 7 decimal places for XLM", () => {
+      expect(formatCurrency(12.3456789, "XLM")).toBe("12.3456789 XLM");
+      expect(formatCurrency(-12.3456789, "XLM")).toBe("-12.3456789 XLM");
+    });
+
+    it("does not display small nonzero XLM as zero", () => {
+      expect(formatCurrency(0.0000005, "XLM")).not.toBe("0 XLM");
     });
 
     it("does not add trailing zeros for whole numbers", () => {
       expect(formatCurrency(100, "USDC")).toBe("100 USDC");
+      expect(formatCurrency(100, "XLM")).toBe("100 XLM");
     });
   });
 
@@ -199,6 +217,36 @@ describe("coercePercentage", () => {
   });
 });
 
+// ─── coerceStatus ─────────────────────────────────────────────────────────
+
+describe("coerceStatus", () => {
+  it("accepts all valid BountyStatus values", () => {
+    const statuses = [
+      "open", "funded", "claimed", "in_review",
+      "merged", "release_failed", "paid", "refunded", "expired", "unknown",
+    ] as const;
+    for (const s of statuses) {
+      expect(coerceStatus(s)).toBe(s);
+    }
+  });
+
+  it("falls back to 'unknown' for an unrecognized string", () => {
+    expect(coerceStatus("banana")).toBe("unknown");
+  });
+
+  it("falls back to 'unknown' for null", () => {
+    expect(coerceStatus(null)).toBe("unknown");
+  });
+
+  it("falls back to 'unknown' for undefined", () => {
+    expect(coerceStatus(undefined)).toBe("unknown");
+  });
+
+  it("falls back to 'unknown' for empty string", () => {
+    expect(coerceStatus("")).toBe("unknown");
+  });
+});
+
 // ─── validateTeamSplits ──────────────────────────────────────────────────────
 
 describe("validateTeamSplits", () => {
@@ -241,10 +289,430 @@ describe("validateTeamSplits", () => {
     expect(result.sum).toBe(100);
   });
 
-  it("handles an empty array", () => {
+  it("reports an empty array as invalid with a distinct message (#948)", () => {
     const result = validateTeamSplits([]);
     // Empty splits don't sum to 100, so valid=false is correct behavior
+    expect(result.valid).toBe(false);
     expect(result.sum).toBe(0);
+    expect(result.message).toBe("Team has no members");
+  });
+
+  it("accepts an empty array only when the caller passes allowEmpty (#948)", () => {
+    const result = validateTeamSplits([], { allowEmpty: true });
+    expect(result.valid).toBe(true);
+    expect(result.sum).toBe(0);
+  });
+
+  it("degrades a non-numeric percentage string to 0 instead of producing NaN (#198)", () => {
+    const result = validateTeamSplits([
+      { percentage: "abc" },
+      { percentage: "50" },
+    ]);
+    expect(Number.isNaN(result.sum)).toBe(false);
+    expect(result.sum).toBe(50);
+    expect(result.valid).toBe(false);
+    expect(result.message).not.toContain("NaN");
+    expect(result.message).toContain("50.00%");
+  });
+});
+
+// ─── parseMoneyInput ────────────────────────────────────────────────────────
+
+describe("parseMoneyInput", () => {
+  describe("valid inputs", () => {
+    it("accepts a whole number", () => {
+      const r = parseMoneyInput("100", "USDC");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("100");
+    });
+
+    it("accepts a decimal with valid precision for USDC", () => {
+      const r = parseMoneyInput("12.50", "USDC");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("12.5");
+    });
+
+    it("accepts a decimal with valid precision for XLM", () => {
+      const r = parseMoneyInput("12.3456789", "XLM");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("12.3456789");
+    });
+
+    it("normalizes trailing zeros", () => {
+      const r = parseMoneyInput("1.10", "USDC");
+      expect(r.valid).toBe(true);
+      expect(r.normalized).toBe("1.1");
+    });
+  });
+
+  describe("invalid inputs", () => {
+    it("rejects empty string", () => {
+      const r = parseMoneyInput("", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toBeDefined();
+    });
+
+    it("rejects zero", () => {
+      const r = parseMoneyInput("0", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("greater than zero");
+    });
+
+    it("rejects negative values", () => {
+      const r = parseMoneyInput("-50", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("greater than zero");
+    });
+
+    it("rejects non-numeric text", () => {
+      const r = parseMoneyInput("abc", "USDC");
+      expect(r.valid).toBe(false);
+    });
+
+    it("rejects Infinity", () => {
+      const r = parseMoneyInput("1e500", "USDC");
+      expect(r.valid).toBe(false);
+    });
+
+    it("rejects over-precision for USDC (more than 2 decimals)", () => {
+      const r = parseMoneyInput("10.555", "USDC");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("2 decimal places");
+    });
+
+    it("rejects over-precision for XLM (more than 7 decimals)", () => {
+      const r = parseMoneyInput("1.12345678", "XLM");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("7 decimal places");
+    });
+  });
+
+  describe("defaults", () => {
+    it("defaults to USDC when asset is omitted", () => {
+      const r = parseMoneyInput("10.555");
+      expect(r.valid).toBe(false);
+      expect(r.error).toContain("2 decimal places");
+    });
+  });
+});
+
+// ─── generateIdempotencyKey ────────────────────────────────────────────────
+
+describe("generateIdempotencyKey", () => {
+  it("returns a UUID v4 string", () => {
+    const key = generateIdempotencyKey();
+    expect(key).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it("generates unique keys on successive calls", () => {
+    const keys = new Set(Array.from({ length: 50 }, () => generateIdempotencyKey()));
+    expect(keys.size).toBe(50);
+  });
+
+  it("builds a v4 UUID from getRandomValues when randomUUID is unavailable", () => {
+    const original = crypto.randomUUID;
+    Object.defineProperty(crypto, "randomUUID", { value: undefined, configurable: true });
+    const spy = jest.spyOn(Math, "random");
+    try {
+      const key = generateIdempotencyKey();
+      expect(key).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      Object.defineProperty(crypto, "randomUUID", { value: original, configurable: true });
+    }
+  });
+});
+
+// ─── Minor-unit conversion, via sumMoney / subtractMoney ────────────────────
+// toCents/toMajorUnits are module-private (#896); their behaviour is pinned
+// through the public helpers that use them.
+
+describe("minor-unit conversion", () => {
+  it("round-trips USDC amounts exactly", () => {
+    expect(sumMoney(["12.50"])).toBe(12.5);
+    expect(sumMoney(["0.01"])).toBe(0.01);
+    expect(sumMoney(["100"])).toBe(100);
+  });
+
+  it("round-trips XLM amounts at 7 decimals", () => {
+    expect(sumMoney(["1.0000000"], 7)).toBe(1);
+    expect(sumMoney(["0.0000001"], 7)).toBe(0.0000001);
+  });
+
+  it("accepts numbers as well as strings", () => {
+    expect(sumMoney([12.5])).toBe(12.5);
+    expect(sumMoney([0.01])).toBe(0.01);
+  });
+
+  it("sums without float drift (#17)", () => {
+    expect(sumMoney(["0.1", "0.2"])).toBe(0.3);
+  });
+});
+
+describe("negative amounts (#353)", () => {
+  it("applies the sign to the whole amount", () => {
+    expect(sumMoney(["-12.50"])).toBe(-12.5);
+    expect(sumMoney([-12.5])).toBe(-12.5);
+    expect(sumMoney(["-0.01"])).toBe(-0.01);
+    expect(sumMoney(["-0.0000001"], 7)).toBe(-0.0000001);
+  });
+
+  it("accepts an explicit plus sign and surrounding whitespace", () => {
+    expect(sumMoney(["+12.50"])).toBe(12.5);
+    expect(sumMoney([" 12.50 "])).toBe(12.5);
+  });
+
+  it("round-trips negatives", () => {
+    expect(sumMoney(["-12.34"])).toBe(-12.34);
+  });
+});
+
+describe("malformed and out-of-range amounts (#897)", () => {
+  it.each(["1e5", "12abc", "", "-", "1.2.3", "NaN", "0x10"])(
+    "rejects %p instead of parsing a prefix of it",
+    (value) => {
+      expect(() => sumMoney([value])).toThrow(RangeError);
+    },
+  );
+
+  it("rejects non-finite numbers", () => {
+    expect(() => sumMoney([Number.NaN])).toThrow(RangeError);
+    expect(() => sumMoney([Number.POSITIVE_INFINITY])).toThrow(RangeError);
+  });
+
+  it("rejects an XLM amount past the safe-integer range instead of drifting", () => {
+    // 1e9 XLM at 7 decimals is 1e16 minor units, above 2^53 - 1.
+    expect(() => sumMoney(["1000000000"], 7)).toThrow(RangeError);
+    expect(() => subtractMoney("1000000000", "1", 7)).toThrow(RangeError);
+  });
+
+  it("still accepts the largest safe XLM amount", () => {
+    expect(sumMoney(["900000000"], 7)).toBe(900000000);
+  });
+});
+
+describe("sumMoney (#353)", () => {
+  it("sums without float drift", () => {
+    expect(0.1 + 0.2).not.toBe(0.3);
+    expect(sumMoney([0.1, 0.2])).toBe(0.3);
+    expect(sumMoney(["19.99", "0.01", 5.1])).toBe(25.1);
+  });
+
+  it("returns 0 for an empty list", () => {
+    expect(sumMoney([])).toBe(0);
+  });
+
+  it("respects XLM precision", () => {
+    expect(sumMoney(["0.0000001", "0.0000002"], 7)).toBe(0.0000003);
+    expect(sumMoney([1250.5, 8412.1234567], 7)).toBe(9662.6234567);
+  });
+});
+
+describe("subtractMoney (#353)", () => {
+  it("subtracts without float drift", () => {
+    expect(0.3 - 0.1).not.toBe(0.2);
+    expect(subtractMoney(0.3, 0.1)).toBe(0.2);
+    expect(subtractMoney(24000, 15800)).toBe(8200);
+  });
+
+  it("returns a correctly signed negative result", () => {
+    expect(subtractMoney("10.25", "12.50")).toBe(-2.25);
+  });
+
+  it("respects XLM precision", () => {
+    expect(subtractMoney("1", "0.0000001", 7)).toBe(0.9999999);
+  });
+});
+
+// ─── Locale-aware formatting (#456) ──────────────────────────────────────────
+//
+// Every assertion below would pass identically in every locale if the
+// implementation still hardcoded "en-US". That is exactly the regression
+// these guard: a de-DE or fr-FR viewer previously saw US number formatting
+// everywhere, because the four call sites passed a literal "en-US".
+
+describe("formatCurrency — follows the viewer's locale, not a hardcoded en-US", () => {
+  it("uses en-US grouping when the locale is en-US", () => {
+    expect(formatCurrency(1234567.89, "USDC", "en-US")).toBe("1,234,567.89 USDC");
+  });
+
+  it("uses de-DE separators when the locale is de-DE", () => {
+    expect(formatCurrency(1234567.89, "USDC", "de-DE")).toBe("1.234.567,89 USDC");
+    expect(formatCurrency(-1234.5, "USDC", "de-DE")).toBe("-1.234,5 USDC");
+  });
+
+  it("uses fr-FR separators when the locale is fr-FR", () => {
+    expect(formatCurrency(1234.5, "USDC", "fr-FR")).toMatch(/1\u202f?234,5 USDC/);
+  });
+
+  it("keeps the sanity-ceiling warning in every locale", () => {
+    expect(formatCurrency(2_000_000_000, "USDC", "en-US")).toBe("2,000,000,000 USDC ⚠");
+    expect(formatCurrency(2_000_000_000, "USDC", "de-DE")).toBe("2.000.000.000 USDC ⚠");
+  });
+
+  it("does not attach the warning to a non-finite amount", () => {
+    // `Math.abs(Infinity) > SANITY_CEILING` is true, so the ceiling must not be
+    // evaluated before the non-finite guard.
+    expect(formatCurrency(Infinity, "USDC", "en-US")).toBe("0 USDC");
+    expect(formatCurrency(NaN, "XLM", "en-US")).toBe("0 XLM");
+  });
+});
+
+describe("formatPercent — follows the viewer's locale", () => {
+  it("renders the CLDR-correct form per locale", () => {
+    expect(formatPercent(0.94, "en-US")).toBe("94%");
+    // German puts a non-breaking space before the percent sign.
+    expect(formatPercent(0.94, "de-DE")).toMatch(/94\s*%/);
+  });
+
+  it("still clamps out-of-range input in every locale", () => {
+    expect(formatPercent(1.5, "en-US")).toBe("100%");
+    expect(formatPercent(-1, "en-US")).toBe("0%");
+  });
+});
+
+describe("formatDaysUntil — pluralization via Intl.PluralRules", () => {
+  it("uses the singular branch for exactly one day", () => {
+    expect(formatDaysUntil(1, "en")).toBe("1 day left");
+  });
+
+  it("uses the plural branch for zero and many", () => {
+    expect(formatDaysUntil(0, "en")).toBe("Deadline passed");
+    expect(formatDaysUntil(5, "en")).toBe("5 days left");
+  });
+
+  it("keeps the no-deadline and passed-past copy", () => {
+    expect(formatDaysUntil(null, "en")).toBe("No deadline");
+    expect(formatDaysUntil(-3, "en")).toBe("Deadline passed");
+  });
+});
+
+describe("parseMoneyInput — accepts the viewer's own number notation (#456)", () => {
+  // The old implementation round-tripped through
+  // `toLocaleString("en-US").replace(/,/g, "")`, which only strips ASCII
+  // commas. Under any other locale that left the locale's own separators in
+  // the string and posted a corrupt amount to the backend — de-DE "12.500"
+  // (three decimals), fr-FR "12 500" (a non-breaking space surviving into the
+  // wire format).
+  it("normalizes de-DE grouped input to the canonical dot-decimal form", () => {
+    const r = parseMoneyInput("1.234,56", "USDC", "de-DE");
+    expect(r).toEqual({ valid: true, normalized: "1234.56" });
+  });
+
+  it("normalizes fr-FR grouped input to the canonical dot-decimal form", () => {
+    const r = parseMoneyInput("1\u202f234,56", "USDC", "fr-FR");
+    expect(r).toEqual({ valid: true, normalized: "1234.56" });
+  });
+
+  it("still accepts plain dot-decimal input in a comma locale", () => {
+    // <input type="number"> always produces dot-decimal per the HTML spec, so
+    // a de-DE user typing into a number input must not be rejected.
+    const r = parseMoneyInput("1234.56", "USDC", "de-DE");
+    expect(r).toEqual({ valid: true, normalized: "1234.56" });
+  });
+
+  it("enforces the per-asset precision on locale-formatted input", () => {
+    // 8 decimal places — one more than XLM allows.
+    const r = parseMoneyInput("1.234,56789012", "XLM", "de-DE");
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain("7 decimal places");
+  });
+
+  it("reads a bare de-DE \"1.234\" as 1.234, never as 1234", () => {
+    // In de-DE "." is the *group* separator, so stripping it would turn a
+    // deposit of 1.234 into 1234 — a 1000x overstatement. A dot is only
+    // treated as grouping when the input also carries the locale's decimal
+    // mark, which is what proves the user meant the locale's notation.
+    const r = parseMoneyInput("1.234", "XLM", "de-DE");
+    expect(r).toEqual({ valid: true, normalized: "1.234" });
+  });
+
+  it("reads a grouped de-DE value as grouping, not as a decimal", () => {
+    // With the locale's decimal mark present, the dot is unambiguously grouping.
+    const r = parseMoneyInput("1.234,5", "XLM", "de-DE");
+    expect(r).toEqual({ valid: true, normalized: "1234.5" });
+  });
+
+  it("normalizes an XLM amount with full 7-decimal precision in locale notation", () => {
+    const r = parseMoneyInput("1.234,5678901", "XLM", "de-DE");
+    expect(r).toEqual({ valid: true, normalized: "1234.5678901" });
+  });
+
+  it("rejects two decimal separators rather than guessing", () => {
+    const r = parseMoneyInput("1.2.3", "USDC", "en-US");
+    expect(r).toEqual({ valid: false, error: "Enter a valid number." });
+  });
+
+  it("is unchanged for en-US input", () => {
+    expect(parseMoneyInput("12.50", "USDC", "en-US")).toEqual({ valid: true, normalized: "12.5" });
+  });
+});
+
+describe("formatInteger", () => {
+  it("groups per locale", () => {
+    expect(formatInteger(12345, "en-US")).toBe("12,345");
+    expect(formatInteger(12345, "de-DE")).toBe("12.345");
+  });
+});
+
+
+// ─── coerceAsset / coerceDifficulty (#893) ───────────────────────────────────
+
+describe("coerceAsset", () => {
+  it.each(["USDC", "XLM"])("accepts %s", (asset) => {
+    expect(coerceAsset(asset)).toBe(asset);
+  });
+
+  it.each(["BTC", "usdc", "", null, undefined])("maps %p to \"unknown\"", (asset) => {
+    expect(coerceAsset(asset)).toBe("unknown");
+  });
+});
+
+describe("coerceDifficulty", () => {
+  it.each(["beginner", "intermediate", "advanced", "expert"])("accepts %s", (difficulty) => {
+    expect(coerceDifficulty(difficulty)).toBe(difficulty);
+  });
+
+  it.each(["legendary", "Beginner", "", null, undefined])("maps %p to \"unknown\"", (value) => {
+    expect(coerceDifficulty(value)).toBe("unknown");
+  });
+});
+
+describe("formatCurrency with an unknown asset (#893)", () => {
+  it("labels the amount as unknown rather than USDC", () => {
+    const formatted = formatCurrency(12.5, "unknown", "en-US");
+    expect(formatted).toContain("unknown");
+    expect(formatted).not.toContain("USDC");
+  });
+});
+
+// ─── parseMoneyInput separator cache (#892) ──────────────────────────────────
+
+describe("parseMoneyInput separator lookup (#892)", () => {
+  it("does not construct a new Intl.NumberFormat per keystroke", () => {
+    // Warm the per-locale cache once.
+    parseMoneyInput("1", "USDC", "de-DE");
+    const spy = jest.spyOn(Intl, "NumberFormat");
+    try {
+      for (const keystroke of ["1", "1.", "1.2", "1.23", "1.234", "1.234,", "1.234,5"]) {
+        parseMoneyInput(keystroke, "USDC", "de-DE");
+      }
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("still parses the locale's own notation", () => {
+    expect(parseMoneyInput("1.234,56", "USDC", "de-DE")).toEqual({
+      valid: true,
+      normalized: "1234.56",
+    });
   });
 });
 

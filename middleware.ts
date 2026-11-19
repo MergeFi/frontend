@@ -21,9 +21,12 @@ export function middleware(request: NextRequest) {
   // let a captured one authorize scripts on later pages.
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
 
-  const apiOrigin = process.env.NEXT_PUBLIC_API_URL
-    ? new URL(process.env.NEXT_PUBLIC_API_URL).origin
-    : "http://localhost:4000";
+  // MERGEFI_API_ORIGIN is injected by next.config.ts from the already-validated
+  // env (via loadValidatedEnv → validateApiUrl). Using it here avoids a raw
+  // `new URL(NEXT_PUBLIC_API_URL)` that would throw on a malformed value and
+  // 500 every request, and ensures the https requirement for mainnet is applied
+  // to the CSP connect-src — not just to the fetch() call sites.
+  const apiOrigin = process.env.MERGEFI_API_ORIGIN ?? "http://localhost:4000";
 
   const csp = [
     "default-src 'self'",

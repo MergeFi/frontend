@@ -21,6 +21,9 @@ function setWallet(overrides: Partial<ReturnType<typeof useWallet>> = {}) {
     // every test that isn't specifically exercising a re-check.
     recheckNetworkMismatch: jest.fn().mockResolvedValue(false),
     recheckAddressMismatch: jest.fn().mockResolvedValue(false),
+    // A live re-check that agrees with the cached flag — the default for
+    // every test that isn't specifically exercising the re-check.
+    recheckNetworkMismatch: jest.fn().mockResolvedValue(false),
     linkState: "none",
     connect: jest.fn(),
     disconnect: jest.fn(),

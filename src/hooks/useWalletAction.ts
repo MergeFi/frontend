@@ -33,6 +33,7 @@ export function useWalletAction() {
     if (addressMismatch || (await recheckAddressMismatch())) {
       return { ok: false, error: ADDRESS_MISMATCH_ERROR };
     }
+    if (addressMismatch) return { ok: false, error: ADDRESS_MISMATCH_ERROR };
     // `networkMismatch` is only ever written on mount (and cleared on
     // connect/disconnect), so treating it as authoritative here locked a
     // user out for the rest of the session: they'd fix the network inside

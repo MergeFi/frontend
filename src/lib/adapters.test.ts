@@ -22,6 +22,8 @@ import {
   type RawReputationSnapshot,
   type RawUserProfile,
 } from "./adapters";
+import { identiconDataUri } from "./identicon";
+import type { Bounty } from "@/types";
 
 function rawBounty(overrides: Partial<RawBounty> = {}): RawBounty {
   return {
@@ -90,6 +92,36 @@ describe("adaptBounty — milestoneId mapping (#86)", () => {
   });
 });
 
+describe("adaptBounty — claimedById mapping (#203)", () => {
+  it("maps claimedById from the claimer's stable id alongside the display username", () => {
+    const raw = rawBounty({ claimedBy: { id: "user-1", username: "alice" } });
+    const bounty = adaptBounty(raw);
+    expect(bounty.claimedBy).toBe("alice");
+    expect(bounty.claimedById).toBe("user-1");
+  });
+
+  it("leaves claimedById undefined when the bounty is unclaimed", () => {
+    const raw = rawBounty({ claimedBy: undefined });
+    expect(adaptBounty(raw).claimedById).toBeUndefined();
+  });
+});
+
+describe("adaptBounty — sponsorId mapping", () => {
+  it("passes the sponsor's stable id straight through", () => {
+    const raw = rawBounty({ sponsorId: "sponsor-1" });
+    expect(adaptBounty(raw).sponsorId).toBe("sponsor-1");
+  });
+
+  it("normalizes a null sponsorId to undefined", () => {
+    // Nullable column: "no sponsor on file" is reported as `null`.
+    expect(adaptBounty(rawBounty({ sponsorId: null })).sponsorId).toBeUndefined();
+  });
+
+  it("leaves sponsorId undefined when the key is absent entirely", () => {
+    expect(adaptBounty(rawBounty({ sponsorId: undefined })).sponsorId).toBeUndefined();
+  });
+});
+
 describe("adaptBounty — field coverage audit (#86)", () => {
   // Every key the Bounty interface declares (src/types/index.ts). Kept as
   // an explicit list, checked against adaptBounty's actual output below,
@@ -109,7 +141,10 @@ describe("adaptBounty — field coverage audit (#86)", () => {
     "deadline",
     "labels",
     "claimedBy",
+    "claimedById",
+    "sponsorId",
     "teamSplits",
+    "teamSplitsValid",
     "milestoneId",
     "escrowId",
   ] as const;
@@ -117,7 +152,8 @@ describe("adaptBounty — field coverage audit (#86)", () => {
   it("sets every Bounty field to a defined value given a fully-populated raw bounty", () => {
     const raw = rawBounty({
       escrowId: "escrow-1",
-      claimedBy: { username: "alice" },
+      sponsorId: "sponsor-1",
+      claimedBy: { id: "user-1", username: "alice" },
       team: { splits: [{ role: "Lead", percentage: "100", user: { username: "alice" } }] },
       issue: {
         number: 42,
@@ -137,6 +173,56 @@ describe("adaptBounty — field coverage audit (#86)", () => {
   });
 });
 
+/**
+ * teamSplitsValid is declared on the Bounty type itself and read by
+ * IssueDetailPage. It used to be intersected onto adaptBounty's return type
+ * only, so consumers typed as plain `Bounty` (fetchBounties returns Bounty[])
+ * had no access to it at the type level (#419).
+ */
+describe("adaptBounty — teamSplitsValid", () => {
+  it("surfaces the flag through the plain Bounty type, not an adapter-local one", () => {
+    const bounty: Bounty = adaptBounty(
+      rawBounty({
+        team: { splits: [{ role: "Lead", percentage: "60" }, { role: "Dev", percentage: "40" }] },
+      }),
+    );
+
+    expect(bounty.teamSplitsValid).toEqual({ valid: true, sum: 100 });
+  });
+
+  it("reports invalid splits with validateTeamSplits' message", () => {
+    const bounty: Bounty = adaptBounty(
+      rawBounty({
+        team: { splits: [{ role: "Lead", percentage: "50" }, { role: "Dev", percentage: "35" }] },
+      }),
+    );
+
+    expect(bounty.teamSplitsValid).toEqual({
+      valid: false,
+      sum: 85,
+      message: "Team splits sum to 85.00% (expected 100%)",
+    });
+  });
+
+  it("leaves the flag undefined for a bounty with no team", () => {
+    const bounty: Bounty = adaptBounty(rawBounty({ team: null }));
+
+    expect(bounty.teamSplits).toBeUndefined();
+    expect(bounty.teamSplitsValid).toBeUndefined();
+  });
+
+  it("reports an empty splits array as invalid — a team with nobody cannot be paid (#948)", () => {
+    const bounty: Bounty = adaptBounty(rawBounty({ team: { splits: [] } }));
+
+    expect(bounty.teamSplits).toEqual([]);
+    expect(bounty.teamSplitsValid).toEqual({
+      valid: false,
+      sum: 0,
+      message: "Team has no members",
+    });
+  });
+});
+
 // ─── adaptMilestone (#197) ─────────────────────────────────────────────────
 
 function rawMilestone(overrides: Partial<RawMilestone> = {}): RawMilestone {
@@ -153,21 +239,62 @@ function rawMilestone(overrides: Partial<RawMilestone> = {}): RawMilestone {
 }
 
 describe("adaptMilestone", () => {
-  it("derives issueCount and completedCount from raw.issues", () => {
+  it("derives issueCount from raw.issues and distributedFraction from distributed/budget (#615, #894)", () => {
     const milestone = adaptMilestone(rawMilestone());
     expect(milestone.issueCount).toBe(3);
-    expect(milestone.completedCount).toBe(2);
+    // distributed=2000, budget=5000
+    expect(milestone.distributedFraction).toBeCloseTo(0.4);
   });
 
-  it("defaults issueCount/completedCount to 0 when raw.issues is absent", () => {
+  it("defaults issueCount to 0 when raw.issues is absent", () => {
     const milestone = adaptMilestone(rawMilestone({ issues: undefined }));
     expect(milestone.issueCount).toBe(0);
-    expect(milestone.completedCount).toBe(0);
   });
 
-  it("joins repository owner/name, or falls back to \"unassigned\"", () => {
+  it("returns 0 distributedFraction when budget is zero (#615)", () => {
+    const milestone = adaptMilestone(
+      rawMilestone({ budget: "0", distributed: "500", issues: [{ state: "closed" }, { state: "closed" }] }),
+    );
+    expect(milestone.distributedFraction).toBe(0);
+  });
+
+  it("bases distributedFraction on payouts, not GitHub-closed issue count (#615)", () => {
+    // All issues closed on GitHub, but only 10% of budget distributed
+    const milestone = adaptMilestone(
+      rawMilestone({
+        budget: "1000",
+        distributed: "100",
+        issues: [{ state: "closed" }, { state: "closed" }, { state: "closed" }, { state: "closed" }],
+      }),
+    );
+    expect(milestone.issueCount).toBe(4);
+    expect(milestone.distributedFraction).toBeCloseTo(0.1);
+  });
+
+  // #894 — the money ratio is not scaled by the issue count, so adding an
+  // issue (or topping up the budget) cannot fabricate "completed" issues.
+  it("does not change distributedFraction when issues are added", () => {
+    const fewer = adaptMilestone(rawMilestone({ issues: [{ state: "open" }] }));
+    const more = adaptMilestone(
+      rawMilestone({ issues: [{ state: "open" }, { state: "open" }, { state: "open" }] }),
+    );
+    expect(more.distributedFraction).toBe(fewer.distributedFraction);
+    expect(more).not.toHaveProperty("completedCount");
+  });
+
+  it("joins repository owner/name, or falls back to a visible gap marker (#946)", () => {
     expect(adaptMilestone(rawMilestone()).repo).toBe("acme/widgets");
-    expect(adaptMilestone(rawMilestone({ repository: undefined })).repo).toBe("unassigned");
+    expect(adaptMilestone(rawMilestone({ repository: undefined })).repo).toBe(
+      "(unavailable)",
+    );
+  });
+
+  it("defaults a missing status to \"unknown\", not a live status (#946)", () => {
+    expect(adaptMilestone(rawMilestone({ status: undefined })).status).toBe("unknown");
+  });
+
+  it("passes a negative distributed through so the sign is visible (#947)", () => {
+    expect(adaptMilestone(rawMilestone({ distributed: "-50" })).distributed).toBe(-50);
   });
 
   it("sets every Milestone field to a defined value given a fully-populated raw milestone", () => {
@@ -180,7 +307,7 @@ describe("adaptMilestone", () => {
       "distributed",
       "asset",
       "issueCount",
-      "completedCount",
+      "distributedFraction",
     ] as const) {
       expect(milestone[field]).not.toBeUndefined();
     }
@@ -203,11 +330,21 @@ function rawMaintenancePool(
 }
 
 describe("adaptMaintenancePool", () => {
-  it("joins repository owner/name, or falls back to \"platform-wide\" when null", () => {
+  it("joins repository owner/name, or falls back to a visible gap marker when null (#946)", () => {
     expect(adaptMaintenancePool(rawMaintenancePool()).repo).toBe("acme/widgets");
     expect(
       adaptMaintenancePool(rawMaintenancePool({ repository: null })).repo,
-    ).toBe("platform-wide");
+    ).toBe("(unavailable)");
+  });
+
+  it("defaults a missing status to \"unknown\", not a live status (#946)", () => {
+    expect(adaptMaintenancePool(rawMaintenancePool({ status: undefined })).status).toBe(
+      "unknown",
+    );
+  });
+
+  it("passes a negative balance through so the sign is visible (#947)", () => {
+    expect(adaptMaintenancePool(rawMaintenancePool({ balance: "-50" })).balance).toBe(-50);
   });
 
   it("sets every MaintenancePool field to a defined value given a fully-populated raw pool", () => {
@@ -250,6 +387,34 @@ describe("adaptReputation", () => {
     expect(profile.onTimeDeliveryRate).toBeCloseTo(0.88);
   });
 
+  it("clamps out-of-range rates to 0-1 and warns instead of passing them through (#895)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const profile = adaptReputation(
+      rawUserProfile(),
+      rawReputationSnapshot({ completionRate: "150", onTimeDeliveryPercentage: "-5" }),
+    );
+    expect(profile.completionRate).toBe(1);
+    expect(profile.onTimeDeliveryRate).toBe(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("completionRate = 150"));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("onTimeDeliveryPercentage = -5"));
+    warn.mockRestore();
+  });
+
+  // The search-engine opt-in mapped from the backend's `isProfilePublic`
+  // (see src/lib/seo-policy.ts). Only an explicit `true` may enable indexing.
+  it.each([
+    [true, true],
+    [false, false],
+    [null, false],
+    [undefined, false],
+  ])("maps isProfilePublic %p to indexable %p", (isProfilePublic, expected) => {
+    const profile = adaptReputation(
+      rawUserProfile({ isProfilePublic }),
+      rawReputationSnapshot(),
+    );
+    expect(profile.indexable).toBe(expected);
+  });
+
   it("returns zeroed fields when there is no snapshot", () => {
     const profile = adaptReputation(rawUserProfile(), null);
     expect(profile.lifetimeEarnings).toBe(0);
@@ -266,10 +431,11 @@ describe("adaptReputation", () => {
     expect(profile.languages).toEqual(["TypeScript", "Rust", "Go"]);
   });
 
-  it("escapes the username when falling back to a generated dicebear avatar URL", () => {
+  it("falls back to a local identicon without sending the username to a third party (#929)", () => {
     const profile = adaptReputation(rawUserProfile({ username: "a&b" }), null);
-    expect(profile.avatarUrl).toContain("seed=a%26b");
-    expect(profile.avatarUrl).not.toContain("seed=a&b");
+    expect(profile.avatarUrl).toBe(identiconDataUri("a&b"));
+    expect(profile.avatarUrl).not.toContain("a&b");
+    expect(profile.avatarUrl).not.toContain("dicebear");
   });
 
   it("uses the provided avatarUrl instead of generating one when present", () => {
@@ -295,5 +461,26 @@ describe("adaptReputation", () => {
     ] as const) {
       expect(profile[field]).not.toBeUndefined();
     }
+  });
+});
+
+// #893 — asset and difficulty arrive as untrusted JSON, like status.
+describe("adaptBounty asset/difficulty validation (#893)", () => {
+  it("passes recognised values through", () => {
+    const bounty = adaptBounty(rawBounty({ asset: "XLM", difficulty: "expert" }));
+    expect(bounty.asset).toBe("XLM");
+    expect(bounty.difficulty).toBe("expert");
+  });
+
+  it("maps an unrecognised asset to \"unknown\" instead of treating it as USDC", () => {
+    const bounty = adaptBounty(rawBounty({ asset: "BTC" as unknown as RawBounty["asset"] }));
+    expect(bounty.asset).toBe("unknown");
+  });
+
+  it("maps an unrecognised difficulty to \"unknown\"", () => {
+    const bounty = adaptBounty(
+      rawBounty({ difficulty: "legendary" as unknown as RawBounty["difficulty"] }),
+    );
+    expect(bounty.difficulty).toBe("unknown");
   });
 });

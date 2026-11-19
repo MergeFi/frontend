@@ -304,20 +304,17 @@ describe("StatCard — sparkline", () => {
     expect(screen.queryByTestId("statcard-sparkline")).not.toBeInTheDocument();
   });
 
-  it("renders no sparkline wrapper for an empty array (falsy-length guard)", () => {
+  it("renders no sparkline wrapper for an empty array, avoiding an empty layout gap (#207)", () => {
     render(<StatCard label="Earnings history" status="loaded" value={100} sparkline={[]} />);
-    // [] is truthy, so the wrapper currently still renders even though
-    // Sparkline itself draws nothing for < 2 points — documents the
-    // existing empty-gap behavior described in #218.
-    const wrapper = screen.queryByTestId("statcard-sparkline");
-    expect(wrapper).toBeInTheDocument();
-    expect(wrapper?.querySelector("svg")).toBeNull();
+    // [] is truthy, but Sparkline itself draws nothing for < 2 points, so
+    // StatCard must check length too — not just presence — or it leaves an
+    // empty, unexplained gap in the row.
+    expect(screen.queryByTestId("statcard-sparkline")).not.toBeInTheDocument();
   });
 
-  it("renders no chart (but still the wrapper) for a single-element array", () => {
+  it("renders no sparkline wrapper for a single-element array (#207)", () => {
     render(<StatCard label="Earnings history" status="loaded" value={100} sparkline={[42]} />);
-    const wrapper = screen.getByTestId("statcard-sparkline");
-    expect(wrapper.querySelector("svg")).toBeNull();
+    expect(screen.queryByTestId("statcard-sparkline")).not.toBeInTheDocument();
   });
 
   it("renders the chart for a multi-element array", () => {
@@ -326,5 +323,35 @@ describe("StatCard — sparkline", () => {
     );
     const wrapper = screen.getByTestId("statcard-sparkline");
     expect(wrapper.querySelector("svg")).not.toBeNull();
+  });
+
+  it("names the sparkline after the card's own label", () => {
+    render(
+      <StatCard label="Earnings history" status="loaded" value={100} sparkline={[10, 20, 15, 30]} />,
+    );
+    // The stat card is the only place that knows what the trend represents, so
+    // it has to supply the name — otherwise the sparkline announces as an
+    // unlabelled graphic.
+    const svg = screen.getByRole("img");
+    expect(svg).toHaveAccessibleName(
+      "Earnings history: 4 data points, trending up from 10 to 30, range 10 to 30",
+    );
+  });
+
+  it("formats sparkline values when format is currency (#709)", () => {
+    render(
+      <StatCard
+        label="Lifetime earnings"
+        status="loaded"
+        value={8420}
+        format="currency"
+        asset="USDC"
+        sparkline={[1234.5, 8420]}
+      />,
+    );
+    const svg = screen.getByRole("img");
+    expect(svg).toHaveAccessibleName(
+      expect.stringContaining("trending up from 1,234.5 USDC to 8,420 USDC"),
+    );
   });
 });

@@ -57,6 +57,12 @@ export function validateStellarNetwork(raw: string | undefined): StellarNetwork 
 
 const DEFAULT_API_BASE_URL = "http://localhost:4000/api";
 
+// Hostnames where a plain http:// API URL is still acceptable even on the
+// PUBLIC network — local dev over plain HTTP is fine precisely because
+// nothing sensitive crosses a public network there. Covers the loopback
+// spellings a developer might actually use.
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
 /**
  * Validates `NEXT_PUBLIC_API_URL`'s shape. Unlike the network variable, a
  * localhost default is safe to keep here — nothing signs funds based on
@@ -68,12 +74,22 @@ const DEFAULT_API_BASE_URL = "http://localhost:4000/api";
  * "this is accidentally a production URL in a local .env.local" — that's a
  * question about deployment topology this repo doesn't document, not a
  * string-shape problem — so that class of mistake isn't covered here.
+ *
+ * Two additional invariants (#683):
+ * - Trailing slashes are stripped, so `${API_BASE_URL}${path}` and
+ *   `${API_BASE_URL}/auth/github` can never produce `//` in a request path
+ *   (which some proxies route as a 404).
+ * - On the PUBLIC (mainnet) network the URL must use https: — a build that
+ *   signs real transactions should never send its API traffic, including
+ *   GitHub OAuth redirects, over an unencrypted connection. Loopback
+ *   hosts are exempt so local development still works.
  */
-export function validateApiUrl(raw: string | undefined): string {
+export function validateApiUrl(raw: string | undefined, network: StellarNetwork): string {
   const value = raw === undefined || raw === "" ? DEFAULT_API_BASE_URL : raw;
 
+  let parsed: URL;
   try {
-    new URL(value);
+    parsed = new URL(value);
   } catch {
     throw new EnvValidationError(
       `NEXT_PUBLIC_API_URL is set to "${value}", which is not a valid URL. It must be a ` +
@@ -82,18 +98,90 @@ export function validateApiUrl(raw: string | undefined): string {
     );
   }
 
-  return value;
+  // new URL() alone doesn't restrict the scheme — "javascript:alert(1)",
+  // "file:///etc/passwd", and "ftp://example.com" all parse successfully
+  // despite none being meaningful as an HTTP API base URL. A misconfigured
+  // deployment with a stray non-http(s) scheme would otherwise pass this
+  // check and only fail much later, at the actual fetch() call site, with
+  // a far less clear error than this function exists to provide (#204).
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new EnvValidationError(
+      `NEXT_PUBLIC_API_URL is set to "${value}", which uses the "${parsed.protocol}" ` +
+        'scheme. It must use "http:" or "https:" — e.g. "http://localhost:4000/api" or ' +
+        '"https://api.example.com".',
+    );
+  }
+
+  // A PUBLIC (mainnet) build talks to real funds; an unencrypted API hop
+  // there is a deployment mistake, not a style preference (#683). Loopback
+  // stays exempt so `NEXT_PUBLIC_STELLAR_NETWORK=PUBLIC npm run dev` against
+  // a local backend keeps working.
+  if (
+    network === "PUBLIC" &&
+    parsed.protocol !== "https:" &&
+    !LOCAL_HOSTNAMES.has(parsed.hostname)
+  ) {
+    throw new EnvValidationError(
+      `NEXT_PUBLIC_API_URL is set to "${value}", which uses the "http:" scheme while ` +
+        'NEXT_PUBLIC_STELLAR_NETWORK is "PUBLIC". A mainnet build must talk to the API ' +
+        'over "https:" — e.g. "https://api.example.com". Only loopback hosts ' +
+        '("localhost", "127.0.0.1", "::1") are allowed over plain http.',
+    );
+  }
+
+  // Trailing slashes are stripped so `${API_BASE_URL}${path}` and
+  // `${API_BASE_URL}/auth/github` never produce a `//` in the request path
+  // — "https://api.example.com/api/" + "/bounties" would otherwise become
+  // ".../api//bounties", which some proxies route as a 404 (#683). The
+  // parsed value's origin/path are unaffected; only redundant trailing
+  // separators are removed.
+  return value.replace(/\/+$/, "");
+}
+
+const DEFAULT_SITE_URL = "https://mergefi.app";
+
+/**
+ * Validates `NEXT_PUBLIC_SITE_URL`, the public origin used for absolute URLs
+ * in the sitemap, robots.txt and `metadataBase` (#927). Unset keeps the
+ * production default; a set value must be a well-formed http(s) URL, so a
+ * typo fails the build instead of publishing broken absolute URLs. Trailing
+ * slashes are stripped so `${SITE_URL}${route}` never produces `//`.
+ */
+export function validateSiteUrl(raw: string | undefined): string {
+  const value = raw === undefined || raw === "" ? DEFAULT_SITE_URL : raw;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new EnvValidationError(
+      `NEXT_PUBLIC_SITE_URL is set to "${value}", which is not a valid URL. It must be a ` +
+        'full URL including protocol, e.g. "https://mergefi.app".',
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new EnvValidationError(
+      `NEXT_PUBLIC_SITE_URL is set to "${value}", which uses the "${parsed.protocol}" ` +
+        'scheme. It must use "http:" or "https:" — e.g. "https://mergefi.app".',
+    );
+  }
+  return value.replace(/\/+$/, "");
 }
 
 export interface ValidatedEnv {
   stellarNetwork: StellarNetwork;
   apiBaseUrl: string;
+  siteUrl: string;
 }
 
 /** Reads and validates every `NEXT_PUBLIC_*` variable this app depends on. */
 export function loadValidatedEnv(): ValidatedEnv {
+  const stellarNetwork = validateStellarNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK);
   return {
-    stellarNetwork: validateStellarNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK),
-    apiBaseUrl: validateApiUrl(process.env.NEXT_PUBLIC_API_URL),
+    stellarNetwork,
+    // The network is validated first because it constrains the API URL —
+    // a PUBLIC (mainnet) build requires an https: API URL (#683).
+    apiBaseUrl: validateApiUrl(process.env.NEXT_PUBLIC_API_URL, stellarNetwork),
+    siteUrl: validateSiteUrl(process.env.NEXT_PUBLIC_SITE_URL),
   };
 }

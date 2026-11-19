@@ -7,21 +7,36 @@ import type {
   ReputationProfile,
 } from "@/types";
 import {
+  coerceAsset,
   coerceDecimal,
+  coerceDifficulty,
   coerceNonNegative,
   coercePercentage,
+  coerceStatus,
   validateTeamSplits,
 } from "./utils";
+import { identiconDataUri } from "./identicon";
 
 // Shapes returned by mergefi-backend's TypeORM entities (see
 // mergefi-backend/src/common/entities). These are intentionally loose since
 // we only read the fields the UI needs.
-interface RawRepository {
+/**
+ * Wire shape of mergefi-backend's Repository entity, verified field-by-field
+ * against `mergefi-backend/src/common/entities/repository.entity.ts` (#945).
+ * The entity's columns are `owner`/`name` — there is no `org` or `htmlUrl`
+ * field, so any code reading those silently gets `undefined`.
+ */
+export interface RawRepository {
+  id: string;
   owner: string;
   name: string;
 }
 
 interface RawUser {
+  // Stable identifier, unlike username (a mutable GitHub handle) — carried
+  // through separately on Bounty.claimedById so a profile link built from
+  // a bounty survives the claimer renaming their GitHub account (#203).
+  id?: string;
   username: string;
 }
 
@@ -51,9 +66,15 @@ export interface RawBounty {
   difficulty: Difficulty;
   status: Bounty["status"];
   deadline: string | null;
+  createdAt?: string | null;
   escrowId: string | null;
   issue?: RawIssue;
   claimedBy?: RawUser | null;
+  // Nullable column on mergefi-backend's Bounty entity — the sponsor of a
+  // bounty that was created without one (or before the column existed) comes
+  // back as `null`, not as a missing key. Normalized to `undefined` below so
+  // callers can rely on a single "unknown funder" representation.
+  sponsorId?: string | null;
   team?: { splits?: RawTeamSplit[] } | null;
 }
 
@@ -82,13 +103,28 @@ export interface RawBounty {
  *   milestone" indicator below, since it already has the single Bounty
  *   object this field now lives on — no new fetch needed. MilestonesPage
  *   cross-linking to member bounties is recommended *against* for this
- *   PR: Milestone only carries aggregate issueCount/completedCount
+ *   PR: Milestone only carries aggregate issueCount/distributedFraction
  *   numbers today, and listing member bounties would need either a new
  *   backend endpoint (bounties filtered by milestoneId) or fetching every
  *   bounty on a funding-overview page just to filter client-side —
  *   real new scope, not a natural extension of restoring this mapping.
+ *
+ * Contrast with `sponsorId`: unlike `issue`/`claimedBy`/`team`, sponsor is a
+ * plain column on the Bounty row (not a relation that needs a `relations`
+ * option to hydrate), so it is present on live responses today regardless of
+ * that gap.
  */
-export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { valid: boolean; sum: number; message?: string } } {
+/**
+ * Returns the domain `Bounty` type. `teamSplitsValid` is declared on
+ * `Bounty` itself (src/types/bounty.ts) rather than intersected onto this
+ * function's return type: an adapter-local intersection is invisible to any
+ * consumer typed as the plain `Bounty` (fetchBounties returns `Bounty[]`, so
+ * every caller narrowed to that type structurally lost access to the field —
+ * the type-level half of the "computed but never consumed" bug, where
+ * adaptBounty computed and attached a validity flag that no component could
+ * read).
+ */
+export function adaptBounty(raw: RawBounty): Bounty {
   const splits = raw.team?.splits?.map(
     (split): TeamSplit => ({
       role: split.role ?? "Contributor",
@@ -99,22 +135,33 @@ export function adaptBounty(raw: RawBounty): Bounty & { teamSplitsValid?: { vali
 
   return {
     id: raw.id,
-    repo: raw.issue?.repository?.name ?? "unknown-repo",
-    org: raw.issue?.repository?.owner ?? "unknown-org",
+    // Missing repository data must not render as plausible content (#946):
+    // "(unavailable)" is visibly non-data, unlike "unknown-repo"/"unknown-org"
+    // which read like real names.
+    repo: raw.issue?.repository?.name ?? "(unavailable)",
+    org: raw.issue?.repository?.owner ?? "(unavailable)",
     issueNumber: raw.issue?.number ?? 0,
     title: raw.issue?.title ?? "Untitled issue",
     description: raw.issue?.body ?? "",
     reward: coerceNonNegative(raw.amount),
-    asset: raw.asset,
-    difficulty: raw.difficulty,
-    status: raw.status,
+    asset: coerceAsset(raw.asset),
+    difficulty: coerceDifficulty(raw.difficulty),
+    status: coerceStatus(raw.status),
     // A null deadline means the bounty is genuinely open-ended, not "due
     // now" — pass it through as-is rather than fabricating a "now"
     // timestamp that would make daysUntil() render it as already expired
-    // (#193). Consumers must render a "No deadline" state for null.
-    deadline: raw.deadline,
+    // (#193). Consumers must render a "No deadline" state for null. A
+    // non-null value that isn't a parseable date is also normalized to null
+    // (#949) so it shows as "No deadline" instead of "Deadline passed".
+    deadline:
+      raw.deadline != null && Number.isNaN(new Date(raw.deadline).getTime())
+        ? null
+        : raw.deadline,
+    createdAt: raw.createdAt ?? undefined,
     labels: raw.issue?.labels ?? [],
     claimedBy: raw.claimedBy?.username,
+    claimedById: raw.claimedBy?.id,
+    sponsorId: raw.sponsorId ?? undefined,
     milestoneId: raw.issue?.milestoneId ?? undefined,
     escrowId: raw.escrowId ?? undefined,
     teamSplits: splits,
@@ -128,39 +175,63 @@ export interface RawMilestone {
   budget: string;
   distributed: string;
   asset: "USDC" | "XLM";
+  status?: string;
+  deadline?: string | null;
   repository?: RawRepository;
   issues?: { state: "open" | "closed" }[];
 }
 
 export function adaptMilestone(raw: RawMilestone): Milestone {
   const issues = raw.issues ?? [];
+  const budget = coerceNonNegative(raw.budget);
+  // `distributed` can legitimately be negative (refunds exceeding payouts,
+  // accounting corrections) — pass it through and let formatCurrency render
+  // the sign rather than hiding it behind a 0 (#947).
+  const distributed = coerceDecimal(raw.distributed);
   return {
     id: raw.id,
     name: raw.title,
-    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "unassigned",
-    budget: coerceNonNegative(raw.budget),
-    distributed: coerceNonNegative(raw.distributed),
+    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "(unavailable)",
+    budget,
+    distributed,
     asset: raw.asset,
+    // A missing status is not an implicit "open" (#946): that presents a
+    // possibly-broken record as live and fundable. "unknown" is rendered as
+    // a warning by the status badges, matching coerceStatus (#596).
+    status: raw.status ?? "unknown",
+    deadline: raw.deadline ?? null,
     issueCount: issues.length,
-    completedCount: issues.filter((i) => i.state === "closed").length,
+    // #615 — progress is based on payouts (distributed / budget), not on
+    // GitHub-closed issue counts. #894 — it is exposed as the fraction it is,
+    // not scaled into a fabricated "completed issues" count. When budget is
+    // zero (not yet funded), fall back to 0 rather than a meaningless division.
+    distributedFraction: budget > 0 ? distributed / budget : 0,
   };
 }
 
 export interface RawMaintenancePool {
   id: string;
+  name?: string | null;
   monthlyDeposit: string;
   balance: string;
   asset: "USDC" | "XLM";
+  status?: string;
   repository?: RawRepository | null;
 }
 
 export function adaptMaintenancePool(raw: RawMaintenancePool): MaintenancePool {
   return {
     id: raw.id,
-    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "platform-wide",
+    name: raw.name ?? null,
+    repo: raw.repository ? `${raw.repository.owner}/${raw.repository.name}` : "(unavailable)",
     monthlyDeposit: coerceNonNegative(raw.monthlyDeposit),
-    balance: coerceNonNegative(raw.balance),
+    // `balance` can legitimately be negative (refunds exceeding deposits,
+    // accounting corrections) — pass it through and let formatCurrency
+    // render the sign (#947).
+    balance: coerceDecimal(raw.balance),
     asset: raw.asset,
+    // A missing status is not an implicit "active" (#946).
+    status: raw.status ?? "unknown",
   };
 }
 
@@ -177,6 +248,29 @@ export interface RawReputationSnapshot {
 export interface RawUserProfile {
   username: string;
   avatarUrl: string | null;
+  /**
+   * mergefi-backend has no such field on its user entity yet. Read
+   * defensively so this is a no-op until it lands, and so an explicitly
+   * non-public profile can never be indexed by omission: anything other than
+   * `true` means "not indexable" (see src/lib/seo-policy.ts).
+   */
+  isProfilePublic?: boolean | null;
+}
+
+const warnedPercentFields = new Set<string>();
+
+/**
+ * Backend percentage (0–100) → fraction (0–1), clamped (#895). An
+ * out-of-range value is logged once per field instead of silently rendering
+ * as "0%" or "100%", so a unit mismatch on the backend leaves a trace.
+ */
+function percentToFraction(field: string, raw: string): number {
+  const n = coerceDecimal(raw);
+  if ((n < 0 || n > 100) && !warnedPercentFields.has(field)) {
+    warnedPercentFields.add(field);
+    console.warn(`[adapters] ${field} = ${raw} is outside 0-100; clamping (#895)`);
+  }
+  return coercePercentage(raw) / 100;
 }
 
 export function adaptReputation(
@@ -185,14 +279,14 @@ export function adaptReputation(
 ): ReputationProfile {
   return {
     handle: user.username,
-    avatarUrl:
-      user.avatarUrl ??
-      `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username)}`,
+    avatarUrl: user.avatarUrl ?? identiconDataUri(user.username),
     lifetimeEarnings: snapshot ? coerceNonNegative(snapshot.totalEarnings) : 0,
     mergedPRs: snapshot?.mergedPrCount ?? 0,
-    completionRate: snapshot ? coerceDecimal(snapshot.completionRate) / 100 : 0,
+    completionRate: snapshot ? percentToFraction("completionRate", snapshot.completionRate) : 0,
     avgReviewTimeHours: snapshot ? coerceNonNegative(snapshot.avgReviewTimeHours) : 0,
-    onTimeDeliveryRate: snapshot ? coerceDecimal(snapshot.onTimeDeliveryPercentage) / 100 : 0,
+    onTimeDeliveryRate: snapshot
+      ? percentToFraction("onTimeDeliveryPercentage", snapshot.onTimeDeliveryPercentage)
+      : 0,
     // Object.keys() alone discards the usage weight and returns keys in
     // insertion order, not "most used first" — sort by value descending so
     // the rendered badge order actually means something (#196).
@@ -202,5 +296,6 @@ export function adaptReputation(
           .map(([lang]) => lang)
       : [],
     organizations: snapshot?.orgsContributedTo ?? [],
+    indexable: user.isProfilePublic === true,
   };
 }

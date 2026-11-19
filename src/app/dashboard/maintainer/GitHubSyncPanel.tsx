@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { GitBranch, RefreshCw, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { apiPost } from "@/lib/api";
 
 interface SyncedRepo {
   owner: string;
@@ -16,6 +17,13 @@ interface SyncState {
   syncedRepos: SyncedRepo[];
 }
 
+const MAX_SYNC_PAGES = 50;
+
+interface SyncPageResponse {
+  synced?: number;
+  nextPage?: string | null;
+}
+
 export function GitHubSyncPanel() {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
@@ -23,32 +31,37 @@ export function GitHubSyncPanel() {
     status: "idle",
     syncedRepos: [],
   });
+  const abortRef = useRef<AbortController | null>(null);
 
   const handleSync = useCallback(async () => {
     if (!owner.trim() || !repo.trim()) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     setState((prev) => ({ ...prev, status: "syncing", message: undefined }));
     try {
       let nextPage: string | null = null;
       let totalSynced = 0;
+      let pages = 0;
 
-      // Follow pagination until all issues are synced
       do {
-        const params = new URLSearchParams();
-        if (nextPage) params.set("nextPage", nextPage);
+        if (controller.signal.aborted) break;
+        pages++;
 
-        const url = `/api/github/sync/${encodeURIComponent(owner.trim())}/${encodeURIComponent(repo.trim())}${params.toString() ? `?${params}` : ""}`;
-        const res = await fetch(url, { method: "POST" });
+        const path = `/github/sync/${encodeURIComponent(owner.trim())}/${encodeURIComponent(repo.trim())}`;
+        const body = nextPage ? { nextPage } : {};
+        const data = await apiPost<SyncPageResponse>(path, body);
 
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Sync failed (${res.status})`);
-        }
-
-        const data = await res.json();
         totalSynced += data.synced ?? 0;
-        nextPage = data.nextPage ?? null;
-      } while (nextPage);
+        const incoming = data.nextPage ?? null;
+        // Guard against echoed cursors causing an infinite loop
+        if (incoming === nextPage) break;
+        nextPage = incoming;
+      } while (nextPage && pages < MAX_SYNC_PAGES);
+
+      if (controller.signal.aborted) return;
 
       setState((prev) => ({
         status: "success",
@@ -64,10 +77,17 @@ export function GitHubSyncPanel() {
         ],
       }));
     } catch (err) {
+      if (controller.signal.aborted) return;
+      const message = err instanceof Error ? err.message : "Sync failed";
+      // Surface a clearer message when the backend returns 404 (repo not found,
+      // not a missing endpoint — the endpoint 404 would have been a network
+      // error thrown by apiPost before we could read a body).
       setState((prev) => ({
         ...prev,
         status: "error",
-        message: err instanceof Error ? err.message : "Sync failed",
+        message: message.includes("404")
+          ? `Repository ${owner.trim()}/${repo.trim()} not found or not accessible`
+          : message,
       }));
     }
   }, [owner, repo]);

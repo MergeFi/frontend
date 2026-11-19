@@ -56,6 +56,33 @@ export function formatCurrency(amount: number, asset: "USDC" | "XLM" = "USDC") {
   return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${asset}`;
 }
 
+/**
+ * Parses a locale-formatted money string into a canonical decimal string safe
+ * to send to the backend (e.g. "1.234,56" → "1234.56", "1 234,56" → "1234.56").
+ *
+ * Strategy: probe the runtime locale's decimal separator via Intl, strip
+ * thousands separators, replace the decimal separator with ".", then parse.
+ * Returns null for empty input or non-numeric values.
+ */
+export function parseMoneyInput(raw: string, maxDecimals = 7): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const parts = new Intl.NumberFormat(undefined, { minimumFractionDigits: 1 })
+    .formatToParts(1234567.8);
+  const decimalSep = parts.find((p) => p.type === "decimal")?.value ?? ".";
+  const groupSep   = parts.find((p) => p.type === "group")?.value   ?? ",";
+
+  const normalized = trimmed
+    .replace(new RegExp(`\\${groupSep}`, "g"), "")
+    .replace(new RegExp(`\\${decimalSep}`), ".");
+
+  const num = parseFloat(normalized);
+  if (isNaN(num)) return null;
+
+  return num.toFixed(maxDecimals).replace(/\.?0+$/, "") || "0";
+}
+
 export function formatPercent(value: number) {
   if (!Number.isFinite(value)) return "0%";
   return `${Math.round(value * 100)}%`;

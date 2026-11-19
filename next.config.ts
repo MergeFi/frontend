@@ -86,6 +86,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Expose the build-time-validated API origin to middleware via process.env.
+  // middleware.ts runs on the Edge runtime and cannot import src/lib/env.ts
+  // directly; this is the documented pattern for sharing build-time values.
+  env: {
+    MERGEFI_API_ORIGIN: apiOrigin,
+  },
   devIndicators: false,
   images: {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
